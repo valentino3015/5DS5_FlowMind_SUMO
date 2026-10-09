@@ -59,4 +59,10 @@ Plots and CSVs are saved to `outputs/` (`*_comparison.png`, `*_learning_curve.pn
 - Planned extensions: emergency-vehicle priority, pedestrians, pollution-aware rewards, multi-agent cooperation
 
 ## Team
-_Add team name and members here._
+- Ahmed Abid
+- Adem Dhouib
+- Donia Hali
+- Hadyle Zribi
+- Omar Zalila
+- Manoubi Derouich Rafrafi
+- Firas Ben Achour
