@@ -5,14 +5,16 @@ Build the BO4 bus scenario network (one signalized junction) reproducibly.
 
 Writes (all in bo4_bus/nets/):
     bus.nod.xml, bus.edg.xml   plain XML inputs
-    bus.tll.xml                static 4-phase signal program
+    bus.tll.xml                static 6-phase signal program
     bus.net.xml                final network (netconvert output, committed)
     bus_stops.add.xml          4 bus stops (2 per arterial direction)
 
 Layout (x to the east, y to the north, junction "C" at the origin):
     arterial W-E : 600 m each side, 2 lanes/direction, 13.89 m/s
     cross N-S    : 300 m each side, 1 lane/direction,  13.89 m/s
-Signal (cycle 71 s): arterial green 40 / yellow 3 / cross green 25 / yellow 3.
+Signal (team defaults, cycle 75 s): arterial green 40 / yellow 3 / all-red 2 /
+cross green 25 / yellow 3 / all-red 2. Green phases carry minDur=10 / maxDur=60
+(ignored by the static program, used by adaptive controllers later).
 Left turns are permitted (unprotected, 'g' = yield to opposing traffic).
 
 Two netconvert passes: the first builds the topology, then the signal states
@@ -38,7 +40,9 @@ CROSS_HALF = 300.0    # m, cross street length each side
 SPEED = 13.89         # m/s (50 km/h), both streets
 TLS_ID = "C"
 
-ART_GREEN, CROSS_GREEN, YELLOW = 40, 25, 3
+ART_GREEN, CROSS_GREEN = 40, 25
+YELLOW, ALL_RED = 3, 2          # s, team defaults
+MIN_GREEN, MAX_GREEN = 10, 60   # s, team defaults
 
 STOP_DIST = 150.0     # m, distance of the stop centre from the junction
 STOP_LEN = 30.0       # m
@@ -116,15 +120,19 @@ def write_tll(net_path):
     def yellow(for_arterial):
         return "".join("y" if arterial[i] == for_arterial else "r" for i in range(n_links))
 
+    all_red = "r" * n_links
     phases = [
-        (ART_GREEN, green(True)), (YELLOW, yellow(True)),
-        (CROSS_GREEN, green(False)), (YELLOW, yellow(False)),
+        (ART_GREEN, green(True)), (YELLOW, yellow(True)), (ALL_RED, all_red),
+        (CROSS_GREEN, green(False)), (YELLOW, yellow(False)), (ALL_RED, all_red),
     ]
+    assert all(MIN_GREEN <= d <= MAX_GREEN for d in (ART_GREEN, CROSS_GREEN))
     with open(p("bus.tll.xml"), "w") as f:
         f.write("<additional>\n")
         f.write(f'    <tlLogic id="{TLS_ID}" type="static" programID="0" offset="0">\n')
         for dur, state in phases:
-            f.write(f'        <phase duration="{dur}" state="{state}"/>\n')
+            bounds = (f' minDur="{MIN_GREEN}" maxDur="{MAX_GREEN}"'
+                      if "G" in state or "g" in state else "")
+            f.write(f'        <phase duration="{dur}" state="{state}"{bounds}/>\n')
         f.write("    </tlLogic>\n</additional>\n")
     return phases
 

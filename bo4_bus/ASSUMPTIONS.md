@@ -4,8 +4,11 @@
 - Arterial W–E: 600 m each side, 2 lanes/direction. Cross street N–S: 300 m each side, 1 lane/direction.
   Speed limit **13.89 m/s on both streets** (the cross-street speed was not specified).
 - netconvert trims each approach to **592.8 m** (arterial) because of the junction area.
-- Signal `C`, static, cycle **71 s**: arterial green 40 / yellow 3 / cross green 25 / yellow 3.
-  No all-red phase and no protected left phase. Left turns are `g`: permitted, unprotected,
+- Signal `C`, static, cycle **75 s** (team defaults): arterial green 40 / yellow 3 / all-red 2 /
+  cross green 25 / yellow 3 / all-red 2. No protected left phase.
+  - Green phases carry min green 10 s / max green 60 s (`minDur` / `maxDur` in `bus.tll.xml`, and `MIN_GREEN` / `MAX_GREEN`
+    in `build_net.py`). The static program ignores them, and netconvert drops them from `bus.net.xml`.
+    Adaptive controllers must enforce them. Left turns are `g`: permitted, unprotected,
   yielding to opposing traffic. Right turns and through movements are `G`. No pedestrians.
 - The phase states are derived automatically from the connection directions (sumolib) and
   embedded into `bus.net.xml` in a second netconvert pass.
@@ -39,6 +42,8 @@
   - A closed-loop dwell set through TraCI on arrival would be more faithful. It is left for a later step.
 
 ## Measurement (`Bus_Demo.py`, `bus_metrics.py`)
+- **Evaluation seeds are 10000�10004** (team rule: evaluation seeds start at 10000). Seeds below 10000
+  were only used for the calibration sweeps.
 - Warm-up runs from 0 to 600 s; measurement runs from 600 to 4200 s. The SUMO `--seed` is the same as the demand seed.
   `--time-to-teleport` is 300 s (the SUMO default).
 - **Bus junction delay** = (`started` at the downstream stop − `ended` at the upstream stop) − free-flow time.
@@ -50,7 +55,7 @@
 - **Headways** come from `started` in the stop-output, using stop arrivals in [600, 4200) s per stop.
   **CV** = sample std (ddof = 1) / mean.
   **Bunching** = headway < 0.5·H (120 s).
-- **"Waits more than one cycle"** is proxied by junction delay > 71 s.
+- **"Waits more than one cycle"** is proxied by junction delay > cycle length (read from the net, 75 s).
 - **Car delay** = mean `timeLoss` of cars that departed in the window. Unfinished trips are included
   (`--tripinfo-output.write-unfinished`).
   - `timeLoss` excludes insertion delay, so the mean `departDelay` is reported separately (`car_depart_delay`).
@@ -64,6 +69,8 @@
   `art_q_at_stop_*` is the share of seconds this queue is ≥ 135 m, i.e. it reaches the upstream stop zone.
 
 ## Calibration (what was changed and why)
+Calibration was done with the earlier 71 s cycle (no all-red) on seeds 1�5. The demand was **not** re-tuned
+after switching to the 75 s team timing.
 - With the brief's demand (arterial 800 veh/h, my initial turning shares 10/10 arterial and 20/20 cross), seed 1 showed:
   - The arterial queue maxed out at about 95 m and never reached the upstream stop.
   - No bus waited more than one cycle.

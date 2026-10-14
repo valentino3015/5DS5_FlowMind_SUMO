@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2026-10-14T20:14:52.952020+01:00 by Eclipse SUMO netconvert 1.27.1
+<!-- generated on 2026-10-14T21:17:37.162187+01:00 by Eclipse SUMO netconvert 1.27.1
 <netconvertConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
 
     <input>
@@ -122,8 +122,10 @@
     <tlLogic id="C" type="static" programID="0" offset="0">
         <phase duration="40" state="rrrGGGgrrrGGGg"/>
         <phase duration="3"  state="rrryyyyrrryyyy"/>
+        <phase duration="2"  state="rrrrrrrrrrrrrr"/>
         <phase duration="25" state="GGgrrrrGGgrrrr"/>
         <phase duration="3"  state="yyyrrrryyyrrrr"/>
+        <phase duration="2"  state="rrrrrrrrrrrrrr"/>
     </tlLogic>
 
     <junction id="C" type="traffic_light" x="600.00" y="300.00" incLanes="N2C_0 E2C_0 E2C_1 S2C_0 W2C_0 W2C_1" intLanes=":C_0_0 :C_1_0 :C_14_0 :C_3_0 :C_4_0 :C_4_1 :C_15_0 :C_7_0 :C_8_0 :C_16_0 :C_10_0 :C_11_0 :C_11_1 :C_17_0" shape="596.80,310.40 603.20,310.40 603.64,308.18 604.20,307.40 604.98,306.84 605.98,306.51 607.20,306.40 607.20,293.60 604.98,293.16 604.20,292.60 603.64,291.82 603.31,290.82 603.20,289.60 596.80,289.60 596.36,291.82 595.80,292.60 595.02,293.16 594.02,293.49 592.80,293.60 592.80,306.40 595.02,306.84 595.80,307.40 596.36,308.18 596.69,309.18">

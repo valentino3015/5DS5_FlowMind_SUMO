@@ -1,8 +1,8 @@
 """
 BO4 bus scenario - fixed-time baseline.
 
-    python bo4_bus/Bus_Demo.py --seeds 1 2 3 4 5
-    python bo4_bus/Bus_Demo.py --seeds 1 --gui
+    python bo4_bus/Bus_Demo.py                       # evaluation seeds 10000-10004
+    python bo4_bus/Bus_Demo.py --seeds 10000 --gui
 
 For each seed: generate routes (gen_routes.py), run SUMO headless for
 warm-up (600 s) + measurement (3600 s), then compute the metrics of
@@ -39,7 +39,6 @@ RESULTS = os.path.join(HERE, "results")
 DIRS = {"EB": ("EB_up", "EB_down"), "WB": ("WB_up", "WB_down")}
 ART_APPROACHES = ("W2C", "E2C")
 CROSS_APPROACHES = ("N2C", "S2C")
-CYCLE = 71.0           # s, fixed-time cycle of bus.net.xml
 QUEUE_GAP = 25.0       # m, max gap between consecutive queued vehicles of one queue
 QUEUE_SPEED = 1.39     # m/s (5 km/h): slower vehicles count as queued (stop-and-go)
 
@@ -82,6 +81,11 @@ def stop_to_stop_distances():
         internal = net.getLane(conn.getViaLaneID()).getLength()
         out[d] = (lane_up.getLength() - float(s_up.endPos)) + internal + float(s_down.endPos)
     return out
+
+
+def cycle_length():
+    """Sum of the phase durations of the (single) tlLogic in bus.net.xml."""
+    return sum(float(ph.duration) for ph in sumolib.xml.parse(NET, "phase"))
 
 
 def queue_length(traci, lane_id, lane_len):
@@ -165,7 +169,7 @@ def run_seed(seed, args, controller, ff_times):
         row[f"bunch_down_{d}"] = hs_dn["bunching"]
     row["bus_delay"] = bm.mean_or_nan(all_delays)
     row["bus_delay_max"] = max(all_delays) if all_delays else math.nan
-    row["bus_wait_gt_cycle"] = sum(1 for x in all_delays if x > CYCLE)
+    row["bus_wait_gt_cycle"] = sum(1 for x in all_delays if x > cycle_length())
     row["car_delay"] = bm.car_mean_delay(trips, set(bus_params), t0, t1)
     row["car_depart_delay"] = bm.car_mean_delay(trips, set(bus_params), t0, t1,
                                                 field="departDelay")
@@ -186,7 +190,8 @@ def run_seed(seed, args, controller, ff_times):
 
 def main():
     ap = gen_routes.add_args(argparse.ArgumentParser(description="BO4 fixed-time bus baseline"))
-    ap.add_argument("--seeds", type=int, nargs="+", default=[1, 2, 3, 4, 5])
+    # team rule: evaluation seeds start at 10000
+    ap.add_argument("--seeds", type=int, nargs="+", default=[10000, 10001, 10002, 10003, 10004])
     ap.add_argument("--gui", action="store_true")
     ap.add_argument("--warmup", type=float, default=600.0)
     ap.add_argument("--duration", type=float, default=3600.0)
