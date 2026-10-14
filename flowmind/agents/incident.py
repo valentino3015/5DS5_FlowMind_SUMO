@@ -8,6 +8,8 @@ What to implement:
   "incident" from the coordinator. Return a Claim if found.
 - act: stop giving green to the blocked lane (it cannot move anyway) and
   serve the other directions; avoid sending cars into the blocked area.
+  state.phase_lanes[p] lists the lanes phase p gives green to, and
+  self.phase_for_lane(state, lane_id, allowed) finds a phase for a given lane.
 - explain: e.g. "north_in_0 blocked for 90 s, serving east-west".
 
 Simple example rule:

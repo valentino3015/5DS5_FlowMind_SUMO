@@ -55,9 +55,32 @@ class Specialist:
         """Why did I choose my last action? One short sentence for the log."""
         return self.last_reason
 
-    # --- small helper you can reuse -------------------------------------
+    # --- small helpers you can reuse ------------------------------------
     def keep_phase(self, state: JunctionState, allowed: list[bool]) -> int:
         """Keep the current green if allowed, otherwise the first allowed phase."""
         if allowed[state.phase]:
             return state.phase
         return allowed.index(True)
+
+    def phase_for_lane(self, state: JunctionState, lane_id: str, allowed: list[bool]) -> int | None:
+        """An allowed green phase that gives green to this incoming lane, or None.
+
+        Prefers the current phase (no switch needed), otherwise the first one found.
+        Example: phase_for_lane(state, "north_in_0", allowed) -> 0
+        """
+        return self._phase_with(state, state.phase_lanes, lane_id, allowed)
+
+    def phase_for_crossing(self, state: JunctionState, crossing_id: str, allowed: list[bool]) -> int | None:
+        """An allowed green phase where pedestrians may walk on this crossing, or None.
+
+        Prefers the current phase (no switch needed), otherwise the first one found.
+        Example: phase_for_crossing(state, ":J1_c0", allowed) -> 0
+        """
+        return self._phase_with(state, state.phase_crossings, crossing_id, allowed)
+
+    @staticmethod
+    def _phase_with(state: JunctionState, per_phase: tuple, item_id: str, allowed: list[bool]) -> int | None:
+        candidates = [p for p, ids in enumerate(per_phase) if item_id in ids and allowed[p]]
+        if not candidates:
+            return None
+        return state.phase if state.phase in candidates else candidates[0]

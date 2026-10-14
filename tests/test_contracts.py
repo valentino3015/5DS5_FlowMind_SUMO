@@ -37,6 +37,13 @@ def test_example_state_is_valid():
     for moves in example_phase_movements().values():
         for src, dst in moves:
             assert src in lane_ids and dst in lane_ids
+    # one entry per green phase, consistent with example_phase_movements()
+    assert len(s.phase_lanes) == len(s.phase_crossings) == s.num_phases
+    for phase, moves in example_phase_movements().items():
+        assert set(s.phase_lanes[phase]) == {src for src, _ in moves}
+    crossing_ids = {c.crossing_id for c in s.crossings}
+    for ids in s.phase_crossings:
+        assert set(ids) <= crossing_ids
 
 
 def test_example_state_is_frozen():
@@ -76,3 +83,24 @@ def test_max_pressure_picks_congested_north_south():
     s = make_example_state()
     agent = MaxPressure({}, example_phase_movements())
     assert agent.act(s, [], [True] * 4) == 0   # north-south straight has the longest queues
+
+
+def test_phase_for_lane():
+    s = make_example_state()                     # current phase is 2
+    agent = BusAgent({})
+    all_ok = [True] * 4
+    assert agent.phase_for_lane(s, "north_in_0", all_ok) == 0
+    assert agent.phase_for_lane(s, "east_in_0", all_ok) == 2      # already green: keep it
+    assert agent.phase_for_lane(s, "west_in_1", all_ok) == 3
+    assert agent.phase_for_lane(s, "north_in_0", [False, True, True, True]) is None   # blocked
+    assert agent.phase_for_lane(s, "no_such_lane", all_ok) is None
+
+
+def test_phase_for_crossing():
+    s = make_example_state()
+    agent = PedestrianAgent({})
+    all_ok = [True] * 4
+    assert agent.phase_for_crossing(s, ":J1_c0", all_ok) == 0
+    assert agent.phase_for_crossing(s, ":J1_c1", all_ok) == 2
+    assert agent.phase_for_crossing(s, ":J1_c0", [False, True, True, True]) is None   # blocked
+    assert agent.phase_for_crossing(s, "no_such_crossing", all_ok) is None

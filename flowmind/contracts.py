@@ -61,6 +61,8 @@ class JunctionState:
     out_lanes: tuple[LaneState, ...]              # outgoing lanes
     special_vehicles: tuple[SpecialVehicle, ...]  # buses and emergency vehicles approaching
     crossings: tuple[Crossing, ...]               # pedestrian crossings
+    phase_lanes: tuple[tuple[str, ...], ...]      # for each green phase, the incoming lane ids that get green
+    phase_crossings: tuple[tuple[str, ...], ...]  # for each green phase, the crossing ids where pedestrians may walk
 
 
 @dataclass(frozen=True)
@@ -94,6 +96,10 @@ def make_example_state() -> JunctionState:
         2 = east-west straight     3 = east-west left
     Right now phase 2 (east-west straight) has been green for 14 s.
     North is congested, a bus is late, pedestrians have waited long.
+
+    Crossings: ":J1_c0" crosses the east road (people walk during phase 0),
+    ":J1_c1" crosses the north road (people walk during phase 2).
+    Left-turn phases (1, 3) have no walking pedestrians.
     """
     def lane(lane_id, queue, vehicles, waiting_time, occupancy):
         return LaneState(lane_id, queue, vehicles, waiting_time, occupancy)
@@ -132,6 +138,19 @@ def make_example_state() -> JunctionState:
         out_lanes=out_lanes,
         special_vehicles=special_vehicles,
         crossings=crossings,
+        # Same incoming lanes as example_phase_movements(), one tuple per green phase.
+        phase_lanes=(
+            ("north_in_0", "south_in_0"),
+            ("north_in_1", "south_in_1"),
+            ("east_in_0", "west_in_0"),
+            ("east_in_1", "west_in_1"),
+        ),
+        phase_crossings=(
+            (":J1_c0",),
+            (),
+            (":J1_c1",),
+            (),
+        ),
     )
 
 

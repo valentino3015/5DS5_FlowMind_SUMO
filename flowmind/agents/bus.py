@@ -6,8 +6,9 @@ What to implement:
 - wants_control: look in state.special_vehicles for kind == "bus" whose
   delay is above config.yaml "bus: min_delay" and distance below
   "bus: detect_distance". Urgency can grow with the delay.
-- act: return the green phase that serves the bus's lane (extend the
-  current green if the bus is already on it).
+- act: return the green phase that serves the bus's lane:
+  self.phase_for_lane(state, bus.lane_id, allowed). It keeps the current
+  green if it already serves the bus (None = not allowed now).
 - explain: e.g. "green for late bus_12 (70 s late, 120 m away)".
 
 Simple example rule:

@@ -6,7 +6,8 @@ What to implement:
 - wants_control: look at state.crossings. If a crossing has waiting people
   (at least "pedestrian: min_waiting") and max_wait above
   "pedestrian: max_wait", return a Claim.
-- act: return the green phase that lets that crossing walk.
+- act: return the green phase that lets that crossing walk:
+  self.phase_for_crossing(state, crossing.crossing_id, allowed) (None = not allowed now).
 - explain: e.g. "4 pedestrians waited 80 s at :J1_c0".
 
 Simple example rule:
