@@ -1,0 +1,15 @@
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Simulation results and outputs (never on GitHub)
+runs/
+outputs/
+sandbox/outputs/
+
+# Route files generated during runs
+runs/**/*.rou.xml
+
+# Trained models
+*.zip

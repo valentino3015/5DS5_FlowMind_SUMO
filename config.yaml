@@ -1,0 +1,49 @@
+# FlowMind settings. All numbers live here, never in the code.
+# Units: seconds (s), metres (m), metres per second (m/s).
+
+sim:
+  delta_time: 5        # one decision every 5 s
+  seconds: 3600        # length of one simulation
+  gui: false           # true = open sumo-gui
+
+signals:
+  yellow: 3            # inserted automatically by env.py
+  all_red: 2           # inserted automatically by env.py
+  min_green: 10
+  max_green: 60
+
+shield:
+  ped_clearance_speed: 0.8   # walking speed used to check a crossing is clear (m/s)
+  ped_max_wait: 90           # pedestrians never wait longer than this (s)
+
+orchestrator:
+  priority: [emergency, incident, pedestrian, bus, flow]   # first = most important
+  min_hold: 10               # keep the chosen agent at least this long (s)
+
+# --- one section per agent (placeholder values: each owner tunes their own) ---
+
+fixed_time:
+  green: 30                  # green time per phase (s)
+
+max_pressure: {}             # no parameters
+
+flow:
+  model_path: runs/models/flow_ppo.zip   # trained PPO model (not on GitHub)
+
+emergency:
+  detect_distance: 200       # react when the vehicle is closer than this (m)
+
+bus:
+  min_delay: 60              # help buses that are at least this late (s)
+  detect_distance: 150       # react when the bus is closer than this (m)
+
+pedestrian:
+  min_waiting: 1             # at least this many people waiting
+  max_wait: 60               # ask for control after this wait (s)
+
+incident:
+  halt_time: 60              # a lane stopped this long may be blocked (s)
+  min_queue: 5               # halting vehicles needed to suspect an incident
+
+evaluation:
+  seeds: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109]
