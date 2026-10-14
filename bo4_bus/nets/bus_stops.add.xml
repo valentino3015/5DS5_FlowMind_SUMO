@@ -1,0 +1,6 @@
+<additional>
+    <busStop id="EB_up" lane="W2C_0" startPos="427.80" endPos="457.80" lines="L1"/>
+    <busStop id="EB_down" lane="C2E_0" startPos="135.00" endPos="165.00" lines="L1"/>
+    <busStop id="WB_up" lane="E2C_0" startPos="427.80" endPos="457.80" lines="L1"/>
+    <busStop id="WB_down" lane="C2W_0" startPos="135.00" endPos="165.00" lines="L1"/>
+</additional>
