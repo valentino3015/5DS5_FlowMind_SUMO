@@ -1,0 +1,3 @@
+,mean waiting time (s),mean speed (m/s),avg stopped vehicles,waiting time vs baseline (%)
+Fixed-time,0.0,0.0,0.0,
+QL (diff-waiting-time),0.0,0.0,0.0,
