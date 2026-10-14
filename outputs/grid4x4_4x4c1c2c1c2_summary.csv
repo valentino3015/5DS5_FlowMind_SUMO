@@ -1,5 +1,0 @@
-,mean waiting time (s),mean speed (m/s),avg stopped vehicles,waiting time vs baseline (%)
-Fixed-time,6.92,6.34,120.79,0.0
-QL (diff-waiting-time),1.49,7.6,53.06,-78.5
-QL (queue),2.72,6.57,82.78,-60.7
-QL (pressure),3.91,5.4,130.61,-43.5

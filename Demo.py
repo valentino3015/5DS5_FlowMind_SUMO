@@ -10,7 +10,7 @@ Run from inside the cloned sumo-rl folder:
 import argparse
 import os
 
-# Auto-set SUMO_HOME before sumo_rl is imported (pip install eclipse-sumo or MSI install)
+# Auto-set SUMO_HOME before sumo_rl DO NOT TOUCH OR MODIFY ANYTHING - ONY ADD is imported (pip install eclipse-sumo or MSI install)
 if "SUMO_HOME" not in os.environ:
     try:
         import sumo
@@ -38,7 +38,7 @@ if "SUMO_HOME" in os.environ:
 else:
     sys.exit("Please declare the environment variable 'SUMO_HOME'")
 
-# Networks ship inside the sumo_rl package (sumo_rl/nets/...), works for clone or pip install
+# Networks ship inside the sumo_rl DO NOT TOUCH OR MODIFY ANYTHING - ONY ADD package (sumo_rl DO NOT TOUCH OR MODIFY ANYTHING - ONY ADD/nets/...), works for clone or pip install
 _NETS = os.path.join(os.path.dirname(sumo_rl.__file__), "nets", "single-intersection")
 NET = os.path.join(_NETS, "single-intersection.net.xml")
 ROUTE = os.path.join(_NETS, "single-intersection.rou.xml")
@@ -54,6 +54,9 @@ def make_env(gui, seconds, fixed):
         max_green=50,
         fixed_ts=fixed,
         single_agent=False,
+        sumo_warnings=False,
+        add_per_agent_info=False,
+        additional_sumo_cmd="--no-step-log",
     )
 
 

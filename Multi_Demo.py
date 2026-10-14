@@ -14,7 +14,7 @@ Examples (run with your venv active):
 import argparse
 import os
 
-# Auto-set SUMO_HOME before sumo_rl is imported
+# Auto-set SUMO_HOME before sumo_rl DO NOT TOUCH OR MODIFY ANYTHING - ONY ADD is imported
 if "SUMO_HOME" not in os.environ:
     try:
         import sumo
@@ -36,6 +36,7 @@ if "SUMO_HOME" in os.environ:
 else:
     sys.exit("Please declare the environment variable 'SUMO_HOME'")
 
+import xml.etree.ElementTree as ET
 import sumo_rl
 from sumo_rl import SumoEnvironment
 from sumo_rl.agents import QLAgent
@@ -52,6 +53,18 @@ PRESETS = {
 }
 
 
+def get_first_depart(route_file: str) -> int:
+    """Find the earliest departure time in the route file to synchronize the simulation start."""
+    try:
+        for _, elem in ET.iterparse(route_file, events=("start",)):
+            if elem.tag in ("vehicle", "trip"):
+                depart = float(elem.attrib.get("depart", 0))
+                return int(depart)
+    except Exception:
+        pass
+    return 0
+
+
 def list_nets():
     print(f"Networks folder: {NETS}\n")
     for root, _, files in os.walk(NETS):
@@ -62,11 +75,12 @@ def list_nets():
                 print("   ", f)
 
 
-def make_env(net, route, gui, seconds, fixed, reward):
+def make_env(net, route, gui, seconds, fixed, reward, begin_time=0):
     return SumoEnvironment(
         net_file=net,
         route_file=route,
         use_gui=gui,
+        begin_time=begin_time,
         num_seconds=seconds,
         min_green=10,
         max_green=50,
@@ -74,6 +88,9 @@ def make_env(net, route, gui, seconds, fixed, reward):
         fixed_ts=fixed,
         reward_fn=reward,
         single_agent=False,
+        sumo_warnings=False,
+        add_per_agent_info=False,
+        additional_sumo_cmd="--no-step-log",
     )
 
 
@@ -82,28 +99,28 @@ def reset(env):
     return res[0] if isinstance(res, tuple) else res
 
 
-def record(info):
+def record(info, begin_time=0):
     return {
-        "step": info["step"],
+        "step": info["step"] - begin_time,
         "waiting_time": info["system_mean_waiting_time"],
         "mean_speed": info["system_mean_speed"],
         "stopped": info["system_total_stopped"],
     }
 
 
-def run_fixed(net, route, gui, seconds):
-    env = make_env(net, route, gui, seconds, fixed=True, reward="diff-waiting-time")
+def run_fixed(net, route, gui, seconds, begin_time=0):
+    env = make_env(net, route, gui, seconds, fixed=True, reward="diff-waiting-time", begin_time=begin_time)
     reset(env)
     rows, done = [], {"__all__": False}
     while not done["__all__"]:
         _, _, done, info = env.step({})
-        rows.append(record(info))
+        rows.append(record(info, begin_time=begin_time))
     env.close()
     return pd.DataFrame(rows)
 
 
-def run_ql(net, route, gui, seconds, episodes, reward, alpha=0.1, gamma=0.99):
-    env = make_env(net, route, gui, seconds, fixed=False, reward=reward)
+def run_ql(net, route, gui, seconds, episodes, reward, begin_time=0, alpha=0.1, gamma=0.99):
+    env = make_env(net, route, gui, seconds, fixed=False, reward=reward, begin_time=begin_time)
     agents, runs = None, []
     for ep in range(1, episodes + 1):
         states = reset(env)
@@ -130,7 +147,7 @@ def run_ql(net, route, gui, seconds, episodes, reward, alpha=0.1, gamma=0.99):
             s, r, done, info = env.step(action=actions)
             for ts in s:
                 agents[ts].learn(next_state=env.encode(s[ts], ts), reward=r[ts])
-            rows.append(record(info))
+            rows.append(record(info, begin_time=begin_time))
         df = pd.DataFrame(rows)
         runs.append(df)
         print(f"   [{reward}] episode {ep}/{episodes}  mean waiting = {df['waiting_time'].mean():.2f}s  "
@@ -168,16 +185,17 @@ def main():
     os.makedirs("outputs", exist_ok=True)
     tag = f"{args.scenario}_{os.path.splitext(os.path.splitext(route_name)[0])[0]}"
 
-    print(f"== Scenario: {args.scenario} | routes: {route_name} ==")
+    begin_time = get_first_depart(route)
+    print(f"== Scenario: {args.scenario} | routes: {route_name} | start: 0s (offset: +{begin_time}s) ==")
     print("== Fixed-time baseline ==")
-    fixed = run_fixed(net, route, args.gui, args.seconds)
+    fixed = run_fixed(net, route, args.gui, args.seconds, begin_time=begin_time)
     fixed.to_csv(f"outputs/{tag}_fixed.csv", index=False)
 
     results = {"Fixed-time": fixed}
     curves = {}
     for reward in args.rewards:
         print(f"== Q-learning, reward = {reward} ==")
-        runs = run_ql(net, route, args.gui, args.seconds, args.episodes, reward)
+        runs = run_ql(net, route, args.gui, args.seconds, args.episodes, reward, begin_time=begin_time)
         results[f"QL ({reward})"] = runs[-1]
         curves[reward] = [r["waiting_time"].mean() for r in runs]
         runs[-1].to_csv(f"outputs/{tag}_ql_{reward}.csv", index=False)
