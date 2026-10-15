@@ -47,9 +47,12 @@ pedestrian:
 incident:
   halt_time: 60            # a lane stopped this long is an incident (s)
   min_queue: 5             # halting vehicles needed to suspect an incident
-  min_occupancy: 0.8       # lane considered full above this
-  clear_occupancy: 0.5     # lane considered free again below this (hysteresis)
-  check_window: 20         # seconds of history used to see if the queue drains
+  min_occupancy: 0.6       # lane considered full above this (a jammed lane reaches ~0.74: SUMO counts car length, not gaps)
+  clear_occupancy: 0.3     # lane considered free again below this (hysteresis)
+  check_window: 20         # seconds of history used to see if vehicles leave the lane
+  min_green_seen: 10       # green the lane must get in the window before we judge it (s)
+  min_departures: 2        # this many vehicles leaving on green = the lane moves again
+  recheck_after: 60        # stop claiming after this long without a new confirmation (s)
   out_occupancy: 0.95      # an outgoing lane this full blocks the box
   urgency: 0.85            # claim urgency
 
