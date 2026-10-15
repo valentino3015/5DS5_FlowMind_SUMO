@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- sumo-gui settings for the FlowMind demo. Owner: Adem.
+     Shows the POI "type" as a text label: env.py writes who controls each junction there. -->
+<viewsettings>
+    <scheme name="flowmind">
+        <background backgroundColor="white" showGrid="0"/>
+        <pois poi_minSize="0.00" poi_exaggeration="1.00" poi_constantSize="0"
+              poiName_show="0"
+              poiType_show="1" poiType_size="50.00" poiType_color="black" poiType_bgColor="255,255,255,200" poiType_constantSize="1"/>
+    </scheme>
+</viewsettings>

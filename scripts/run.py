@@ -54,6 +54,13 @@ def make_orchestrator(controller: str, config: dict, movements: dict) -> Orchest
                         fallback=MaxPressure(config["max_pressure"], movements))
 
 
+def warning_text(events: list) -> str:
+    """Short text for the overlay, e.g. "WARNING amb_1 in 15 s"."""
+    parts = [f"{e.data['vehicle_id']} in {e.data['eta']:.0f} s" if e.kind == "emergency"
+             else f"incident at {e.data['from_tls']}" for e in events]
+    return "WARNING " + ", ".join(parts) if parts else ""
+
+
 def main():
     p = argparse.ArgumentParser(description="Run the FlowMind corridor once.")
     p.add_argument("--controller", choices=["fixed_time", "orchestrated"], default="orchestrated")
@@ -89,6 +96,9 @@ def main():
             decision = orchestrators[tls_id].decide(state, events[tls_id], allowed)
             logger.log(decision, events[tls_id])
             decisions.append(decision)
+            env.show(tls_id, f"{tls_id} | {decision.agent.upper()}: {decision.explanation}",
+                     config["overlay"]["colors"].get(decision.agent, config["overlay"]["default_color"]),
+                     warning_text(events[tls_id]))
             actions[tls_id] = decision.final
         states = env.step(actions)
 

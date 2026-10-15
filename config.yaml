@@ -60,5 +60,16 @@ incident:
   halt_time: 60              # a lane stopped this long may be blocked (s)
   min_queue: 5               # halting vehicles needed to suspect an incident
 
+overlay:                     # sumo-gui labels: color of the dot per agent in control (RGBA)
+  default_color: [128, 128, 128, 255]
+  colors:
+    emergency: [220, 0, 0, 255]
+    incident: [255, 140, 0, 255]
+    pedestrian: [150, 0, 200, 255]
+    bus: [0, 120, 255, 255]
+    flow: [0, 170, 0, 255]
+    max_pressure: [128, 128, 128, 255]
+    fixed_time: [80, 80, 80, 255]
+
 evaluation:
   seeds: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109]

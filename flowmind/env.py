@@ -100,12 +100,16 @@ class CorridorEnv:
         binary = Path(sumo.SUMO_HOME) / "bin" / ("sumo-gui" if self.gui else "sumo")
         cmd = [str(binary), "-c", str(self.sumocfg), "--seed", str(self.seed)]
         if self.gui:
-            cmd += ["--start", "--quit-on-end", "--delay", str(self.cfg["sim"]["gui_delay"])]
+            cmd += ["--start", "--quit-on-end", "--delay", str(self.cfg["sim"]["gui_delay"]),
+                    "--window-size", "1400,750"]
             settings = self.scenario_dir / "gui-settings.xml"
             if settings.exists():
                 cmd += ["--gui-settings-file", str(settings)]
         self.api.start(cmd)
         self.running = True
+        if self.gui:  # zoom the view on the whole street map
+            (x1, y1), (x2, y2) = self.api.simulation.getNetBoundary()
+            self.api.gui.setBoundary("View #0", x1, y1, x2, y2)
 
         self.junctions = {t: Junction(self.api, t) for t in self.api.trafficlight.getIDList()}
         self.phase = {t: 0 for t in self.junctions}          # current green phase index
@@ -114,6 +118,7 @@ class CorridorEnv:
         self.target = {t: 0 for t in self.junctions}
         for t, j in self.junctions.items():
             self.api.trafficlight.setRedYellowGreenState(t, j.green_states[0])
+        self.pois = set()  # overlay labels already created (GUI only)
         self.totals = {"waiting_veh_s": 0.0, "arrived": 0, "emergency_depart": {}, "emergency_travel": {}}
         return self.states()
 
@@ -234,6 +239,22 @@ class CorridorEnv:
                 lane = self.junctions[tls_id].links[link_index][0][0]
                 result.append((v, tls_id, distance, V.getSpeed(v), lane))
         return result
+
+    # ------------------------------------------------------------------ overlay (GUI only)
+    def show(self, tls_id: str, label: str, color: list, warning: str = ""):
+        """Draw two text labels near a junction in sumo-gui: who is in control and why,
+        and the coordinator's warning. Does nothing without the GUI."""
+        if not self.gui:
+            return
+        x, y = self.api.junction.getPosition(tls_id)
+        shift = 40 + 45 * (list(self.junctions).index(tls_id) % 2)  # every other junction higher: no overlap
+        for name, text, dy, rgba in (("label", label, shift, color), ("warning", warning, -shift, [220, 0, 0, 255])):
+            poi = f"{tls_id}_{name}"
+            if poi not in self.pois:
+                self.api.poi.add(poi, x + 15, y + dy, tuple(rgba), " ", 100, "", 8, 8)
+                self.pois.add(poi)
+            self.api.poi.setType(poi, text or " ")  # sumo-gui shows the POI type as text
+            self.api.poi.setColor(poi, tuple(rgba) if text else (0, 0, 0, 0))
 
     # ------------------------------------------------------------------ totals
     def _count(self):
