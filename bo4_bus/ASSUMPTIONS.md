@@ -134,7 +134,8 @@ The single-junction scenario above is unchanged. Evaluation seeds are still 1000
   They are **off** (factor 1) in the baseline; see calibration.
 
 ## Grid metrics (`Grid_Demo.py`, `bus_metrics.py`)
-- Warm-up runs from 0 to 600 s; measurement runs from 600 to 7800 s. libsumo is used when headless and traci with `--gui`.
+- Warm-up runs from 0 to 600 s; measurement runs from 600 to 7800 s. libsumo is used when headless and traci with `--gui`
+  (official results: headless libsumo only, see the end of this file).
   `--time-to-teleport` is 300 s.
 - **Per line direction and stop:** headway CV and bunching (< 0.5 H = 90 s) at each stop, in line order.
   - `cv_slope` = least-squares slope of CV vs stop index.
@@ -190,9 +191,16 @@ This target came from the single-junction scenario and is **not used for the gri
   This is captured by the per-junction bus delay (`seg_delay`, stop `s_k` → `s_{k+1}`) and by its effect on headway CV and bunching downstream.
 - The `stopq_reach_*` columns stay in the CSVs as a diagnostic. In the baseline they are 0 on all seeds.
 
-## Baseline run provenance
-- `results/grid_fixed_time*.csv` was produced with the **traci backend**, i.e. the SUMO 1.27.1 binary in `SUMO_HOME`.
-  The runner falls back to traci when libsumo cannot be imported.
-- The venv's libsumo is SUMO 1.28.0. Its numbers for the same seeds differ slightly; for example, total bunching on seeds 10000–10004 was
-  139 / 139 / 115 / 120 / 119 with libsumo vs 136 / 139 / 119 / 123 / 122 with traci.
-- Controllers must be compared on the same backend and SUMO version as this baseline. The `backend` column records which one was used.
+---
+
+# Official results: headless libsumo only (both scenarios)
+- **Official results come only from headless runs with libsumo** (SUMO 1.28.0, the pip package in the Python 3.11 venv).
+  `--gui` (traci + sumo-gui) is for watching a run, **never for results**.
+- Every results CSV has a `backend` column, and it must read `libsumo` on every row.
+  - Without `--gui`, the runners fall back to traci when libsumo cannot be imported (wrong interpreter), and that run is then traci.
+  - A CSV with `traci` rows is not an official result and must be re-run.
+- Why one backend: the traci path drives the SUMO binary in `SUMO_HOME` (1.27.1), and its numbers differ from libsumo 1.28.0 for the same seeds.
+  On the grid baseline, seeds 10000–10004, total bunching was 139 / 139 / 115 / 120 / 119 with libsumo vs 136 / 139 / 119 / 123 / 122 with traci.
+  Mixing backends would make controller comparisons meaningless.
+- Current official baselines, all libsumo on seeds 10000–10004: `results/fixed_time.csv` (single junction) and `results/grid_fixed_time*.csv` (grid).
+  The grid baseline was re-run headless and reproduces the libsumo calibration run exactly.
