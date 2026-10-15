@@ -270,3 +270,101 @@ Results go to `results/grid_<controller>*.csv` (fixed keeps `grid_fixed_time*`),
   - A bus that loses a conflict but is served later in the same pass counts as granted.
     That is why `refused_conflict` is 0 in the evaluation, although the decision logs contain conflict refusals
     (36 for B, 2 for C over 5 seeds).
+
+---
+
+# Step 4: tuning and stress-testing controller C (`c_experiments.py`)
+Fixed-time, controller B, the network, the demand and the existing metrics are unchanged.
+Re-running fixed-time seed 10000 after the changes reproduces every existing column of `results/grid_fixed_time.csv`.
+The one exception is `spill_worst_appr`: with no spillback on any approach (all 0 s), the "worst" approach is an arbitrary tie,
+picked in set order.
+
+## Running the experiments
+- Every run is a `Grid_Demo.run_seed()` call, headless libsumo (SUMO 1.28.0, the SUMO-RL venv). Every results row is checked for `backend == libsumo`.
+- Runs execute in parallel processes, 4 by default (`--workers`). 10 workers ran the machine out of memory.
+- Each run's rows are written to the CSVs as soon as it finishes. A restarted experiment skips the runs already in its runs CSV.
+- Raw SUMO outputs and route files of these runs are deleted once the metrics are computed. Routes are regenerated from the seeds.
+
+## New metric: cross-street delay
+- The "approaches not on a bus line" are the 24 signal approaches whose edges are not on any bus route.
+  The other 12 are the bus-line approaches: the middle row and middle column, both directions, including the fringe entries `left1A1`, `right1C1`, `bottom1B0`, `top1B2`.
+- **`cross_delay`** = Σ car time loss on those approaches (both pieces, `XY` + `XY.250.00`) / Σ cars that left them (left the turn-lane piece).
+  - The source is a car-only SUMO `edgeData` output over the measurement window (600–7800 s).
+  - It is the mean delay **per approach passage**, not per car trip: a car crossing several junctions counts once per approach.
+  - Time loss counts slowing down, queuing and turning, so it is > 0 even at free flow (about 14 s on the quietest approaches).
+- **`bus_appr_delay`** is the same quantity for cars on the 12 bus-line approaches, reported for contrast.
+- Insertion backlog (cars that cannot enter) is not in either value. It is reported separately as `never_inserted`.
+- `queue_rule_hits` = number of (junction, bus) passes refused at least once by C's queue rule, including passes granted later.
+  `refused_queue` counts only passes whose final outcome was a queue refusal.
+
+## Tuning (training seeds 0–9 only)
+- The grid is L ∈ {0, 20, 40} s × Q ∈ {8, 12, 15} veh × MAX_EXT ∈ {10, 15, 20} s, 27 settings × 10 seeds, plus fixed-time on the same seeds.
+- **"Bunching at the last stop"** = bunched headways (< 0.5 H) at the last stop, summed over the 4 line directions (`bunch_last_total`).
+  The objective is its mean over the 10 seeds.
+- **"Car delay"** = mean `timeLoss + departDelay` per car (`car_delay_total`), mean over seeds. It must be ≤ 1.03 × the fixed-time mean on the same seeds.
+- **Ties** are broken by lower bus junction delay.
+- **Result** (`results/c_tuning_summary.csv`). Fixed-time on the training seeds: car delay 75.1 s, last-stop bunching 34.1.
+
+  | rank | setting | last-stop bunching | car delay vs fixed | bus junction delay |
+  |---|---|---|---|---|
+  | 1 | L 0, Q 12, E 20 | 27.7 | −3.6 % | 22.3 s |
+  | 2 | L 0, Q 15, E 15 (= C_default) | 28.0 | −8.1 % | 22.2 s |
+  | 3 | **L 0, Q 15, E 20 (chosen)** | 28.2 | −6.5 % | 22.1 s |
+  | 4 | L 0, Q 15, E 10 | 29.1 | −8.8 % | 22.4 s |
+  | 5 | L 0, Q 8, E 15 | 29.1 | −9.2 % | 22.7 s |
+
+- **Choice: C_tuned = L 0 s, Q 15 veh, MAX_EXT 20 s.** This is not the strict #1, for three reasons.
+  - The top 3 are within 0.5 bunched headways, while the standard error of each setting's mean is about 1. They are statistically tied.
+  - The strict #1 had a breakdown on training seed 3 (55 cars never inserted). The chosen setting has none on any training seed and the lowest bus delay of the three.
+  - The 3 % car-delay constraint is noisy. Fixed-time itself broke down on training seed 0 (50 never inserted), which inflates the reference.
+- **What the grid shows:**
+  - Every L = 0 setting beats every L = 20 and L = 40 setting. Waiting until a bus is 20–40 s late grants too few requests to reduce bunching.
+  - Three L = 40 settings (Q 12 and Q 15 with E 20, and Q 15 with E 15) break down on several seeds.
+- `C_default` keeps the step 3 defaults (L 0, Q 15, MAX_EXT 15). The `rule_tsp.py` defaults are unchanged; C_tuned is passed as parameters.
+
+## Stress test (training seeds 0–4)
+- Fixed, B and C_tuned at 600, 675 and 725 veh/h per entry. Results in `results/c_stress_summary.csv`.
+- **Queue-rule refusals rise with demand:** about 0 / 2.4 / 26.6 refused passes per run at 600 / 675 / 725 veh/h.
+- **At 725 veh/h** (beyond the 700–750 calibration cliff), every controller breaks down.
+  - C keeps cross-street delay well below B: 43 vs 52 s, with 8 vs 15 teleports.
+  - C does not match fixed-time: 36 s cross-street delay, and 401 vs 208 cars never inserted for C vs fixed.
+  - So the queue rule protects cross streets relative to unconditional priority, but cannot prevent gridlock at this demand.
+
+## Final evaluation (seeds 10000–10019, 20 seeds)
+- Fixed, B, C_default and C_tuned at 675 veh/h. All 80 rows are `backend = libsumo`.
+- Results in `results/c_final_summary.csv` (mean and 95 % CI half-width, Student t with df = 19),
+  per-seed rows in `c_final_runs.csv`, per stop in `c_final_lines.csv`.
+- The CI is across seeds for each controller separately. Controllers share seeds, so the paired differences vs fixed (below) are tighter.
+
+| metric | fixed | B | C_default | C_tuned |
+|---|---|---|---|---|
+| bus junction delay (s) | 27.7 ± 0.3 | 15.1 ± 0.7 | 22.2 ± 0.3 | 21.9 ± 0.3 |
+| bus travel time (s) | 281.1 ± 1.0 | 242.8 ± 2.2 | 264.2 ± 1.1 | 263.1 ± 1.1 |
+| last-stop bunching | 35.8 ± 1.9 | 33.6 ± 1.7 | 27.7 ± 1.5 | 27.6 ± 1.9 |
+| total bunching | 119.8 ± 6.9 | 101.0 ± 6.1 | 95.7 ± 6.2 | 96.5 ± 6.5 |
+| last-stop headway CV | 0.50 ± 0.01 | 0.56 ± 0.01 | 0.43 ± 0.01 | 0.43 ± 0.01 |
+| car delay (s) | 72.6 ± 5.6 | 77.2 ± 11.7 | 70.9 ± 3.2 | 68.8 ± 0.7 |
+| cross-street delay (s) | 21.8 ± 1.6 | 24.8 ± 3.9 | 21.8 ± 1.0 | 21.2 ± 0.2 |
+| bus-line approach car delay (s) | 22.2 ± 1.9 | 19.6 ± 2.2 | 20.0 ± 0.7 | 19.4 ± 0.2 |
+| person delay (h) | 561 ± 34 | 524 ± 71 | 524 ± 20 | 510 ± 5 |
+| never inserted | 3.1 ± 6.4 | 18.1 ± 36.7 | 0.05 ± 0.10 | 0.05 ± 0.10 |
+| teleports | 0.05 ± 0.10 | 0.7 ± 1.5 | 0 | 0 |
+| TSP requests / granted | – | 448 / 429 | 530 / 195 | 526 / 197 |
+| refused by queue rule | – | 0 | 0.7 | 0.45 |
+
+**Paired difference vs fixed-time** (mean ± 95 % CI over the 20 seeds):
+
+| | last-stop bunching | car delay (s) | cross-street delay (s) | bus junction delay (s) |
+|---|---|---|---|---|
+| B | −2.2 ± 2.1 | +4.6 ± 13.2 | +3.0 ± 4.3 | −12.7 ± 0.7 |
+| C_default | −8.1 ± 1.6 | −1.7 ± 5.1 | −0.1 ± 1.5 | −5.5 ± 0.4 |
+| C_tuned | −8.2 ± 1.8 | −3.9 ± 5.5 | −0.6 ± 1.6 | −5.9 ± 0.4 |
+
+- **Breakdowns drive the wide car-delay CIs** for fixed and B: fixed broke down on seed 10009 (61 never inserted), B on seed 10001 (351) and seed 10018 (10).
+  Both C variants have 1 never-inserted car, on seed 10010 only, where every controller also has 1.
+- **C_tuned and C_default are indistinguishable** on every bus metric. Tuning MAX_EXT 15 → 20 s did not measurably change C.
+- **B helps bus speed but not regularity.** It gives the lowest bus delay but raises last-stop headway CV above fixed-time (0.56 vs 0.50),
+  because it also speeds up buses that are already early. Its last-stop bunching gain over fixed (−2.2 ± 2.1) is barely significant.
+- **C does not shift delay to cross streets** at 675 veh/h. The paired cross-street change is −0.6 ± 1.6 s, while B's is +3.0 ± 4.3 s.
+- **Figure:** `results/cv_along_line.png` shows headway CV by stop index (0–3), one panel per line direction, for fixed / B / C_tuned,
+  with the mean and 95 % CI over the 20 evaluation seeds.

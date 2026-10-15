@@ -8,7 +8,8 @@ Step 4 experiments for controller C (conditional TSP) on the BO4 3x3 grid.
     python bo4_bus/c_experiments.py all       # tune, stress, final, figure (C_TUNED must be set)
 
 Every run is one Grid_Demo.run_seed() call (headless libsumo), several runs in
-parallel worker processes. Raw SUMO outputs and route files of these runs are
+parallel worker processes (--workers, default 4). Each run's rows are written to the
+CSVs as soon as it finishes; a restarted experiment skips runs already in its runs CSV. Raw SUMO outputs and route files of these runs are
 deleted after their metrics are computed. Outputs (results/):
     c_tuning_runs.csv / c_tuning_summary.csv
     c_stress_runs.csv / c_stress_summary.csv
@@ -61,7 +62,7 @@ CONFIGS = {   # name -> (Grid_Demo controller, C parameters)
     "C_default": ("tsp_cond", DEFAULT_PARAMS),
 }
 
-N_WORKERS = 10
+N_WORKERS = 4                          # default; --workers overrides (10 ran out of memory)
 T975 = {4: 2.776, 9: 2.262, 19: 2.093}   # Student t quantiles for 95 % CIs (df = n - 1)
 
 SUMMARY_COLS = ["bus_jdelay", "bus_tt", "bunch_last_total", "bunch_total", "cv_last_mean",
@@ -105,22 +106,62 @@ def run_job(job):
     return row, lines, decisions
 
 
-def run_all(jobs, exp):
-    rows, lines, decisions = [], [], []
+KEY = ["name", "flow", "seed"]
+
+
+def _load(path, done=None):
+    """Existing rows of an output CSV ([] if absent); with `done`, only rows of finished runs."""
+    if not path or not os.path.exists(path) or os.path.getsize(path) == 0:
+        return []
+    try:
+        df = pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        return []
+    if done is not None:
+        df = df[[k in done for k in zip(df.name, df.flow, df.seed)]]
+    return df.to_dict("records")
+
+
+def _save(records, path):
+    df = pd.DataFrame(records)
+    if len(df):
+        df = df.sort_values([k for k in KEY if k in df], kind="stable")
+    tmp = path + ".tmp"
+    df.to_csv(tmp, index=False)
+    os.replace(tmp, path)
+
+
+def run_all(jobs, exp, runs_csv, lines_csv=None, decisions_csv=None):
+    """Run the jobs and rewrite the output CSVs after every finished run. On restart, runs
+    already in runs_csv are skipped (the runs CSV is written last, so a run counts as done
+    only once its line and decision rows are on disk)."""
+    rows = _load(runs_csv)
+    assert all(r["backend"] == "libsumo" for r in rows), f"non-libsumo rows in {runs_csv}"
+    done = {(r["name"], float(r["flow"]), int(r["seed"])) for r in rows}
+    lines, decisions = _load(lines_csv, done), _load(decisions_csv, done)
+    todo = [j for j in jobs if (j["name"], float(j["flow"]), int(j["seed"])) not in done]
+    print(f"[{exp}] {len(jobs) - len(todo)}/{len(jobs)} runs already in {runs_csv}, "
+          f"{len(todo)} to go ({N_WORKERS} workers)", flush=True)
     tic = time.time()
     with ProcessPoolExecutor(N_WORKERS) as ex:
-        futs = [ex.submit(run_job, dict(j, exp=exp)) for j in jobs]
+        futs = [ex.submit(run_job, dict(j, exp=exp)) for j in todo]
         for k, f in enumerate(as_completed(futs), 1):
             r, l, d = f.result()
             assert r["backend"] == "libsumo", "official results need headless libsumo"
             rows.append(r)
             lines += l
             decisions += d
-            print(f"[{exp}] {k}/{len(jobs)} {r['name']} flow={r['flow']:.0f} seed={r['seed']} "
+            if lines_csv:
+                _save(lines, lines_csv)
+            if decisions_csv:
+                _save(decisions, decisions_csv)
+            _save(rows, runs_csv)
+            print(f"[{exp}] {k}/{len(todo)} {r['name']} flow={r['flow']:.0f} seed={r['seed']} "
                   f"({r['wall_s']} s, {time.time() - tic:.0f} s elapsed)", flush=True)
-    order = ["name", "flow", "seed"]
-    return (pd.DataFrame(rows).sort_values(order), pd.DataFrame(lines).sort_values(order),
-            pd.DataFrame(decisions))
+    wanted = {(j["name"], float(j["flow"]), int(j["seed"])) for j in jobs}
+    pick = lambda recs: pd.DataFrame([x for x in recs if (x["name"], float(x["flow"]), int(x["seed"]))
+                                      in wanted]).sort_values(KEY)
+    return pick(rows), (pick(lines) if lines else pd.DataFrame()), pd.DataFrame(decisions)
 
 
 def job(name, seed, flow=FLOW, params=None):
@@ -155,8 +196,7 @@ def tune():
     for late, q, ext in itertools.product(GRID["late_thr"], GRID["queue_thr"], GRID["max_ext"]):
         p = {"late_thr": late, "queue_thr": q, "max_ext": ext}
         jobs += [job(cfg_name(late, q, ext), s, params=p) for s in TRAIN_SEEDS]
-    df, _, _ = run_all(jobs, "tune")
-    df.to_csv(os.path.join(RESULTS, "c_tuning_runs.csv"), index=False)
+    df, _, _ = run_all(jobs, "tune", os.path.join(RESULTS, "c_tuning_runs.csv"))
 
     fixed_car = df[df.name == "fixed"].car_delay_total.mean()
     cols = ["bunch_last_total", "car_delay_total", "bus_jdelay", "cross_delay", "bunch_total",
@@ -186,8 +226,7 @@ def tune():
 def stress():
     names = ["fixed", "B", tuned()]
     jobs = [job(n, s, flow=f) for f in STRESS_FLOWS for n in names for s in STRESS_SEEDS]
-    df, _, _ = run_all(jobs, "stress")
-    df.to_csv(os.path.join(RESULTS, "c_stress_runs.csv"), index=False)
+    df, _, _ = run_all(jobs, "stress", os.path.join(RESULTS, "c_stress_runs.csv"))
     cols = ["bus_jdelay", "bunch_last_total", "car_delay_total", "cross_delay", "bus_appr_delay",
             "never_inserted", "teleports", "tsp_requests", "tsp_granted", "refused_queue",
             "queue_rule_hits"]
@@ -203,10 +242,9 @@ def stress():
 def final():
     names = ["fixed", "B", "C_default", tuned()]
     jobs = [job(n, s) for n in names for s in EVAL_SEEDS]
-    df, dl, dd = run_all(jobs, "final")
-    df.to_csv(os.path.join(RESULTS, "c_final_runs.csv"), index=False)
-    dl.to_csv(os.path.join(RESULTS, "c_final_lines.csv"), index=False)
-    dd.to_csv(os.path.join(RESULTS, "c_final_decisions.csv"), index=False)
+    df, _, _ = run_all(jobs, "final", os.path.join(RESULTS, "c_final_runs.csv"),
+                       os.path.join(RESULTS, "c_final_lines.csv"),
+                       os.path.join(RESULTS, "c_final_decisions.csv"))
     out = []
     for n in names:
         sub = df[df.name == n]
@@ -259,7 +297,9 @@ def figure():
 def main():
     ap = argparse.ArgumentParser(description="BO4 step 4: tune and stress-test controller C")
     ap.add_argument("what", choices=["tune", "stress", "final", "figure", "all"])
+    ap.add_argument("--workers", type=int, default=N_WORKERS, help="parallel SUMO runs")
     a = ap.parse_args()
+    globals()["N_WORKERS"] = a.workers
     steps = [tune, stress, final, figure] if a.what == "all" else [globals()[a.what]]
     for step in steps:
         step()
