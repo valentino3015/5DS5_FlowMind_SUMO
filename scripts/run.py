@@ -45,6 +45,7 @@ def main():
         help="Traffic scenario: 3x3grid (default) or cologne3",
     )
     parser.add_argument("--gui", action="store_true", help="Open SUMO GUI")
+    parser.add_argument("--heuristic", action="store_true", help="Run FlowAgent heuristic directly without loading checkpoint")
     parser.add_argument("--seed", type=int, default=None, help="Simulation seed")
     parser.add_argument("--seconds", type=int, default=600, help="Simulation duration (s)")
     args = parser.parse_args()
@@ -79,7 +80,10 @@ def main():
             movements = env.get_phase_movements(tls)
             agents[tls] = MaxPressure(config.get("max_pressure", {}), movements)
         elif args.controller == "flow":
-            agents[tls] = FlowAgent(config.get("flow", {}))
+            flow_cfg = dict(config.get("flow", {}))
+            if args.heuristic:
+                flow_cfg.pop("model_path", None)
+            agents[tls] = FlowAgent(flow_cfg)
         elif args.controller == "orchestrated":
             # Fallback until orchestrator is delivered
             print(f"Note: Orchestrator is in development. Running flow agent for {tls}.")

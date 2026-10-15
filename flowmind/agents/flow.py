@@ -99,11 +99,11 @@ class FlowAgent(Specialist):
         return all(out_ids[l] >= self.spillback_threshold for l in phase_out)
 
     def heuristic_act(self, state: JunctionState, allowed: list[bool]) -> int:
-        """Spillback-aware greedy fallback: pick the allowed phase with the highest
-        queue, but skip any phase whose downstream lanes are fully jammed.
+        """Spillback-aware greedy fallback with starvation prevention:
+        pick the allowed phase with the highest queue + waiting time demand.
         """
         best_phase = self.keep_phase(state, allowed)
-        max_queue = -1
+        max_score = -1.0
 
         for p in range(state.num_phases):
             if not allowed[p]:
@@ -112,16 +112,21 @@ class FlowAgent(Specialist):
             if self._phase_is_spillback_blocked(state, p):
                 continue
             served_lanes = set(state.phase_lanes[p]) if p < len(state.phase_lanes) else set()
-            q = sum(lane.queue for lane in state.lanes if lane.lane_id in served_lanes)
-            if q > max_queue:
-                max_queue = q
+            lanes = [lane for lane in state.lanes if lane.lane_id in served_lanes]
+            q = sum(l.queue for l in lanes)
+            w = max((l.waiting_time for l in lanes), default=0.0)
+
+            # Combined queue + waiting time score to prevent cross-traffic starvation
+            score = float(q) + 0.05 * float(w)
+            if score > max_score:
+                max_score = score
                 best_phase = p
 
-        if max_queue == -1:
+        if max_score < 0:
             # All phases blocked by spillback; keep current phase to avoid releasing into gridlock
             self.last_reason = f"heuristic: all phases spillback-blocked, holding phase {best_phase}"
         else:
-            self.last_reason = f"heuristic: phase {best_phase} has highest queue ({max_queue})"
+            self.last_reason = f"heuristic: phase {best_phase} has highest queue demand ({max_score:.1f})"
 
         return best_phase
 
@@ -132,6 +137,18 @@ class FlowAgent(Specialist):
                 obs = self.encode_state(state)
                 pred, _ = self.model.predict(obs, deterministic=True)
                 action = int(pred)
+
+                # Starvation / degenerate model guard:
+                # If an RL model keeps current phase on an empty road while cross-traffic is waiting,
+                # fall back to heuristic so traffic never sits stranded at a red light!
+                curr_lanes = set(state.phase_lanes[state.phase]) if state.phase < len(state.phase_lanes) else set()
+                curr_q = sum(l.queue for l in state.lanes if l.lane_id in curr_lanes)
+                other_q = sum(l.queue for l in state.lanes if l.lane_id not in curr_lanes)
+                other_wait = max((l.waiting_time for l in state.lanes if l.lane_id not in curr_lanes), default=0.0)
+
+                if action == state.phase and curr_q == 0 and (other_q >= 2 or other_wait >= 20.0) and state.time_in_phase >= 15.0:
+                    self.last_reason = f"RL kept phase {action} on empty road, heuristic switched to cross-traffic ({other_q} cars waiting)"
+                    return self.heuristic_act(state, allowed)
 
                 # Safety: mask spillback phases even when the RL model picks them
                 if allowed[action] and not self._phase_is_spillback_blocked(state, action):

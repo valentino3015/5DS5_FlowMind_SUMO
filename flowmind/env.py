@@ -62,6 +62,8 @@ class SumoCorridorEnv:
         self.yellow_time: int = int(sig_cfg.get("yellow", 3))
         self.all_red_time: int = int(sig_cfg.get("all_red", 2))
         self.max_red_clearance: int = int(sig_cfg.get("max_red_clearance", 4))
+        self.min_green: int = int(sig_cfg.get("min_green", 10))
+        self.max_green: int = int(sig_cfg.get("max_green", 60))
 
         # Discover or set scenario files
         scenarios_dir = ROOT / "scenarios"
@@ -277,17 +279,7 @@ class SumoCorridorEnv:
         return "".join(res)
 
     def _is_downstream_blocked(self, tls: str, target_phase: int) -> bool:
-        """Return True if outgoing lanes or the box for this phase are jammed.
-
-        Anti-Gridlock Protection:
-        1. If cars are currently halted inside the box of this junction, don't switch into them.
-        2. If ANY outgoing lane this phase discharges into is above spillback_threshold,
-           releasing green would cause vehicles to enter and straddle the intersection.
-        """
-        # If the intersection box already has trapped halting vehicles, hold current phase
-        if self.get_box_halting_count(tls) > 0:
-            return True
-
+        """Return True if ALL outgoing lanes for this phase are severely jammed (> spillback_threshold)."""
         out_lanes = self.phase_out_lanes.get(tls, [])
         if not out_lanes or target_phase >= len(out_lanes) or not out_lanes[target_phase]:
             return False  # No downstream data -> allow
@@ -300,8 +292,8 @@ class SumoCorridorEnv:
                 pass
         if not occ_values:
             return False
-        # Suppress switch if ANY exit lane is congested to prevent spillback into the box
-        return any(o >= self.spillback_threshold for o in occ_values)
+        # Block only if EVERY exit lane is jam-packed (> spillback_threshold)
+        return all(o >= self.spillback_threshold for o in occ_values)
 
     def step(self, actions: dict[str, int]) -> tuple[dict[str, JunctionState], bool, dict]:
         """Execute one decision step (delta_time seconds), inserting yellow/all-red if phases change."""
@@ -314,10 +306,16 @@ class SumoCorridorEnv:
             num_phases = len(self.green_states[tls])
             target_phase = max(0, min(num_phases - 1, target_phase))
             current = self.current_phases[tls]
+            t_in_phase = self.time_in_phase[tls]
+            # Enforce max_green: if green has been on for >= max_green, FORCE CYCLE to next phase!
+            # Starvation prevention: cross-traffic (horizontal) MUST get green after max_green seconds!
+            if t_in_phase >= self.max_green and target_phase == current:
+                target_phase = (current + 1) % num_phases
 
             if target_phase != current:
-                # Gridlock prevention: don't switch if downstream is fully blocked
-                if self._is_downstream_blocked(tls, target_phase):
+                forced_by_max_green = (t_in_phase >= self.max_green)
+                # Max-out overrides suppression so cross-traffic is never starved
+                if not forced_by_max_green and self._is_downstream_blocked(tls, target_phase):
                     suppressed_transitions.append(tls)
                 else:
                     transitions_needed[tls] = target_phase
