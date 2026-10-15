@@ -17,10 +17,10 @@ def lane(lid, length=34.0, halting=0, waiting=0.0):
                      occupancy=0.0, mean_speed=0.0, waiting_time=waiting, co2_mg=0.0)
 
 
-def bus(vid, lid, dist, late=None, occ=30, waiting=0.0):
+def bus(vid, lid, dist, late=None, occ=30, waiting=0.0, speed=0.0, at_stop=False):
     return VehicleInfo(vehicle_id=vid, vclass="bus", lane_id=lid, distance_to_stopline=dist,
-                       speed=0.0, waiting_time=waiting, persons_on_board=occ,
-                       line_id=vid.rsplit("_", 1)[0], headway_lateness=late)
+                       speed=speed, waiting_time=waiting, persons_on_board=occ,
+                       line_id=vid.rsplit("_", 1)[0], headway_lateness=late, at_stop=at_stop)
 
 
 def state(incoming=(), approaching=(), green=0, tip=0.0, transition=False):
@@ -78,31 +78,53 @@ def test_observation_always_in_bounds():
 
 
 # ------------------------------------------------------------------ reward
-def test_reward_vehicle_is_minus_change_in_waiting():
+def test_reward_vehicle_is_halting_vehicles_times_tick():
+    s = state([lane("A1B1_0", halting=7), lane("C1B1_0", halting=3)])
+    r, terms = rw.reward_vehicle(None, s)
+    assert r == -50.0                                    # 10 halting x 5 s
+    assert terms["halting_veh"] == 10 and terms["r_vehicle"] == r
+
+
+def test_reward_excludes_dwelling_buses_but_counts_queued_buses():
+    lanes = [lane("A1B1_0", halting=6), lane("C1B1_0", halting=2)]   # incl. 2 halted buses
+    buses = [bus("L1_EB_01", "A1B1_0", 170.0, occ=40, at_stop=True),   # dwelling: excluded
+             bus("L1_WB_01", "C1B1_0", 20.0, occ=50),                  # queued at the light
+             bus("L2_NB_01", "B0B1_0", 90.0, occ=60, speed=8.0)]       # moving: not halting
+    s = state(lanes, buses)
+    r, terms = rw.reward_vehicle(None, s)
+    assert terms["halting_cars"] == 6 and terms["halting_buses"] == 1
+    assert r == -(6 + 1) * 5.0
+    r, terms = rw.reward_person(None, s)
+    assert terms["halting_persons"] == pytest.approx(1.3 * 6 + 50)
+    assert terms["halting_bus_persons"] == pytest.approx(50.0)
+    assert r == pytest.approx(-(1.3 * 6 + 50) * 5.0)
+
+
+def test_reward_ignores_buses_off_the_incoming_lanes():
+    s = state([lane("A1B1_0", halting=2)], [bus("L1_EB_01", "elsewhere_0", 50.0, occ=40)])
+    assert rw.reward_person(None, s)[0] == pytest.approx(-1.3 * 2 * 5.0)
+
+
+def test_rewards_zero_without_queue_and_never_positive():
+    s = state(b1_lanes())
+    assert rw.reward_vehicle(None, s)[0] == 0.0 and rw.reward_person(None, s)[0] == 0.0
+    s = state(b1_lanes(halting=3), [bus("L1_EB_01", "A1B1_0", 10.0, occ=30)])
+    assert rw.reward_vehicle(None, s)[0] < 0 and rw.reward_person(None, s)[0] < 0
+
+
+# reference rewards (phase 1)
+def test_reward_vehicle_diff_is_minus_change_in_waiting():
     prev = state([lane("A1B1_0", waiting=100.0), lane("C1B1_0", waiting=50.0)])
     now = state([lane("A1B1_0", waiting=40.0), lane("C1B1_0", waiting=80.0)])
-    r, terms = rw.reward_vehicle(prev, now)
+    r, terms = rw.reward_vehicle_diff(prev, now)
     assert r == pytest.approx(30.0)                      # 150 -> 120 s
-    assert terms["wait_veh"] == 120.0 and terms["r_vehicle"] == r
+    assert terms["wait_veh"] == 120.0
 
 
-def test_reward_person_weights_cars_and_buses():
-    lanes = [lane("A1B1_0", waiting=50.0)]               # 30 s car + 20 s bus
+def test_reward_person_diff_weights_cars_and_buses():
     prev = state([lane("A1B1_0", waiting=0.0)])
-    now = state(lanes, [bus("L1_EB_01", "A1B1_0", 50.0, occ=40, waiting=20.0)])
-    r, terms = rw.reward_person(prev, now)
+    now = state([lane("A1B1_0", waiting=50.0)],          # 30 s car + 20 s bus
+                [bus("L1_EB_01", "A1B1_0", 50.0, occ=40, waiting=20.0)])
+    r, terms = rw.reward_person_diff(prev, now)
     assert terms["wait_person"] == pytest.approx(1.3 * 30.0 + 40 * 20.0)
-    assert terms["wait_bus_person"] == pytest.approx(800.0)
     assert r == pytest.approx(-(1.3 * 30.0 + 800.0))
-
-
-def test_reward_person_ignores_buses_off_the_incoming_lanes():
-    now = state([lane("A1B1_0", waiting=10.0)],
-                [bus("L1_EB_01", "elsewhere_0", 50.0, occ=40, waiting=99.0)])
-    assert rw.person_waiting(now) == pytest.approx(13.0)
-
-
-def test_rewards_zero_when_nothing_changes():
-    s = state(b1_lanes(waiting=5.0))
-    assert rw.reward_vehicle(s, s)[0] == 0.0
-    assert rw.reward_person(s, s)[0] == 0.0

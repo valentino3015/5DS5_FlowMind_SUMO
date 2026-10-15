@@ -7,10 +7,12 @@ flowmind/specialists/bus.
 All units SI: seconds, metres, metres per second.
 
 PROPOSED CONTRACT CHANGE (not yet agreed by the team, see handbook rule 3):
-VehicleInfo gets two optional fields for buses,
+VehicleInfo gets three optional fields for buses,
     line_id: str | None            line direction, e.g. "L1_EB"
     headway_lateness: float | None s, t - (last passage of the same line at this junction) - H;
                                    late (+) / early (-); None if no previous passage on record
+    at_stop: bool                  True while the bus dwells at a bus stop (its halt is not
+                                   signal delay, so the rewards exclude it)
 The existing schedule_delay is relative to a timetable; BO4 controls headways, not a
 timetable, so it is left None here.
 """
@@ -42,6 +44,7 @@ class VehicleInfo:
     # --- proposed contract change (BO4) ---
     line_id: str | None = None
     headway_lateness: float | None = None  # s late (+) / early (-) vs headway H
+    at_stop: bool = False                  # dwelling at a bus stop
 
 
 @dataclass(frozen=True)

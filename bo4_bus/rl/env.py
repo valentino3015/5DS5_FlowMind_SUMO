@@ -2,8 +2,8 @@
 BusPriorityEnv: single-agent Gymnasium env, the RL agent controls junction B1 of the
 BO4 3x3 grid (where lines L1 and L2 cross). SUMO-RL is not used (tutor rule).
 
-    obs, info = env.reset(seed=0)                 # draws a training seed in 0-999
-    obs, info = env.reset(options={"sumo_seed": 10000})   # explicit seed (evaluation)
+    obs, info = env.reset(seed=0)                 # draws a training seed (default 0-899)
+    obs, info = env.reset(options={"sumo_seed": 900})   # explicit seed (validation)
     obs, r, terminated, truncated, info = env.step(action)
 
 Scenario = the existing grid runner (../Grid_Demo.py, ../gen_grid_routes.py): same
@@ -15,14 +15,16 @@ Episode: warm-up (default 600 s, not learned; B1 runs its fixed-time program), t
 
 Action: index k of the next green phase of B1 (0 = E-W, 1 = N-S). Keeping the current
 index keeps the green; another index starts a switch. The agent never sets yellow or
-red: the env's signal controller runs yellow 3 s + all-red 2 s (= exactly one tick),
-then the new green.
+red: B1Signal runs yellow 3 s + all-red 2 s (= exactly one tick), then the new green.
 
 Mini shield (overrides logged in env.shield_log and info["shield_rule"]):
     min_green  a switch before the green has run 10 s -> keep
     max_green  keeping a green that would exceed 60 s by the next tick -> switch
 A safety monitor checks every simulated second of B1 and records any violation of
 yellow == 3 s, all-red == 2 s, 10 s <= green <= 60 s in env.violations (expected empty).
+
+B1Signal (shield + transitions + monitor) is also used by evaluate.py, so the policy
+drives B1 identically in training and in the evaluation runs.
 """
 import os
 import shutil
@@ -47,10 +49,10 @@ import observation as ob  # noqa: E402
 import reward as rw  # noqa: E402
 from sense import GREEN_PROGRAM_IDX, TLS, Geometry, Sensor  # noqa: E402
 
-TRAIN_SEEDS = (0, 1000)          # [lo, hi): training seeds only
+TRAIN_SEEDS = (0, 900)           # [lo, hi): training seeds; 900-999 kept for validation
 YELLOW_IDX = {g + 1 for g in GREEN_PROGRAM_IDX}
 ALL_RED_IDX = {g + 2 for g in GREEN_PROGRAM_IDX}
-HOLD = 100000.0                  # s, "infinite" green duration while the env holds a green
+HOLD = 100000.0                  # s, "infinite" duration of a phase the controller holds
 
 
 def shield(proposed, current, time_in_phase, n_greens=2, delta=5,
@@ -64,6 +66,87 @@ def shield(proposed, current, time_in_phase, n_greens=2, delta=5,
         return ((current + 1) % n_greens, "max_green",
                 f"max green reached ({time_in_phase:.0f} s of {max_green} s)")
     return proposed, None, None
+
+
+class B1Signal:
+    """Signal controller of the agent's junction: shield, transitions, safety monitor.
+    Per simulated second t (after the SUMO step): on_second(sim, t), then at a decision
+    tick apply(sim, t, action). Transitions use explicit setPhase calls (SUMO applies a
+    programmed switch one step late): yellow YELLOW s, all-red ALL_RED s, new green,
+    held until the agent switches again."""
+
+    def __init__(self, tls=TLS, delta=5):
+        self.tls, self.delta = tls, delta
+        self.n_greens = len(GREEN_PROGRAM_IDX)
+        self.active = False
+        self.violations, self.shield_log = [], []
+
+    def ready(self, sim):
+        return sim.trafficlight.getPhase(self.tls) in GREEN_PROGRAM_IDX
+
+    def take_over(self, sim, t):
+        """Take the junction at a green (ready() is True) and hold it."""
+        ph = sim.trafficlight.getPhase(self.tls)
+        self.current_green = GREEN_PROGRAM_IDX.index(ph)
+        self.green_start = t - sim.trafficlight.getSpentDuration(self.tls)
+        sim.trafficlight.setPhaseDuration(self.tls, HOLD)
+        self._switch_t0 = self._target = None
+        self._mon_phase, self._mon_start = ph, self.green_start
+        self.active = True
+
+    def time_in_phase(self, t):
+        return t - self.green_start
+
+    def _set(self, sim, phase):
+        sim.trafficlight.setPhase(self.tls, phase)
+        sim.trafficlight.setPhaseDuration(self.tls, HOLD)
+
+    def apply(self, sim, t, proposed):
+        """Shield the action, start a switch if needed. Returns (applied, rule, reason, switch)."""
+        proposed = int(proposed)
+        applied, rule, reason = shield(proposed, self.current_green, self.time_in_phase(t),
+                                       self.n_greens, self.delta)
+        if rule:
+            self.shield_log.append({"t": t, "proposed": proposed, "applied": applied,
+                                    "rule": rule, "reason": reason})
+        switch = applied != self.current_green
+        if switch:
+            self._set(sim, GREEN_PROGRAM_IDX[self.current_green] + 1)       # yellow
+            self._switch_t0, self._target = t, applied
+            self._monitor(sim, t)
+        return applied, rule, reason, switch
+
+    def on_second(self, sim, t):
+        if self._switch_t0 is not None:
+            k = t - self._switch_t0
+            if k == YELLOW:
+                self._set(sim, GREEN_PROGRAM_IDX[self.current_green] + 2)   # all-red
+            elif k == YELLOW + ALL_RED:
+                self._set(sim, GREEN_PROGRAM_IDX[self._target])
+                self.current_green, self.green_start = self._target, t
+                self._switch_t0 = self._target = None
+        self._monitor(sim, t)
+
+    def _monitor(self, sim, t):
+        """Record the phase active during [t, t+1) and check the team timing."""
+        ph = sim.trafficlight.getPhase(self.tls)
+        if ph != self._mon_phase:
+            self._check(self._mon_phase, t - self._mon_start, t, ended=True)
+            self._mon_phase, self._mon_start = ph, t
+        elif ph in GREEN_PROGRAM_IDX and t - self._mon_start > MAX_GREEN:
+            # completed seconds only: a switch decided at this same t (apply) still ends it
+            self._check(ph, t - self._mon_start, t, ended=False)
+
+    def _check(self, phase, dur, t, ended):
+        bad = None
+        if phase in YELLOW_IDX and dur != YELLOW:
+            bad = f"yellow {dur:.0f} s != {YELLOW}"
+        elif phase in ALL_RED_IDX and dur != ALL_RED:
+            bad = f"all-red {dur:.0f} s != {ALL_RED}"
+        elif phase in GREEN_PROGRAM_IDX and (dur > MAX_GREEN or (ended and dur < MIN_GREEN)):
+            bad = f"green {dur:.0f} s outside [{MIN_GREEN}, {MAX_GREEN}]"
+        if bad and not (self.violations and self.violations[-1]["t_start"] == t - dur):
+            self.violations.append({"t": t, "t_start": t - dur, "phase": phase, "what": bad})
 
 
 class BusPriorityEnv(gym.Env):
@@ -88,6 +171,7 @@ class BusPriorityEnv(gym.Env):
         self.workdir = tempfile.mkdtemp(prefix="bo4_rl_")
         self.sim = None
         self.sumo_seed = None
+        self.signal = B1Signal(TLS, delta)
 
     # ------------------------------------------------------------------ SUMO
     def _start(self, seed):
@@ -112,10 +196,8 @@ class BusPriorityEnv(gym.Env):
 
     def _sim_step(self):
         """One simulated second: SUMO step, closed-loop dwell, C on the other junctions,
-        B1 safety monitor."""
+        B1 transitions and safety monitor."""
         sim = self.sim
-        if self._monitor_on:      # phase active during [t, t+1): read before the step
-            self._monitor(sim.simulation.getTime())
         sim.simulationStep()
         t = sim.simulation.getTime()
         for v in sim.simulation.getStopStartingVehiclesIDList():
@@ -132,29 +214,15 @@ class BusPriorityEnv(gym.Env):
         for c in self.controllers.values():
             c.act(t, sim)
         self.teleports += sim.simulation.getStartingTeleportNumber()
+        if self.signal.active:
+            self.signal.on_second(sim, t)
         return t
 
-    def _monitor(self, t):
-        ph = self.sim.trafficlight.getPhase(TLS)
-        if ph != self._mon_phase:
-            dur = t - self._mon_start
-            self._check(self._mon_phase, dur, t, ended=True)
-            self._mon_phase, self._mon_start = ph, t
-        elif ph in GREEN_PROGRAM_IDX and t + 1 - self._mon_start > MAX_GREEN:
-            self._check(ph, t + 1 - self._mon_start, t, ended=False)
-
-    def _check(self, phase, dur, t, ended):
-        bad = None
-        if phase in YELLOW_IDX and dur != YELLOW:
-            bad = f"yellow {dur:.0f} s != {YELLOW}"
-        elif phase in ALL_RED_IDX and dur != ALL_RED:
-            bad = f"all-red {dur:.0f} s != {ALL_RED}"
-        elif phase in GREEN_PROGRAM_IDX and (dur > MAX_GREEN or (ended and dur < MIN_GREEN)):
-            bad = f"green {dur:.0f} s outside [{MIN_GREEN}, {MAX_GREEN}]"
-        if bad and not (self.violations and self.violations[-1]["t_start"] == t - dur):
-            self.violations.append({"t": t, "t_start": t - dur, "phase": phase, "what": bad})
-
     # ------------------------------------------------------------------ gym API
+    current_green = property(lambda self: self.signal.current_green)
+    violations = property(lambda self: self.signal.violations)
+    shield_log = property(lambda self: self.signal.shield_log)
+
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         options = options or {}
@@ -162,56 +230,29 @@ class BusPriorityEnv(gym.Env):
             self.sumo_seed = int(options["sumo_seed"])
         else:
             self.sumo_seed = int(self.np_random.integers(*self.train_seeds))
+        self.signal = B1Signal(TLS, self.delta)
         self._start(self.sumo_seed)
-        self._monitor_on = False
-        self.violations, self.shield_log = [], []
         self.ep_reward, self.ep_steps, self.ep_tic = 0.0, 0, time.time()
 
         t = self.sim.simulation.getTime()
-        while t < self.warmup or self.sim.trafficlight.getPhase(TLS) not in GREEN_PROGRAM_IDX:
+        while t < self.warmup or not self.signal.ready(self.sim):
             t = self._sim_step()
-        # take over B1 at a green: hold it until the agent switches
-        ph = self.sim.trafficlight.getPhase(TLS)
-        self.current_green = GREEN_PROGRAM_IDX.index(ph)
-        self.green_start = t - self.sim.trafficlight.getSpentDuration(TLS)
-        self.sim.trafficlight.setPhaseDuration(TLS, HOLD)
+        self.signal.take_over(self.sim, t)
         self.t_end = t + self.duration
-        self._monitor_on = True
-        self._mon_phase, self._mon_start = ph, self.green_start
         self.sensor.reset()
         self.state = self._sense(t)
         return ob.observe(self.state), {"sumo_seed": self.sumo_seed, "t": t}
 
     def _sense(self, t):
-        return self.sensor.sense(self.sim, t, self.current_green, t - self.green_start, False)
+        return self.sensor.sense(self.sim, t, self.signal.current_green,
+                                 self.signal.time_in_phase(t), False)
 
     def step(self, action):
-        sim = self.sim
-        t = sim.simulation.getTime()
+        t = self.sim.simulation.getTime()
         proposed = int(action)
-        tip = t - self.green_start
-        applied, rule, reason = shield(proposed, self.current_green, tip,
-                                       len(GREEN_PROGRAM_IDX), self.delta)
-        if rule:
-            self.shield_log.append({"t": t, "proposed": proposed, "applied": applied,
-                                    "rule": rule, "reason": reason})
-        switch = applied != self.current_green
-        # The env drives every transition with explicit setPhase calls (SUMO applies a
-        # programmed switch one step late): yellow for YELLOW s, all-red for ALL_RED s,
-        # then the new green, held until the agent switches again.
-        yellow = GREEN_PROGRAM_IDX[self.current_green] + 1
-        if switch:
-            sim.trafficlight.setPhase(TLS, yellow)
-            sim.trafficlight.setPhaseDuration(TLS, HOLD)
-        for i in range(self.delta):
-            if switch and i == YELLOW:
-                sim.trafficlight.setPhase(TLS, yellow + 1)
-                sim.trafficlight.setPhaseDuration(TLS, HOLD)
+        applied, rule, _, switch = self.signal.apply(self.sim, t, proposed)
+        for _ in range(self.delta):
             t = self._sim_step()
-        if switch:
-            sim.trafficlight.setPhase(TLS, GREEN_PROGRAM_IDX[applied])
-            sim.trafficlight.setPhaseDuration(TLS, HOLD)
-            self.current_green, self.green_start = applied, t
 
         prev, self.state = self.state, self._sense(t)
         r_raw, terms = self.reward_fn(prev, self.state)

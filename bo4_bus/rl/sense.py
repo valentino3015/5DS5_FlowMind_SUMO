@@ -115,7 +115,8 @@ class Sensor:
                 speed=sim.vehicle.getSpeed(v), waiting_time=sim.vehicle.getWaitingTime(v),
                 schedule_delay=None, persons_on_board=self._occ[v],
                 line_id=line_of(v),
-                headway_lateness=None if last is None else t - last - self.headway))
+                headway_lateness=None if last is None else t - last - self.headway,
+                at_stop=bool(sim.vehicle.isAtBusStop(v))))
 
         return JunctionState(tls_id=tls, sim_time=t, green_phases=self.green_states,
                              current_green=current_green, time_in_phase=time_in_phase,

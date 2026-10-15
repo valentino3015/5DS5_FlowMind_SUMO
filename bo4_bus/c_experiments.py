@@ -131,10 +131,10 @@ def _save(records, path):
     os.replace(tmp, path)
 
 
-def run_all(jobs, exp, runs_csv, lines_csv=None, decisions_csv=None):
+def run_all(jobs, exp, runs_csv, lines_csv=None, decisions_csv=None, fn=None):
     """Run the jobs and rewrite the output CSVs after every finished run. On restart, runs
     already in runs_csv are skipped (the runs CSV is written last, so a run counts as done
-    only once its line and decision rows are on disk)."""
+    only once its line and decision rows are on disk). fn: job function, default run_job."""
     rows = _load(runs_csv)
     assert all(r["backend"] == "libsumo" for r in rows), f"non-libsumo rows in {runs_csv}"
     done = {(r["name"], float(r["flow"]), int(r["seed"])) for r in rows}
@@ -144,7 +144,7 @@ def run_all(jobs, exp, runs_csv, lines_csv=None, decisions_csv=None):
           f"{len(todo)} to go ({N_WORKERS} workers)", flush=True)
     tic = time.time()
     with ProcessPoolExecutor(N_WORKERS) as ex:
-        futs = [ex.submit(run_job, dict(j, exp=exp)) for j in todo]
+        futs = [ex.submit(fn or run_job, dict(j, exp=exp)) for j in todo]
         for k, f in enumerate(as_completed(futs), 1):
             r, l, d = f.result()
             assert r["backend"] == "libsumo", "official results need headless libsumo"
