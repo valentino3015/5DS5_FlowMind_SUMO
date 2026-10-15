@@ -4,7 +4,7 @@
 	<route-files value="cologne3.rou.xml"/>
   </input>
   <time>
-    <begin value="0"/>
+    <begin value="25200"/>
     <end value="28800"/>
   </time>
 </configuration>
