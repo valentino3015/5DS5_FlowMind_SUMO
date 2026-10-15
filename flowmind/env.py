@@ -216,6 +216,13 @@ class CorridorEnv:
         on_crossing = len(self.api.edge.getLastStepPersonIDs(crossing_id))
         return Crossing(crossing_id, len(waiting), max_wait, on_crossing)
 
+    def movements(self, tls_id: str) -> dict[int, list[tuple[str, str]]]:
+        """For MaxPressure: {green phase: [(incoming lane, outgoing lane), ...]}."""
+        j = self.junctions[tls_id]
+        return {p: [(link[0][0], link[0][1]) for i, link in enumerate(j.links)
+                    if link and is_green(state[i]) and not j._is_crossing(link)]
+                for p, state in enumerate(j.green_states)}
+
     def emergency_approaches(self) -> list[tuple[str, str, float, float, str]]:
         """For the coordinator: (vehicle_id, tls_id, distance m, speed m/s, incoming lane)
         for every emergency vehicle and every traffic light still ahead of it."""
