@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Incident scenario (IDEAS.md section 5, idea 8): one broken-down car.
+
+     A red car stops 5 m before the stop line of the single-lane approach
+     "-130160207#0_0" (junction 360082, the first junction of the corridor)
+     and stays there until t=25800 (5 min after it appears). Cars behind it
+     cannot overtake, so the queue grows even when the light is green:
+     exactly what the incident agent must detect.
+
+     "until" (absolute end) rather than "duration": the car may first wait
+     in the red queue before reaching its spot, so a duration would make
+     the end time move from run to run.
+
+     Used together with cologne3.rou.xml, see cologne3_incident.sumocfg.
+     Named .block.xml (not .rou.xml) so env.py never picks it up by default.
+-->
+<routes>
+    <vType id="broken_down" vClass="passenger" length="4.3" minGap="1.5" color="1,0,0"/>
+    <vehicle id="incident_car" type="broken_down" depart="25500" departLane="0">
+        <route edges="-130160207#0"/>
+        <stop lane="-130160207#0_0" endPos="130" until="25800"/>
+    </vehicle>
+</routes>
