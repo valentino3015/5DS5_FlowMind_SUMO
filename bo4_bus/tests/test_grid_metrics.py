@@ -82,3 +82,15 @@ def test_closed_loop_dwell_formula():
     assert (d, b) == (10.0, 0)                                  # no gap -> fixed time only
     late = [gd.dwell_time(rng, 360.0, lam)[0] for _ in range(20000)]
     assert np.mean(late) == pytest.approx(40.0, abs=0.3)        # 10 + 2.5 * 12
+
+
+def test_approach_delay_pools_pieces_and_counts_last_piece(tmp_path):
+    p = tmp_path / "edgedata.xml"
+    p.write_text('<meandata><interval begin="600" end="7800" id="cars">'
+                 '<edge id="a" timeLoss="100" left="10"/><edge id="a.250.00" timeLoss="300" left="20"/>'
+                 '<edge id="b.250.00" timeLoss="50" left="5"/></interval></meandata>')
+    ed = bm.parse_edgedata(str(p))
+    # (100 + 300 + 0 + 50) s over 20 + 5 cars that left the approaches
+    assert bm.approach_delay(ed, {"a": ["a", "a.250.00"], "b": ["b", "b.250.00"]}) == 18.0
+    assert bm.approach_delay(ed, {"a": ["a", "a.250.00"]}) == 20.0
+    assert math.isnan(bm.approach_delay(ed, {"c": ["c", "c.250.00"]}))

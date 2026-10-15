@@ -13,6 +13,11 @@ measurement window. Writes results/<tag>.csv (one row per seed),
 results/<tag>_lines.csv (per line direction and stop) and results/<tag>_queues.csv
 (per signal approach).
 
+Who pays for bus priority: car delay per approach passage (edgeData time loss of
+cars over the approach / cars that left it) is reported separately for the
+approaches on a bus line (bus_appr_delay) and all other approaches
+(cross_delay = "cross-street delay").
+
 Closed-loop dwell (every stop): when a bus starts a stop at time t,
     gap  = t - (arrival of the previous bus of the same direction at that stop)
            (H for the first bus at a stop)
@@ -168,10 +173,15 @@ def run_seed(seed, args, geo):
     gen.generate(seed, routes, t_end=t1, **gen.gen_kwargs(args))
     tripinfo = os.path.join(raw, "tripinfo.xml")
     stopinfo = os.path.join(raw, "stopinfo.xml")
+    edgedata = os.path.join(raw, "edgedata.xml")
+    edge_add = os.path.join(raw, "edgedata.add.xml")
+    with open(edge_add, "w") as f:       # car-only time loss per edge over the measurement window
+        f.write(f'<additional>\n    <edgeData id="cars" file="edgedata.xml" begin="{t0}" end="{t1}" '
+                f'vTypes="car" excludeEmpty="true"/>\n</additional>\n')
 
     sim, backend = import_traci(args.gui)
     cmd = [sumolib.checkBinary("sumo-gui" if args.gui else "sumo"),
-           "-n", NET, "-r", routes, "-a", STOPS_ADD,
+           "-n", NET, "-r", routes, "-a", f"{STOPS_ADD},{edge_add}",
            "--seed", str(seed), "--begin", "0", "--end", str(t1),
            "--tripinfo-output", tripinfo, "--tripinfo-output.write-unfinished", "true",
            "--stop-output", stopinfo,
@@ -274,6 +284,11 @@ def run_seed(seed, args, geo):
     row["car_delay_total"] = bm.car_mean_total_delay(trips, bus_ids, t0, t1)
     row["person_delay_h"] = bm.person_delay(trips, bus_occ, gen.CAR_OCCUPANCY, t0, t1,
                                             fields=("timeLoss", "departDelay")) / 3600.0
+    ed = bm.parse_edgedata(edgedata)
+    bus_appr = {a: e for a, (_, e) in appr.items() if a in geo["bus_appr"]}
+    cross_appr = {a: e for a, (_, e) in appr.items() if a not in geo["bus_appr"]}
+    row["cross_delay"] = bm.approach_delay(ed, cross_appr)
+    row["bus_appr_delay"] = bm.approach_delay(ed, bus_appr)
     row["max_queue_any"] = max(max_q.values())
     row["max_queue_mean"] = float(np.mean(list(max_q.values())))
     longest = {a: bm.longest_run(f, SAMPLE_DT) for a, f in spill.items()}
@@ -297,16 +312,21 @@ def run_seed(seed, args, geo):
         for code in TSP_REFUSAL_CODES:
             row[f"refused_{code}"] = sum(1 for o in outcomes
                                          if o["outcome"] == "refused" and o["code"] == code)
+        # buses (per junction pass) that hit the queue rule at least once, granted later or not
+        row["queue_rule_hits"] = len({(r["tls"], r["bus"]) for r in decisions
+                                      if r["code"] == "queue" and t0 <= r["t"] < t1})
         pd.DataFrame(decisions).to_csv(os.path.join(raw, "decisions.csv"), index=False)
 
-    queue_rows = [{"seed": seed, "approach": a, "tls": appr[a][0], "max_halting": max_q[a],
+    queue_rows = [{"seed": seed, "approach": a, "tls": appr[a][0],
+                   "bus_line": a in geo["bus_appr"], "car_delay": bm.approach_delay(ed, {a: appr[a][1]}),
+                   "max_halting": max_q[a],
                    "spill_longest_s": longest[a], "spill_share": sum(spill[a]) / len(spill[a])}
                   for a in appr]
     pd.DataFrame(dwells).to_csv(os.path.join(raw, "dwells.csv"), index=False)
     return row, line_rows, queue_rows, decisions
 
 
-def main():
+def build_parser():
     ap = gen.add_args(argparse.ArgumentParser(description="BO4 grid fixed-time baseline"))
     # team rule: evaluation seeds start at 10000
     ap.add_argument("--seeds", type=int, nargs="+", default=[10000, 10001, 10002, 10003, 10004])
@@ -319,15 +339,31 @@ def main():
     ap.add_argument("--tag", default=None,
                     help="run name: results/<tag>*.csv, raw outputs in results/raw/<tag> "
                          "(default from --controller, e.g. grid_tsp_cond)")
-    args = ap.parse_args()
-    args.tag = args.tag or CONTROLLER_TAGS[args.controller]
+    return ap
 
+
+def parse_args(argv=None):
+    args = build_parser().parse_args(argv)
+    args.tag = args.tag or CONTROLLER_TAGS[args.controller]
+    args.cycle = sum(float(p.duration) for p in sumolib.xml.parse(NET, "phase")) / len(TLS_IDS)
+    return args
+
+
+def build_geo():
+    """Static geometry shared by all runs (sumolib, computed once per process)."""
     net = sumolib.net.readNet(NET, withInternal=True)
     stops_by_id = {s.id: {"edge": s.lane.rsplit("_", 1)[0], "endPos": float(s.endPos)}
                    for s in sumolib.xml.parse(STOPS_ADD, "busStop")}
-    args.cycle = sum(float(p.duration) for p in sumolib.xml.parse(NET, "phase")) / len(TLS_IDS)
-    geo = {"ff": segment_free_flow(net, stops_by_id), "approaches": approaches(net),
-           "stop_queue": stop_queue_targets(net, stops_by_id), "net": net}
+    appr = approaches(net)
+    line_edges = {e for spec in LINES.values() for e in spec["edges"]}
+    return {"ff": segment_free_flow(net, stops_by_id), "approaches": appr,
+            "bus_appr": {a for a in appr if a in line_edges},
+            "stop_queue": stop_queue_targets(net, stops_by_id), "net": net}
+
+
+def main():
+    args = parse_args()
+    geo = build_geo()
     for d, ffs in geo["ff"].items():
         print(f"{d}: segment free-flow times {[round(x, 1) for x in ffs]} s "
               f"(route distance / {SPEED} m/s)")

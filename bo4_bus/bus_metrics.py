@@ -56,6 +56,26 @@ def parse_bus_params(route_path):
     return out
 
 
+def parse_edgedata(path):
+    """{edge_id: {"timeLoss": total s, "left": vehicles}} from a single-interval
+    edgeData output (edges without traffic are absent)."""
+    out = {}
+    for el in ET.parse(path).getroot().iter("edge"):
+        out[el.get("id")] = {"timeLoss": float(el.get("timeLoss", 0.0)),
+                             "left": int(float(el.get("left", 0)))}
+    return out
+
+
+def approach_delay(edgedata, approach_edges):
+    """Mean delay (s) per approach passage over a set of signal approaches.
+    approach_edges: {approach: [upstream piece, ..., piece ending at the stop line]};
+    delay = sum of time loss on all pieces / vehicles that left the last piece."""
+    loss = sum(edgedata.get(e, {}).get("timeLoss", 0.0)
+               for edges in approach_edges.values() for e in edges)
+    passed = sum(edgedata.get(edges[-1], {}).get("left", 0) for edges in approach_edges.values())
+    return loss / passed if passed else math.nan
+
+
 # --------------------------------------------------------------------------
 # generic statistics
 # --------------------------------------------------------------------------
