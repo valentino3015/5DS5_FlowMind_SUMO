@@ -5,6 +5,8 @@ sim:
   delta_time: 5        # one decision every 5 s
   seconds: 3600        # length of one simulation
   gui: false           # true = open sumo-gui
+  gui_delay: 100       # ms between steps in sumo-gui (slower = easier to watch)
+  scenario: corridor   # folder in scenarios/
 
 signals:
   yellow: 3            # inserted automatically by env.py
