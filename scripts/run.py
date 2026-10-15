@@ -1,57 +1,63 @@
-"""Run one simulation of the corridor.
+"""Run one simulation with FlowMind.
 
-Owner: Adem.
+Usage:
+    python scripts/run.py --controller fixed_time [--gui] [--seed 100]
+    python scripts/run.py --controller max_pressure [--gui]
+    python scripts/run.py --controller flow [--gui]
+    python scripts/run.py --controller orchestrated --scenario corridor [--gui]
 
-    python scripts/run.py --controller fixed_time            # baseline: fixed timer
-    python scripts/run.py --controller orchestrated --gui    # our system, in sumo-gui
-    options: --seed N  --seconds S  --scenario NAME
+--scenario corridor is the 3-junction street with buses, an ambulance and
+pedestrians (scenarios/corridor/). The others are 3x3grid and cologne3.
 
-Each step (sim.delta_time s): coordinator warnings, then for each junction:
-    state -> shield.allowed -> orchestrator.decide (agent + shield check) -> log -> apply
-Results go to runs/<date>_<controller>_seed<N>/ (decisions.csv, summary.csv).
+Owner: Ahmed (runner, controllers). Orchestrated mode, decision log: Adem.
+Results go to runs/<date>_<controller>_<scenario>_seed<N>/ (decisions.csv, summary.csv).
 """
 from __future__ import annotations
 
 import argparse
-import sys
 from datetime import datetime
 from pathlib import Path
-
+import sys
 import yaml
 
+# Ensure project root is in sys.path
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))  # so "import flowmind" works when run as a script
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from flowmind.agents.baselines import FixedTime, MaxPressure  # noqa: E402
-from flowmind.agents.bus import BusAgent  # noqa: E402
-from flowmind.agents.demo_rules import DemoEmergency  # noqa: E402
-from flowmind.agents.emergency import EmergencyAgent  # noqa: E402
-from flowmind.agents.flow import FlowAgent  # noqa: E402
-from flowmind.agents.incident import IncidentAgent  # noqa: E402
-from flowmind.agents.pedestrian import PedestrianAgent  # noqa: E402
-from flowmind.control import shield  # noqa: E402
-from flowmind.control.coordinator import Coordinator  # noqa: E402
-from flowmind.control.orchestrator import Orchestrator  # noqa: E402
-from flowmind.env import CorridorEnv  # noqa: E402
-from flowmind.logger import DecisionLogger  # noqa: E402
+from flowmind.agents.baselines import FixedTime, MaxPressure
+from flowmind.agents.bus import BusAgent
+from flowmind.agents.demo_rules import DemoEmergency
+from flowmind.agents.emergency import EmergencyAgent
+from flowmind.agents.flow import FlowAgent
+from flowmind.agents.incident import IncidentAgent
+from flowmind.agents.pedestrian import PedestrianAgent
+from flowmind.control import shield
+from flowmind.control.coordinator import Coordinator
+from flowmind.control.orchestrator import Decision, Orchestrator
+from flowmind.env import SumoCorridorEnv
+from flowmind.logger import DecisionLogger, summarize_tripinfo
 
 
-def make_orchestrator(controller: str, config: dict, movements: dict) -> Orchestrator:
+def load_config() -> dict:
+    config_path = ROOT / "config.yaml"
+    with open(config_path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def make_orchestrator(config: dict, movements: dict) -> Orchestrator:
     """One orchestrator (with its own agents) for one junction."""
-    if controller == "fixed_time":
-        # Baseline: no specialists, the fixed timer always drives (same pipeline, same log).
-        return Orchestrator([], [], 0, fallback=FixedTime(config["fixed_time"]))
-    emergency = EmergencyAgent if config["agents"]["emergency"] == "team" else DemoEmergency
+    emergency = EmergencyAgent if config.get("agents", {}).get("emergency") == "team" else DemoEmergency
     agents = [
         emergency(config["emergency"]),
         IncidentAgent(config["incident"]),
         PedestrianAgent(config["pedestrian"]),
         BusAgent(config["bus"]),
-        FlowAgent(config["flow"]),
+        FlowAgent(config.get("flow", {})),
     ]
     o = config["orchestrator"]
     return Orchestrator(agents, o["priority"], o["min_hold"],
-                        fallback=MaxPressure(config["max_pressure"], movements))
+                        fallback=MaxPressure(config.get("max_pressure", {}), movements))
 
 
 def warning_text(events: list) -> str:
@@ -62,54 +68,131 @@ def warning_text(events: list) -> str:
 
 
 def main():
-    p = argparse.ArgumentParser(description="Run the FlowMind corridor once.")
-    p.add_argument("--controller", choices=["fixed_time", "orchestrated"], default="orchestrated")
-    p.add_argument("--gui", action="store_true", help="open sumo-gui")
-    p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--seconds", type=int, default=None, help="override sim.seconds")
-    p.add_argument("--scenario", default=None, help="folder in scenarios/ (default: sim.scenario)")
-    args = p.parse_args()
+    parser = argparse.ArgumentParser(description="Run one FlowMind simulation")
+    parser.add_argument(
+        "--controller",
+        default="fixed_time",
+        choices=["fixed_time", "max_pressure", "flow", "orchestrated"],
+        help="Controller to run (default: fixed_time)",
+    )
+    parser.add_argument(
+        "--scenario",
+        default=None,
+        choices=["3x3grid", "cologne3", "corridor"],
+        help="Traffic scenario: 3x3grid (default), cologne3 or corridor",
+    )
+    parser.add_argument("--gui", action="store_true", help="Open SUMO GUI")
+    parser.add_argument("--seed", type=int, default=None, help="Simulation seed")
+    parser.add_argument("--seconds", type=int, default=600, help="Simulation duration (s)")
+    args = parser.parse_args()
 
-    config = yaml.safe_load((ROOT / "config.yaml").read_text())
+    config = load_config()
+    begin_time = None  # None = start at the first departure in the route file
+    if args.scenario:
+        config.setdefault("sim", {})["scenario"] = args.scenario
+        if args.scenario == "3x3grid":
+            config["sim"]["net_file"] = "scenarios/3x3grid/3x3Grid2lanes.net.xml"
+            config["sim"]["route_file"] = "scenarios/3x3grid/routes14000.rou.xml"
+        elif args.scenario == "cologne3":
+            config["sim"]["net_file"] = "scenarios/cologne3.net.xml"
+            config["sim"]["route_file"] = "scenarios/cologne3.rou.xml"
+        elif args.scenario == "corridor":
+            config["sim"]["net_file"] = "scenarios/corridor/corridor.net.xml"
+            config["sim"]["route_file"] = "scenarios/corridor/corridor.rou.xml"
+            begin_time = 0  # traffic is made of flows that start at t = 0
+
     if args.seconds:
-        config["sim"]["seconds"] = args.seconds
-    scenario = args.scenario or config["sim"]["scenario"]
+        config.setdefault("sim", {})["seconds"] = args.seconds
 
-    env = CorridorEnv(config, scenario, seed=args.seed, gui=args.gui or config["sim"]["gui"])
-    states = env.reset()
-    orchestrators = {t: make_orchestrator(args.controller, config, env.movements(t)) for t in states}
-    run_dir = ROOT / "runs" / f"{datetime.now():%Y%m%d-%H%M%S}_{args.controller}_seed{args.seed}"
+    active_scenario = config.get("sim", {}).get("scenario", "3x3grid")
+    seed_text = args.seed if args.seed is not None else "default"
+    print(f"== FlowMind Simulation Runner ==")
+    print(f"Scenario  : {active_scenario}")
+    print(f"Controller: {args.controller} | GUI: {args.gui} | Seed: {seed_text} | Duration: {args.seconds}s\n")
+
+    run_dir = ROOT / "runs" / f"{datetime.now():%Y%m%d-%H%M%S}_{args.controller}_{active_scenario}_seed{seed_text}"
+    tripinfo = run_dir / "tripinfo.xml"
     logger = DecisionLogger(run_dir)
-    print(f"== {args.controller} | scenario {scenario} | seed {args.seed} | {config['sim']['seconds']} s ==")
 
-    coordinator = Coordinator(config["coordinator"], config["corridor"]["order"])
-    decisions = []
-    while not env.done():
-        # The baseline gets no warnings; our system gets the coordinator's.
-        if args.controller == "orchestrated":
-            events = coordinator.update(env.time(), env.emergency_approaches(), decisions)
-        else:
-            events = {t: [] for t in states}
-        actions, decisions = {}, []
-        for tls_id, state in states.items():
-            allowed = shield.allowed(state, config)
-            decision = orchestrators[tls_id].decide(state, events[tls_id], allowed)
-            logger.log(decision, events[tls_id])
-            decisions.append(decision)
-            env.show(tls_id, f"{tls_id} | {decision.agent.upper()}: {decision.explanation}",
-                     config["overlay"]["colors"].get(decision.agent, config["overlay"]["default_color"]),
-                     warning_text(events[tls_id]))
-            actions[tls_id] = decision.final
-        states = env.step(actions)
+    env = SumoCorridorEnv(config=config, use_gui=args.gui, seed=args.seed,
+                          begin_time=begin_time, tripinfo_file=tripinfo)
+    states = env.reset()
 
-    summary = env.summary()
-    env.close()
+    # Instantiate agents for each traffic light
+    agents = {}
+    orchestrators = {}
+    for tls in env.tls_ids:
+        if args.controller == "fixed_time":
+            agents[tls] = FixedTime(config.get("fixed_time", {}))
+        elif args.controller == "max_pressure":
+            movements = env.get_phase_movements(tls)
+            agents[tls] = MaxPressure(config.get("max_pressure", {}), movements)
+        elif args.controller == "flow":
+            agents[tls] = FlowAgent(config.get("flow", {}))
+        elif args.controller == "orchestrated":
+            orchestrators[tls] = make_orchestrator(config, env.get_phase_movements(tls))
+
+    # Corridor order for the coordinator (falls back to the junction list of the scenario)
+    order = [t for t in config.get("corridor", {}).get("order", []) if t in env.tls_ids] or list(env.tls_ids)
+    coordinator = Coordinator(config["coordinator"], order)
+    overlay = config.get("overlay", {})
+
+    step_count = 0
+    done = False
+    decisions: list[Decision] = []
+
+    try:
+        while not done:
+            actions = {}
+            now = next(iter(states.values())).time
+            if args.controller == "orchestrated":
+                events = coordinator.update(now, env.emergency_approaches(), decisions)
+            else:
+                events = {}
+            decisions = []
+
+            for tls, st in states.items():
+                if args.controller == "orchestrated":
+                    allowed = shield.allowed(st, config)
+                    decision = orchestrators[tls].decide(st, events.get(tls, []), allowed)
+                    actions[tls] = decision.final
+                    color = overlay.get("colors", {}).get(decision.agent, overlay.get("default_color", [128, 128, 128, 255]))
+                    env.show(tls, f"{tls} | {decision.agent.upper()}: {decision.explanation}", color,
+                             warning_text(events.get(tls, [])))
+                else:
+                    allowed = [True] * st.num_phases
+                    action = agents[tls].act(st, [], allowed)
+                    actions[tls] = action
+                    decision = Decision(tls, st.time, agents[tls].name, 0.0, "", action, action, "",
+                                        agents[tls].explain())
+                logger.log(decision, events.get(tls, []))
+                decisions.append(decision)
+
+            states, done, info = env.step(actions)
+            step_count += 1
+
+            if step_count % 20 == 0:
+                print(
+                    f"Step {step_count:4d} | Time: {info['time']:.0f}s | "
+                    f"Active Cars: {info['vehicle_count']:3d} | "
+                    f"Halting: {info['halting_vehicles']:3d} | "
+                    f"Mean Speed: {info['mean_speed']:.2f} m/s"
+                )
+
+        print(f"\nSimulation finished successfully after {step_count} decision steps.")
+        print(f"Final Status -> Active Vehicles: {info['vehicle_count']}, Halting: {info['halting_vehicles']}")
+
+    finally:
+        env.close()
+
+    summary = summarize_tripinfo(tripinfo)
     logger.close(summary)
-    print("\nSummary:")
+    print("\nTrip summary (vehicles that finished their trip):")
     for key, value in summary.items():
         print(f"  {key:28s} {value}")
-    print("  control share by agent:     " + ", ".join(
-        f"{a} {100 * n / sum(logger.control_steps.values()):.0f}%" for a, n in logger.control_steps.most_common()))
+    shares = ", ".join(f"{a} {100 * n / sum(logger.control_steps.values()):.0f}%"
+                       for a, n in logger.control_steps.most_common())
+    print(f"  {'control share by agent':28s} {shares}")
     print(f"\nLog: {run_dir.relative_to(ROOT)}")
 
 

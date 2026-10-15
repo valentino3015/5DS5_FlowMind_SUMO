@@ -63,6 +63,7 @@ class JunctionState:
     crossings: tuple[Crossing, ...]               # pedestrian crossings
     phase_lanes: tuple[tuple[str, ...], ...]      # for each green phase, the incoming lane ids that get green
     phase_crossings: tuple[tuple[str, ...], ...]  # for each green phase, the crossing ids where pedestrians may walk
+    phase_out_lanes: tuple[tuple[str, ...], ...] = field(default_factory=tuple)  # for each green phase, the outgoing lane ids it discharges into
 
 
 @dataclass(frozen=True)
@@ -150,6 +151,13 @@ def make_example_state() -> JunctionState:
             (),
             (":J1_c1",),
             (),
+        ),
+        # Outgoing lanes each phase discharges into (derived from example_phase_movements)
+        phase_out_lanes=(
+            ("north_out", "south_out"),   # phase 0: N-S straight
+            ("east_out", "west_out"),     # phase 1: N-S left turns
+            ("east_out", "west_out"),     # phase 2: E-W straight
+            ("north_out", "south_out"),   # phase 3: E-W left turns
         ),
     )
 

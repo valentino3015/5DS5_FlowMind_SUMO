@@ -10,6 +10,7 @@ Writes into one folder per run (runs/<date>_<controller>_seed<N>/):
 from __future__ import annotations
 
 import csv
+import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
 
@@ -50,3 +51,24 @@ class DecisionLogger:
             writer = csv.writer(f)
             writer.writerow(["metric", "value"])
             writer.writerows(rows.items())
+
+
+def summarize_tripinfo(path: Path) -> dict:
+    """Totals from SUMO's tripinfo file (one entry per vehicle that finished its trip).
+
+    mean_waiting_per_vehicle_s: average time spent standing still (SUMO "waitingTime").
+    emergency_travel_s: trip duration of each emergency vehicle (vType or id with "emergency"/"amb").
+    """
+    path = Path(path)
+    if not path.is_file():
+        return {}
+    trips = [t.attrib for t in ET.parse(path).getroot().iter("tripinfo")]
+    n = max(len(trips), 1)
+    emergency = {t["id"]: float(t["duration"]) for t in trips
+                 if "emergency" in t.get("vType", "").lower() or "amb" in t["id"].lower()}
+    return {
+        "arrived_vehicles": len(trips),
+        "mean_waiting_per_vehicle_s": round(sum(float(t["waitingTime"]) for t in trips) / n, 2),
+        "mean_trip_duration_s": round(sum(float(t["duration"]) for t in trips) / n, 2),
+        "emergency_travel_s": emergency,
+    }
