@@ -20,7 +20,7 @@ if "SUMO_HOME" not in os.environ:
         import sumo
         os.environ["SUMO_HOME"] = sumo.SUMO_HOME
     except ImportError:
-        for _p in (r"C:\Program Files (x86)\Eclipse\Sumo", r"C:\Program Files\Eclipse\Sumo"):
+        for _p in (r"C:\Program Files (x86)\Sumo", r"C:\Program Files\Sumo"):
             if os.path.isdir(_p):
                 os.environ["SUMO_HOME"] = _p
                 break
