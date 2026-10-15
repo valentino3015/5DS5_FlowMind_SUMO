@@ -31,14 +31,14 @@
     <flow id="bus_we" type="bus" from="W_J1" to="J3_E" begin="0" end="3600" probability="0.0033" departLane="best"/>
     <flow id="bus_ew" type="bus" from="E_J3" to="J1_W" begin="0" end="3600" probability="0.0033" departLane="best"/>
 
-    <!-- demo ambulance: same time in every run, west to east through J1, J2, J3 -->
-    <vehicle id="amb_1" type="ambulance" depart="120" departLane="best" departSpeed="max">
-        <route edges="W_J1 J1_J2 J2_J3 J3_E"/>
-    </vehicle>
-
     <!-- pedestrians crossing the main road at each junction, and walking along it -->
     <personFlow id="ped_x1" begin="0" end="3600" probability="0.01"><walk from="N1_J1" to="J1_S1"/></personFlow>
     <personFlow id="ped_x2" begin="0" end="3600" probability="0.01"><walk from="S2_J2" to="J2_N2"/></personFlow>
     <personFlow id="ped_x3" begin="0" end="3600" probability="0.01"><walk from="N3_J3" to="J3_S3"/></personFlow>
     <personFlow id="ped_along" begin="0" end="3600" probability="0.01"><walk from="W_J1" to="J3_E"/></personFlow>
+
+    <!-- demo ambulance (last: SUMO needs entries sorted by departure time): same time in every run, west to east through J1, J2, J3 -->
+    <vehicle id="amb_1" type="ambulance" depart="120" departLane="best" departSpeed="max">
+        <route edges="W_J1 J1_J2 J2_J3 J3_E"/>
+    </vehicle>
 </routes>
