@@ -10,15 +10,15 @@
 
 FlowMind operates on a 3-junction arterial corridor in SUMO. Every 5 seconds, an orchestrator polls specialist agents, resolves claims via a strict priority hierarchy, routes the candidate action through a rule-based safety shield, and logs decisions with plain-language explanations. Inter-junction coordination is achieved asynchronously through events posted by the corridor coordinator.
 
-| # | Component / Role | Owner | Primary BO Mapping | Target File(s) | Primary Responsibility |
-|---|---|---|---|---|---|
-| **1** | **Flow Agent** | Flow Owner | **BO1 & BO2** | `flowmind/agents/flow.py`, `scripts/train.py` | Normal traffic RL (PPO), delay & travel time reduction |
-| **2** | **Emergency Agent** | Emergency Owner | **BO3** | `flowmind/agents/emergency.py` | Emergency vehicle preemption & clearance |
-| **3** | **Bus Agent** | Bus Owner | **BO4** | `flowmind/agents/bus.py` | Transit signal priority (TSP) & anti-bunching |
-| **4** | **Pedestrian Agent** | Pedestrian Owner | **BO5** | `flowmind/agents/pedestrian.py` | Crossing actuation & maximum wait caps |
-| **5** | **Incident Agent** | Incident Owner | **BO2 & BO7** | `flowmind/agents/incident.py` | Anomaly detection, lane blockage & spillback avoidance |
-| **6** | **Safety Shield & Evaluation** | Evaluation / Shield Owner | **BO5, BO6 & BO7** | `flowmind/control/shield.py`, `flowmind/kpis.py` | Safety invariants, HBEFA emissions & audit KPIs |
-| **7** | **Corridor Coordinator & Orchestrator** | Adem | **BO2 & BO7** | `flowmind/control/coordinator.py`, `orchestrator.py` | Multi-junction coordination, events & priority hierarchy |
+| # | Component / Role | Owner             | Primary BO Mapping | Target File(s) | Primary Responsibility |
+|---|---|-------------------|---|---|---|
+| **1** | **Flow Agent** | Ahmed             | **BO1 & BO2** | `flowmind/agents/flow.py`, `scripts/train.py` | Normal traffic RL (PPO), delay & travel time reduction |
+| **2** | **Emergency Agent** | Hadyle            | **BO3** | `flowmind/agents/emergency.py` | Emergency vehicle preemption & clearance |
+| **3** | **Bus Agent** | Firas             | **BO4** | `flowmind/agents/bus.py` | Transit signal priority (TSP) & anti-bunching |
+| **4** | **Pedestrian Agent** | Omar              | **BO5** | `flowmind/agents/pedestrian.py` | Crossing actuation & maximum wait caps |
+| **5** | **Incident Agent** | Donia             | **BO2 & BO7** | `flowmind/agents/incident.py` | Anomaly detection, lane blockage & spillback avoidance |
+| **6** | **Safety Shield & Evaluation** | Manoubi           | **BO5, BO6 & BO7** | `flowmind/control/shield.py`, `flowmind/kpis.py` | Safety invariants, HBEFA emissions & audit KPIs |
+| **7** | **Corridor Coordinator & Orchestrator** | Adem              | **BO2 & BO7** | `flowmind/control/coordinator.py`, `orchestrator.py` | Multi-junction coordination, events & priority hierarchy |
 
 ---
 
