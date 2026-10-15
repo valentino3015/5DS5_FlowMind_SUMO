@@ -45,8 +45,13 @@ pedestrian:
   max_wait: 60               # ask for control after this wait (s)
 
 incident:
-  halt_time: 60              # a lane stopped this long may be blocked (s)
-  min_queue: 5               # halting vehicles needed to suspect an incident
+  halt_time: 60            # a lane stopped this long is an incident (s)
+  min_queue: 5             # halting vehicles needed to suspect an incident
+  min_occupancy: 0.8       # lane considered full above this
+  clear_occupancy: 0.5     # lane considered free again below this (hysteresis)
+  check_window: 20         # seconds of history used to see if the queue drains
+  out_occupancy: 0.95      # an outgoing lane this full blocks the box
+  urgency: 0.85            # claim urgency
 
 evaluation:
   seeds: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109]
