@@ -6,7 +6,7 @@ Owner: Adem.
     python scripts/run.py --controller orchestrated --gui    # our system, in sumo-gui
     options: --seed N  --seconds S  --scenario NAME
 
-Each step (sim.delta_time s), for each junction:
+Each step (sim.delta_time s): coordinator warnings, then for each junction:
     state -> shield.allowed -> orchestrator.decide (agent + shield check) -> log -> apply
 Results go to runs/<date>_<controller>_seed<N>/ (decisions.csv, summary.csv).
 """
@@ -24,11 +24,13 @@ sys.path.insert(0, str(ROOT))  # so "import flowmind" works when run as a script
 
 from flowmind.agents.baselines import FixedTime, MaxPressure  # noqa: E402
 from flowmind.agents.bus import BusAgent  # noqa: E402
+from flowmind.agents.demo_rules import DemoEmergency  # noqa: E402
 from flowmind.agents.emergency import EmergencyAgent  # noqa: E402
 from flowmind.agents.flow import FlowAgent  # noqa: E402
 from flowmind.agents.incident import IncidentAgent  # noqa: E402
 from flowmind.agents.pedestrian import PedestrianAgent  # noqa: E402
 from flowmind.control import shield  # noqa: E402
+from flowmind.control.coordinator import Coordinator  # noqa: E402
 from flowmind.control.orchestrator import Orchestrator  # noqa: E402
 from flowmind.env import CorridorEnv  # noqa: E402
 from flowmind.logger import DecisionLogger  # noqa: E402
@@ -39,8 +41,9 @@ def make_orchestrator(controller: str, config: dict, movements: dict) -> Orchest
     if controller == "fixed_time":
         # Baseline: no specialists, the fixed timer always drives (same pipeline, same log).
         return Orchestrator([], [], 0, fallback=FixedTime(config["fixed_time"]))
+    emergency = EmergencyAgent if config["agents"]["emergency"] == "team" else DemoEmergency
     agents = [
-        EmergencyAgent(config["emergency"]),
+        emergency(config["emergency"]),
         IncidentAgent(config["incident"]),
         PedestrianAgent(config["pedestrian"]),
         BusAgent(config["bus"]),
@@ -72,13 +75,20 @@ def main():
     logger = DecisionLogger(run_dir)
     print(f"== {args.controller} | scenario {scenario} | seed {args.seed} | {config['sim']['seconds']} s ==")
 
-    events: dict[str, list] = {t: [] for t in states}  # coordinator warnings (step 5)
+    coordinator = Coordinator(config["coordinator"], config["corridor"]["order"])
+    decisions = []
     while not env.done():
-        actions = {}
+        # The baseline gets no warnings; our system gets the coordinator's.
+        if args.controller == "orchestrated":
+            events = coordinator.update(env.time(), env.emergency_approaches(), decisions)
+        else:
+            events = {t: [] for t in states}
+        actions, decisions = {}, []
         for tls_id, state in states.items():
             allowed = shield.allowed(state, config)
             decision = orchestrators[tls_id].decide(state, events[tls_id], allowed)
             logger.log(decision, events[tls_id])
+            decisions.append(decision)
             actions[tls_id] = decision.final
         states = env.step(actions)
 

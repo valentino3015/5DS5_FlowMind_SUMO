@@ -18,9 +18,21 @@ shield:
   ped_clearance_speed: 0.8   # walking speed used to check a crossing is clear (m/s)
   ped_max_wait: 90           # pedestrians never wait longer than this (s)
 
+corridor:
+  order: [J1, J2, J3]       # junctions from west to east
+
 orchestrator:
   priority: [emergency, incident, pedestrian, bus, flow]   # first = most important
   min_hold: 10               # keep the chosen agent at least this long (s)
+
+coordinator:
+  horizon: 60                # warn junctions an ambulance reaches within this time (s)
+  min_speed: 2               # speed used for the ETA when the ambulance is (almost) stopped (m/s)
+  margin: 5                  # a warning stays valid this long after the ETA (s)
+  incident_ttl: 30           # how long an incident warning stays valid (s)
+
+agents:
+  emergency: demo            # demo = Adem's demo rule (agents/demo_rules.py), team = agents/emergency.py
 
 # --- one section per agent (placeholder values: each owner tunes their own) ---
 
@@ -34,6 +46,7 @@ flow:
 
 emergency:
   detect_distance: 200       # react when the vehicle is closer than this (m)
+  preclear_eta: 20           # take control when a warned ambulance arrives within this time (s)
 
 bus:
   min_delay: 60              # help buses that are at least this late (s)
