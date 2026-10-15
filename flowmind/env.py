@@ -341,7 +341,16 @@ class SumoCorridorEnv:
 
         # Collect basic metrics using cached network lane IDs
         halting = sum(traci.lane.getLastStepHaltingNumber(l) for l in self.cached_network_lanes)
-        vehicle_count = traci.simulation.getMinExpectedNumber()
+        all_vehs = traci.vehicle.getIDList()
+        vehicle_count = len(all_vehs)
+
+        if vehicle_count > 0:
+            # Sample up to 100 vehicles evenly across the fleet for fast, accurate mean speed
+            stride = max(1, vehicle_count // 100)
+            sampled_vehs = all_vehs[::stride]
+            mean_speed = float(sum(traci.vehicle.getSpeed(v) for v in sampled_vehs) / len(sampled_vehs))
+        else:
+            mean_speed = 0.0
 
         info = {
             "time": sim_time,
@@ -349,7 +358,7 @@ class SumoCorridorEnv:
             "box_vehicles": box_vehicles,           # Cars stuck in intersection box
             "suppressed_switches": len(suppressed_transitions),  # Times spillback blocked a switch
             "vehicle_count": vehicle_count,
-            "mean_speed": 0.0,
+            "mean_speed": mean_speed,
         }
 
         return states, done, info
