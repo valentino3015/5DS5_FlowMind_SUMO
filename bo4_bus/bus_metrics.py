@@ -132,10 +132,71 @@ def car_mean_delay(trips, bus_ids, t0, t1, field="timeLoss"):
                         if t["id"] not in bus_ids])
 
 
-def person_delay(trips, bus_occupancy, car_occupancy, t0, t1):
-    """sum(timeLoss * occupancy) over trips departed in [t0, t1); buses use their own occupancy."""
+def person_delay(trips, bus_occupancy, car_occupancy, t0, t1, fields=("timeLoss",)):
+    """sum(delay * occupancy) over trips departed in [t0, t1); buses use their own occupancy.
+    delay = sum of `fields` per trip (timeLoss by default; add "departDelay" to include
+    insertion delay)."""
     total = 0.0
     for t in in_window(trips, t0, t1):
         occ = bus_occupancy.get(t["id"], car_occupancy)
-        total += t["timeLoss"] * occ
+        total += sum(t[f] for f in fields) * occ
     return total
+
+
+# --------------------------------------------------------------------------
+# multi-stop lines (grid scenario)
+# --------------------------------------------------------------------------
+def total_delay(trip):
+    """timeLoss + departDelay of one trip (driving delay + insertion delay)."""
+    return trip["timeLoss"] + trip["departDelay"]
+
+
+def car_mean_total_delay(trips, bus_ids, t0, t1):
+    """Mean timeLoss + departDelay of non-bus trips departed in [t0, t1) (unfinished included)."""
+    return mean_or_nan([total_delay(t) for t in in_window(trips, t0, t1)
+                        if t["id"] not in bus_ids])
+
+
+def line_headway_profile(stops, stop_ids, target_headway, t0, t1, factor=0.5):
+    """Headway CV and bunching count at each stop of a line, in line order.
+    Returns [{"stop", "n_headways", "cv", "bunching"}, ...]."""
+    out = []
+    for sid in stop_ids:
+        hs = headway_stats(stops, sid, target_headway, t0, t1, factor)
+        out.append({"stop": sid, "n_headways": len(hs["headways"]),
+                    "cv": hs["cv"], "bunching": hs["bunching"]})
+    return out
+
+
+def cv_trend(cvs):
+    """Least-squares slope of CV vs stop index (CV units per stop); nan if < 2 finite values."""
+    pts = [(i, c) for i, c in enumerate(cvs) if not math.isnan(c)]
+    if len(pts) < 2:
+        return math.nan
+    xs, ys = zip(*pts)
+    mx, my = statistics.fmean(xs), statistics.fmean(ys)
+    sxx = sum((x - mx) ** 2 for x in xs)
+    return sum((x - mx) * (y - my) for x, y in pts) / sxx
+
+
+def segment_delays(stops, stop_ids, ff_times, t0, t1):
+    """Delay on each stop-to-stop segment of a line (each segment crosses one junction):
+    list (len(stop_ids) - 1) of {veh_id: delay}, see bus_junction_delays()."""
+    return [bus_junction_delays(stops, a, b, ff, t0, t1)
+            for a, b, ff in zip(stop_ids, stop_ids[1:], ff_times)]
+
+
+def travel_times(trips, veh_ids, t0, t1):
+    """{veh_id: arrival - depart} for finished trips of veh_ids departed in [t0, t1)
+    and arrived before t1."""
+    return {t["id"]: t["arrival"] - t["depart"] for t in in_window(trips, t0, t1)
+            if t["id"] in veh_ids and not t["unfinished"] and t["arrival"] < t1}
+
+
+def longest_run(flags, dt=1.0):
+    """Longest run of consecutive True values in a sampled boolean series, in time units."""
+    best = cur = 0
+    for f in flags:
+        cur = cur + 1 if f else 0
+        best = max(best, cur)
+    return best * dt
