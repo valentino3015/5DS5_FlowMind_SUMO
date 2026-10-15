@@ -28,7 +28,10 @@ fixed_time:
 max_pressure: {}             # no parameters
 
 flow:
+  urgency: 0.1
   model_path: runs/models/flow_ppo.zip   # trained PPO model (not on GitHub)
+  max_queue: 25.0
+  max_wait: 120.0
 
 emergency:
   detect_distance: 200       # react when the vehicle is closer than this (m)
