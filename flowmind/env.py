@@ -93,10 +93,18 @@ class SumoCorridorEnv:
         self.phase_lanes: dict[str, tuple[tuple[str, ...], ...]] = {}
         self.phase_crossings: dict[str, tuple[tuple[str, ...], ...]] = {}
         self.movements: dict[str, dict[int, list[tuple[str, str]]]] = {}
+        # For each tls, map phase -> list of outgoing lane ids
+        self.phase_out_lanes: dict[str, list[list[str]]] = {}
 
         self.current_phases: dict[str, int] = {}
         self.time_in_phase: dict[str, float] = {}
         self.in_transition: dict[str, bool] = {}
+
+        # Spillback threshold: don't release green into downstream lanes above this occupancy
+        shield_cfg = self.config.get("shield", {})
+        self.spillback_threshold: float = float(
+            shield_cfg.get("spillback_threshold", 0.80)
+        )
 
     def __enter__(self):
         self.start()
@@ -163,10 +171,12 @@ class SumoCorridorEnv:
             links = traci.trafficlight.getControlledLinks(tls)
 
             p_lanes: list[tuple[str, ...]] = []
+            p_out_lanes: list[list[str]] = []
             tls_moves: dict[int, list[tuple[str, str]]] = {}
 
             for p_idx, state_str in enumerate(self.green_states[tls]):
                 active_lanes = set()
+                active_out = []
                 moves = []
                 for sig_idx, char in enumerate(state_str):
                     if char in ("G", "g") and sig_idx < len(links):
@@ -175,10 +185,14 @@ class SumoCorridorEnv:
                             active_lanes.add(src)
                             if not dst.startswith(":"):
                                 moves.append((src, dst))
+                                if dst not in active_out:
+                                    active_out.append(dst)
                 p_lanes.append(tuple(sorted(active_lanes)))
+                p_out_lanes.append(active_out)
                 tls_moves[p_idx] = moves
 
             self.phase_lanes[tls] = tuple(p_lanes)
+            self.phase_out_lanes[tls] = p_out_lanes
             self.movements[tls] = tls_moves
             num_g = len(self.green_states[tls])
             self.phase_crossings[tls] = tuple(() for _ in range(num_g))
@@ -206,9 +220,30 @@ class SumoCorridorEnv:
                 res.append("r")
         return "".join(res)
 
+    def _is_downstream_blocked(self, tls: str, target_phase: int) -> bool:
+        """Return True if ALL outgoing lanes for this phase exceed the spillback threshold.
+
+        If every road the phase would discharge into is already jammed, releasing
+        green would send vehicles into the box. We suppress the switch.
+        """
+        out_lanes = self.phase_out_lanes.get(tls, [])
+        if not out_lanes or not out_lanes[target_phase]:
+            return False  # No downstream data → allow
+        occ_values = []
+        for lane in out_lanes[target_phase]:
+            try:
+                occ_values.append(traci.lane.getLastStepOccupancy(lane))
+            except Exception:
+                pass
+        if not occ_values:
+            return False
+        # Block only if EVERY downstream lane is above threshold
+        return all(o >= self.spillback_threshold for o in occ_values)
+
     def step(self, actions: dict[str, int]) -> tuple[dict[str, JunctionState], bool, dict]:
         """Execute one decision step (delta_time seconds), inserting yellow/all-red if phases change."""
         transitions_needed: dict[str, int] = {}
+        suppressed_transitions: list[str] = []   # junctions where spillback blocked a switch
 
         for tls, target_phase in actions.items():
             if tls not in self.tls_ids:
@@ -218,7 +253,11 @@ class SumoCorridorEnv:
             current = self.current_phases[tls]
 
             if target_phase != current:
-                transitions_needed[tls] = target_phase
+                # Gridlock prevention: don't switch if downstream is fully blocked
+                if self._is_downstream_blocked(tls, target_phase):
+                    suppressed_transitions.append(tls)
+                else:
+                    transitions_needed[tls] = target_phase
 
         if transitions_needed:
             # 1. Apply Yellow Phase for signals.yellow seconds
@@ -257,7 +296,9 @@ class SumoCorridorEnv:
             for _ in range(self.delta_time):
                 traci.simulationStep()
 
-            for tls in self.tls_ids:
+        # Update time_in_phase for ALL junctions (regardless of transition status)
+        for tls in self.tls_ids:
+            if tls not in transitions_needed:
                 self.time_in_phase[tls] += float(self.delta_time)
                 self.in_transition[tls] = False
 
@@ -267,14 +308,21 @@ class SumoCorridorEnv:
         sim_time = traci.simulation.getTime()
         done = (sim_time - self.begin_time >= self.sim_seconds) or (traci.simulation.getMinExpectedNumber() <= 0)
 
+        # Count vehicles inside junction boxes (internal lanes starting with ":")
+        all_lanes = traci.lane.getIDList()
+        internal_lanes = [l for l in all_lanes if l.startswith(":")] 
+        box_vehicles = sum(traci.lane.getLastStepHaltingNumber(l) for l in internal_lanes)
+
         # Collect basic metrics
-        halting = sum(traci.lane.getLastStepHaltingNumber(l) for l in traci.lane.getIDList() if not l.startswith(":"))
+        halting = sum(traci.lane.getLastStepHaltingNumber(l) for l in all_lanes if not l.startswith(":"))
         vehicles = traci.vehicle.getIDList()
         mean_speed = (sum(traci.vehicle.getSpeed(v) for v in vehicles) / len(vehicles)) if vehicles else 0.0
 
         info = {
             "time": sim_time,
             "halting_vehicles": halting,
+            "box_vehicles": box_vehicles,           # Cars stuck in intersection box
+            "suppressed_switches": len(suppressed_transitions),  # Times spillback blocked a switch
             "vehicle_count": len(vehicles),
             "mean_speed": mean_speed,
         }
@@ -364,6 +412,9 @@ class SumoCorridorEnv:
             crossings=self.phase_crossings[tls_id],
             phase_lanes=self.phase_lanes[tls_id],
             phase_crossings=self.phase_crossings[tls_id],
+            phase_out_lanes=tuple(
+                tuple(lanes) for lanes in self.phase_out_lanes.get(tls_id, [])
+            ),
         )
 
     def close(self):

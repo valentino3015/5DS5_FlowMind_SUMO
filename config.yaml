@@ -15,6 +15,7 @@ signals:
 shield:
   ped_clearance_speed: 0.8   # walking speed used to check a crossing is clear (m/s)
   ped_max_wait: 90           # pedestrians never wait longer than this (s)
+  spillback_threshold: 0.80  # suppress green switch if ALL downstream lanes exceed this occupancy
 
 orchestrator:
   priority: [emergency, incident, pedestrian, bus, flow]   # first = most important
