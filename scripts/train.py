@@ -50,8 +50,11 @@ class FlowCorridorGymEnv(gym.Env):
         # Reset SUMO to discover junctions
         states = self.env.reset()
 
-        # Pick the representative corridor bottleneck junction (highest number of phases)
-        self.target_tls = max(self.env.tls_ids, key=lambda t: states[t].num_phases)
+        # Pick representative bottleneck junction: junction '4' in 3x3 grid (center), else highest num_phases
+        if "4" in self.env.tls_ids:
+            self.target_tls = "4"
+        else:
+            self.target_tls = max(self.env.tls_ids, key=lambda t: states[t].num_phases)
         initial_target_state = states[self.target_tls]
 
         # Define Observation and Action spaces based on actual encoded vector size
@@ -222,6 +225,8 @@ def main():
     parser = argparse.ArgumentParser(description="Train Flow Agent (PPO or DQN)")
     parser.add_argument("--algo", default="ppo", choices=["ppo", "dqn"],
                         help="RL algorithm: ppo (default) or dqn")
+    parser.add_argument("--scenario", default=None, choices=["3x3grid", "cologne3"],
+                        help="Traffic scenario: 3x3grid (default) or cologne3")
     parser.add_argument("--timesteps", type=int, default=5000, help="Total training timesteps")
     parser.add_argument("--seed", type=int, default=100, help="Random seed")
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"],
@@ -230,6 +235,16 @@ def main():
     args = parser.parse_args()
 
     config = load_config()
+    if args.scenario:
+        config.setdefault("sim", {})["scenario"] = args.scenario
+        if args.scenario == "3x3grid":
+            config["sim"]["net_file"] = "scenarios/3x3grid/3x3Grid2lanes.net.xml"
+            config["sim"]["route_file"] = "scenarios/3x3grid/routes14000.rou.xml"
+        elif args.scenario == "cologne3":
+            config["sim"]["net_file"] = "scenarios/cologne3.net.xml"
+            config["sim"]["route_file"] = "scenarios/cologne3.rou.xml"
+
+    active_scenario = config.get("sim", {}).get("scenario", "3x3grid")
     flow_cfg = config.get("flow", {})
     model_path = ROOT / flow_cfg.get("model_path", "runs/models/flow_ppo.zip")
     model_path.parent.mkdir(parents=True, exist_ok=True)
@@ -237,6 +252,7 @@ def main():
     print("==================================================")
     print("        FlowMind Deep RL Training Pipeline        ")
     print("==================================================")
+    print(f"Scenario            : {active_scenario}")
     print(f"Algorithm           : {args.algo.upper()}")
     print(f"Device              : {args.device}")
     print(f"Target model output : {model_path}")

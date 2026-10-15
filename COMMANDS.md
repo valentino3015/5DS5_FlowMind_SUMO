@@ -1,6 +1,6 @@
 # FlowMind: Commands Cheat Sheet
 
-This document lists all the executable commands for development, testing, running simulations, training the Flow agent, and evaluating models in the FlowMind repository.
+This document lists all executable commands for development, testing, running simulations, training the Flow agent (PPO & DQN), and switching scenarios (`3x3grid` and `cologne3`) in the FlowMind repository.
 
 ---
 
@@ -18,6 +18,9 @@ python -m venv .venv
 
 # Install required dependencies
 pip install -r requirements.txt
+
+# (Optional) Install PyTorch with CUDA for NVIDIA GPU support (RTX 3070, etc.)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
 ```
 
 ### Linux / macOS (Bash)
@@ -39,16 +42,16 @@ pip install -r requirements.txt
 Use `pytest` to verify contracts, agents, and the SUMO environment.
 
 ```powershell
-# Run all tests in the repository (19 tests)
+# Run all tests in the repository (23 passing tests)
 python -m pytest
 
 # Run with verbose output showing individual test names
 python -m pytest -v
 
-# Run only Flow agent unit tests (Ahmed)
+# Run only Flow agent unit tests (includes spillback-awareness tests)
 python -m pytest tests/test_flow.py -v
 
-# Run only SUMO environment integration tests (Adem)
+# Run only SUMO environment integration tests
 python -m pytest tests/test_env.py -v
 
 # Run only shared contracts tests
@@ -57,37 +60,35 @@ python -m pytest tests/test_contracts.py -v
 
 ---
 
-## 3. Running Corridor Simulations (`scripts/run.py`)
+## 3. Running Simulations (`scripts/run.py`)
 
-Run closed-loop simulations on the 3-junction corridor.
+Run closed-loop traffic light simulations on the **3x3 Grid** (default, 9 junctions) or the **Cologne 3 corridor**.
 
-### Quick Runs (Headless / Fast)
+### Default: 3x3 Grid (9 Intersections)
 ```powershell
-# Run with Fixed-Time baseline (timer controller)
-python scripts/run.py --controller fixed_time
-
-# Run with Max-Pressure baseline (queue difference controller)
-python scripts/run.py --controller max_pressure
-
-# Run with Flow Agent (Ahmed's queue-draining heuristic / PPO)
+# Run Flow Agent on 3x3 grid (fast / headless)
 python scripts/run.py --controller flow
-```
 
-### Visual Runs with SUMO GUI
-```powershell
-# Watch cars and traffic lights live in sumo-gui (Fixed-Time)
-python scripts/run.py --controller fixed_time --gui
-
-# Watch cars and traffic lights live in sumo-gui (Max-Pressure)
-python scripts/run.py --controller max_pressure --gui
-
-# Watch cars and traffic lights live in sumo-gui (Flow Agent)
+# Watch cars and lights live in sumo-gui on 3x3 grid
 python scripts/run.py --controller flow --gui
+
+# Run baseline controllers on 3x3 grid
+python scripts/run.py --controller fixed_time --gui
+python scripts/run.py --controller max_pressure --gui
 ```
 
-### Custom Duration & Random Seed Options
+### Switching Scenarios (`--scenario`)
 ```powershell
-# Run for 300 seconds of simulation with seed 101
+# Explicitly run on the 3x3 Grid
+python scripts/run.py --scenario 3x3grid --controller flow --gui
+
+# Run on Cologne 3-intersection corridor
+python scripts/run.py --scenario cologne3 --controller flow --gui
+```
+
+### Custom Duration & Random Seed
+```powershell
+# Run 300 seconds of simulation with seed 101
 python scripts/run.py --controller flow --seconds 300 --seed 101
 
 # Run for a full 1-hour simulation (3600 seconds)
@@ -99,22 +100,46 @@ python scripts/run.py --help
 
 ---
 
-## 4. Training the Flow Agent (`scripts/train.py`)
+## 4. Deep Reinforcement Learning Training (`scripts/train.py`)
 
-Train the PPO reinforcement learning model with `stable-baselines3`.
+Train the Flow agent with Deep RL (**PPO** or **DQN**) using `stable-baselines3`.
 
+Features included during training:
+- **Box-blocking penalties** (heavy penalty for vehicles trapped in the intersection).
+- **Spillback signals** (downstream link occupancies encoded in state space).
+- **Dynamic Red Clearance Extension** (prevents green into an occupied intersection box).
+
+### PPO Training
 ```powershell
-# View training script help and options
-python scripts/train.py --help
+# Train PPO on the 3x3 grid (default bottleneck junction '4')
+python scripts/train.py --algo ppo --timesteps 50000 --seed 100
 
-# Run PPO training with default settings (50,000 timesteps, seed 100)
-python scripts/train.py --timesteps 50000 --seed 100
+# Quick test run (5,000 timesteps)
+python scripts/train.py --algo ppo --timesteps 5000 --seed 100
 
-# Run a quick training check (5,000 timesteps)
-python scripts/train.py --timesteps 5000 --seed 102
+# Train PPO on the Cologne corridor
+python scripts/train.py --scenario cologne3 --algo ppo --timesteps 5000 --seed 100
 ```
 
-*Trained models are automatically saved to `runs/models/flow_ppo.zip` (ignored by Git).*
+### Deep Q-Network (DQN) Training
+```powershell
+# Train DQN with experience replay buffer on 3x3 grid
+python scripts/train.py --algo dqn --timesteps 25000 --seed 100
+```
+
+### Hardware Device Selection (`--device`)
+```powershell
+# Auto-detect best available device (default)
+python scripts/train.py --device auto --timesteps 5000
+
+# Force CPU execution (recommended for single-agent tabular RL rollouts)
+python scripts/train.py --device cpu --timesteps 5000
+
+# Force NVIDIA CUDA execution (requires PyTorch CUDA build)
+python scripts/train.py --device cuda --timesteps 5000
+```
+
+*Models are automatically saved to `runs/models/flow_ppo.zip` upon completion or upon pressing `Ctrl+C`.*
 
 ---
 
@@ -131,7 +156,7 @@ python scripts/evaluate.py
 
 ## 6. Sandbox Demos (`sandbox/`)
 
-These are the initial standalone demos built for early exploration with `sumo-rl`.
+These are the initial standalone exploratory scripts using `sumo-rl`.
 
 ### Single Intersection Demo
 ```powershell
@@ -155,7 +180,4 @@ python sandbox/Multi_Demo.py --scenario cologne3 --episodes 5 --seconds 1800
 
 # Run Cologne with sumo-gui
 python sandbox/Multi_Demo.py --scenario cologne3 --gui --episodes 2 --seconds 900
-
-# Run Grid 4x4 with multiple reward functions
-python sandbox/Multi_Demo.py --scenario grid4x4 --rewards diff-waiting-time queue pressure
 ```

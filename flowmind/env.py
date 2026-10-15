@@ -61,22 +61,33 @@ class SumoCorridorEnv:
 
         self.yellow_time: int = int(sig_cfg.get("yellow", 3))
         self.all_red_time: int = int(sig_cfg.get("all_red", 2))
+        self.max_red_clearance: int = int(sig_cfg.get("max_red_clearance", 4))
 
         # Discover or set scenario files
         scenarios_dir = ROOT / "scenarios"
+        scenario_name = sim_cfg.get("scenario", "3x3grid")
+
         if net_file is None:
-            default_nets = list(scenarios_dir.glob("*.net.xml"))
-            if default_nets:
-                net_file = default_nets[0]
+            if sim_cfg.get("net_file"):
+                net_file = ROOT / sim_cfg["net_file"]
+            elif scenario_name == "3x3grid":
+                net_file = ROOT / "scenarios" / "3x3grid" / "3x3Grid2lanes.net.xml"
+            elif scenario_name == "cologne3":
+                net_file = ROOT / "scenarios" / "cologne3.net.xml"
             else:
-                net_file = ROOT / "sumo_rl" / "nets" / "RESCO" / "cologne3" / "cologne3.net.xml"
+                default_nets = list(scenarios_dir.glob("*.net.xml"))
+                net_file = default_nets[0] if default_nets else ROOT / "scenarios" / "3x3grid" / "3x3Grid2lanes.net.xml"
 
         if route_file is None:
-            default_rou = list(scenarios_dir.glob("*.rou.xml"))
-            if default_rou:
-                route_file = default_rou[0]
+            if sim_cfg.get("route_file"):
+                route_file = ROOT / sim_cfg["route_file"]
+            elif scenario_name == "3x3grid":
+                route_file = ROOT / "scenarios" / "3x3grid" / "routes14000.rou.xml"
+            elif scenario_name == "cologne3":
+                route_file = ROOT / "scenarios" / "cologne3.rou.xml"
             else:
-                route_file = ROOT / "sumo_rl" / "nets" / "RESCO" / "cologne3" / "cologne3.rou.xml"
+                default_rou = list(scenarios_dir.glob("*.rou.xml"))
+                route_file = default_rou[0] if default_rou else ROOT / "scenarios" / "3x3grid" / "routes14000.rou.xml"
 
         self.net_file = Path(net_file)
         self.route_file = Path(route_file)
@@ -95,6 +106,8 @@ class SumoCorridorEnv:
         self.movements: dict[str, dict[int, list[tuple[str, str]]]] = {}
         # For each tls, map phase -> list of outgoing lane ids
         self.phase_out_lanes: dict[str, list[list[str]]] = {}
+        # For each tls, tuple of internal lanes (":...") inside junction box
+        self.junction_internal_lanes: dict[str, tuple[str, ...]] = {}
 
         self.current_phases: dict[str, int] = {}
         self.time_in_phase: dict[str, float] = {}
@@ -110,7 +123,7 @@ class SumoCorridorEnv:
         # Spillback threshold: don't release green into downstream lanes above this occupancy
         shield_cfg = self.config.get("shield", {})
         self.spillback_threshold: float = float(
-            shield_cfg.get("spillback_threshold", 0.80)
+            shield_cfg.get("spillback_threshold", 0.75)
         )
 
     def __enter__(self):
@@ -132,6 +145,7 @@ class SumoCorridorEnv:
             "-r", str(self.route_file),
             "-b", str(self.begin_time),
             "--seed", str(self.seed),
+            "--time-to-teleport", "60",
             "--no-step-log", "true",
             "--no-warnings", "true",
             "--duration-log.disable", "true",
@@ -204,16 +218,20 @@ class SumoCorridorEnv:
             num_g = len(self.green_states[tls])
             self.phase_crossings[tls] = tuple(() for _ in range(num_g))
 
-            # Cache static controlled lanes and unique outgoing lanes for this junction
+            # Cache static controlled lanes, unique outgoing lanes, and internal junction via-lanes
             ctrl = list(dict.fromkeys(traci.trafficlight.getControlledLanes(tls)))
             self.cached_controlled_lanes[tls] = ctrl
             out_ids = set()
+            via_lanes = set()
             for link_list in links:
                 for link in link_list:
                     to_lane = link[1]
                     if to_lane and not to_lane.startswith(":"):
                         out_ids.add(to_lane)
+                    if len(link) > 2 and link[2] and link[2].startswith(":"):
+                        via_lanes.add(link[2])
             self.cached_out_lanes[tls] = sorted(out_ids)
+            self.junction_internal_lanes[tls] = tuple(sorted(via_lanes))
 
             self.current_phases[tls] = 0
             self.time_in_phase[tls] = 0.0
@@ -232,6 +250,16 @@ class SumoCorridorEnv:
             except Exception:
                 self.cached_lane_lengths[l] = 50.0
 
+    def is_box_occupied(self, tls: str) -> bool:
+        """Return True if any vehicles are currently moving or stopped inside this junction box."""
+        via_lanes = self.junction_internal_lanes.get(tls, ())
+        return any(traci.lane.getLastStepVehicleNumber(l) > 0 for l in via_lanes)
+
+    def get_box_halting_count(self, tls: str) -> int:
+        """Return count of stopped/trapped vehicles inside this junction box."""
+        via_lanes = self.junction_internal_lanes.get(tls, ())
+        return sum(traci.lane.getLastStepHaltingNumber(l) for l in via_lanes)
+
     def get_phase_movements(self, tls_id: str) -> dict[int, list[tuple[str, str]]]:
         """Return movements for a junction, needed by the MaxPressure agent."""
         return self.movements.get(tls_id, {})
@@ -249,14 +277,21 @@ class SumoCorridorEnv:
         return "".join(res)
 
     def _is_downstream_blocked(self, tls: str, target_phase: int) -> bool:
-        """Return True if ALL outgoing lanes for this phase exceed the spillback threshold.
+        """Return True if outgoing lanes or the box for this phase are jammed.
 
-        If every road the phase would discharge into is already jammed, releasing
-        green would send vehicles into the box. We suppress the switch.
+        Anti-Gridlock Protection:
+        1. If cars are currently halted inside the box of this junction, don't switch into them.
+        2. If ANY outgoing lane this phase discharges into is above spillback_threshold,
+           releasing green would cause vehicles to enter and straddle the intersection.
         """
+        # If the intersection box already has trapped halting vehicles, hold current phase
+        if self.get_box_halting_count(tls) > 0:
+            return True
+
         out_lanes = self.phase_out_lanes.get(tls, [])
-        if not out_lanes or not out_lanes[target_phase]:
-            return False  # No downstream data → allow
+        if not out_lanes or target_phase >= len(out_lanes) or not out_lanes[target_phase]:
+            return False  # No downstream data -> allow
+
         occ_values = []
         for lane in out_lanes[target_phase]:
             try:
@@ -265,8 +300,8 @@ class SumoCorridorEnv:
                 pass
         if not occ_values:
             return False
-        # Block only if EVERY downstream lane is above threshold
-        return all(o >= self.spillback_threshold for o in occ_values)
+        # Suppress switch if ANY exit lane is congested to prevent spillback into the box
+        return any(o >= self.spillback_threshold for o in occ_values)
 
     def step(self, actions: dict[str, int]) -> tuple[dict[str, JunctionState], bool, dict]:
         """Execute one decision step (delta_time seconds), inserting yellow/all-red if phases change."""
@@ -307,6 +342,17 @@ class SumoCorridorEnv:
             for _ in range(self.all_red_time):
                 traci.simulationStep()
 
+            # 2b. DYNAMIC RED CLEARANCE EXTENSION:
+            # If vehicles are STILL clearing or caught inside the intersection box,
+            # hold all-red (up to max_red_clearance extra seconds) so they exit
+            # BEFORE releasing green into cross-traffic!
+            clearance_extra = 0
+            while clearance_extra < self.max_red_clearance:
+                if not any(self.is_box_occupied(tls) for tls in transitions_needed):
+                    break
+                traci.simulationStep()
+                clearance_extra += 1
+
             # 3. Apply New Green Phase
             for tls, target_phase in transitions_needed.items():
                 self.current_phases[tls] = target_phase
@@ -315,7 +361,7 @@ class SumoCorridorEnv:
                 traci.trafficlight.setRedYellowGreenState(tls, self.green_states[tls][target_phase])
 
             # Advance remainder of delta_time if any
-            elapsed = self.yellow_time + self.all_red_time
+            elapsed = self.yellow_time + self.all_red_time + clearance_extra
             remainder = max(0, self.delta_time - elapsed)
             for _ in range(remainder):
                 traci.simulationStep()

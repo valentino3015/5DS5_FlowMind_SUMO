@@ -38,16 +38,33 @@ def main():
         choices=["fixed_time", "max_pressure", "flow", "orchestrated"],
         help="Controller to run (default: fixed_time)",
     )
+    parser.add_argument(
+        "--scenario",
+        default=None,
+        choices=["3x3grid", "cologne3"],
+        help="Traffic scenario: 3x3grid (default) or cologne3",
+    )
     parser.add_argument("--gui", action="store_true", help="Open SUMO GUI")
     parser.add_argument("--seed", type=int, default=None, help="Simulation seed")
     parser.add_argument("--seconds", type=int, default=600, help="Simulation duration (s)")
     args = parser.parse_args()
 
     config = load_config()
+    if args.scenario:
+        config.setdefault("sim", {})["scenario"] = args.scenario
+        if args.scenario == "3x3grid":
+            config["sim"]["net_file"] = "scenarios/3x3grid/3x3Grid2lanes.net.xml"
+            config["sim"]["route_file"] = "scenarios/3x3grid/routes14000.rou.xml"
+        elif args.scenario == "cologne3":
+            config["sim"]["net_file"] = "scenarios/cologne3.net.xml"
+            config["sim"]["route_file"] = "scenarios/cologne3.rou.xml"
+
     if args.seconds:
         config.setdefault("sim", {})["seconds"] = args.seconds
 
+    active_scenario = config.get("sim", {}).get("scenario", "3x3grid")
     print(f"== FlowMind Simulation Runner ==")
+    print(f"Scenario  : {active_scenario}")
     print(f"Controller: {args.controller} | GUI: {args.gui} | Seed: {args.seed} | Duration: {args.seconds}s\n")
 
     env = SumoCorridorEnv(config=config, use_gui=args.gui, seed=args.seed)

@@ -2,6 +2,9 @@
 # Units: seconds (s), metres (m), metres per second (m/s).
 
 sim:
+  scenario: 3x3grid   # options: 3x3grid, cologne3
+  net_file: scenarios/3x3grid/3x3Grid2lanes.net.xml
+  route_file: scenarios/3x3grid/routes14000.rou.xml
   delta_time: 5        # one decision every 5 s
   seconds: 3600        # length of one simulation
   gui: false           # true = open sumo-gui
@@ -9,13 +12,14 @@ sim:
 signals:
   yellow: 3            # inserted automatically by env.py
   all_red: 2           # inserted automatically by env.py
+  max_red_clearance: 4 # dynamic all-red hold until junction box clears (s)
   min_green: 10
   max_green: 60
 
 shield:
   ped_clearance_speed: 0.8   # walking speed used to check a crossing is clear (m/s)
   ped_max_wait: 90           # pedestrians never wait longer than this (s)
-  spillback_threshold: 0.80  # suppress green switch if ALL downstream lanes exceed this occupancy
+  spillback_threshold: 0.75  # suppress green switch if ANY downstream lane exceeds this occupancy
 
 orchestrator:
   priority: [emergency, incident, pedestrian, bus, flow]   # first = most important
