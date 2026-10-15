@@ -175,7 +175,7 @@ def load_config() -> dict:
         return yaml.safe_load(f)
 
 
-def make_model(algo: str, gym_env: gym.Env, seed: int):
+def make_model(algo: str, gym_env: gym.Env, seed: int, device: str = "auto"):
     """Instantiate a PPO or DQN model with sensible defaults for traffic control."""
     if algo == "ppo":
         from stable_baselines3 import PPO
@@ -192,6 +192,7 @@ def make_model(algo: str, gym_env: gym.Env, seed: int):
             policy_kwargs={"net_arch": [128, 128]},   # Deeper network than V1
             verbose=0,
             seed=seed,
+            device=device,
         )
     elif algo == "dqn":
         from stable_baselines3 import DQN
@@ -211,6 +212,7 @@ def make_model(algo: str, gym_env: gym.Env, seed: int):
             policy_kwargs={"net_arch": [128, 128]},
             verbose=0,
             seed=seed,
+            device=device,
         )
     else:
         raise ValueError(f"Unknown algorithm: {algo}. Choose 'ppo' or 'dqn'.")
@@ -222,6 +224,8 @@ def main():
                         help="RL algorithm: ppo (default) or dqn")
     parser.add_argument("--timesteps", type=int, default=5000, help="Total training timesteps")
     parser.add_argument("--seed", type=int, default=100, help="Random seed")
+    parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"],
+                        help="PyTorch device: auto (default), cpu, or cuda")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
     args = parser.parse_args()
 
@@ -234,6 +238,7 @@ def main():
     print("        FlowMind Deep RL Training Pipeline        ")
     print("==================================================")
     print(f"Algorithm           : {args.algo.upper()}")
+    print(f"Device              : {args.device}")
     print(f"Target model output : {model_path}")
     print(f"Total timesteps     : {args.timesteps}")
     print(f"Random seed         : {args.seed}")
@@ -251,7 +256,7 @@ def main():
     print("--------------------------------------------------")
     print(f"[INFO] Starting {args.algo.upper()} learning loop...\n")
 
-    model = make_model(args.algo, gym_env, args.seed)
+    model = make_model(args.algo, gym_env, args.seed, device=args.device)
     callback = SimpleProgressBarCallback(total_timesteps=args.timesteps, check_freq=25)
 
     try:

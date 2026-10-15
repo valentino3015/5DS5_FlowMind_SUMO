@@ -100,6 +100,13 @@ class SumoCorridorEnv:
         self.time_in_phase: dict[str, float] = {}
         self.in_transition: dict[str, bool] = {}
 
+        # Topology caches (static data that does not change during simulation)
+        self.cached_network_lanes: list[str] = []
+        self.cached_internal_lanes: list[str] = []
+        self.cached_controlled_lanes: dict[str, list[str]] = {}
+        self.cached_out_lanes: dict[str, list[str]] = {}
+        self.cached_lane_lengths: dict[str, float] = {}
+
         # Spillback threshold: don't release green into downstream lanes above this occupancy
         shield_cfg = self.config.get("shield", {})
         self.spillback_threshold: float = float(
@@ -197,12 +204,33 @@ class SumoCorridorEnv:
             num_g = len(self.green_states[tls])
             self.phase_crossings[tls] = tuple(() for _ in range(num_g))
 
+            # Cache static controlled lanes and unique outgoing lanes for this junction
+            ctrl = list(dict.fromkeys(traci.trafficlight.getControlledLanes(tls)))
+            self.cached_controlled_lanes[tls] = ctrl
+            out_ids = set()
+            for link_list in links:
+                for link in link_list:
+                    to_lane = link[1]
+                    if to_lane and not to_lane.startswith(":"):
+                        out_ids.add(to_lane)
+            self.cached_out_lanes[tls] = sorted(out_ids)
+
             self.current_phases[tls] = 0
             self.time_in_phase[tls] = 0.0
             self.in_transition[tls] = False
 
             # Set initial green phase
             traci.trafficlight.setRedYellowGreenState(tls, self.green_states[tls][0])
+
+        # Cache global network and internal lanes + lane lengths
+        all_lanes = traci.lane.getIDList()
+        self.cached_network_lanes = [l for l in all_lanes if not l.startswith(":")]
+        self.cached_internal_lanes = [l for l in all_lanes if l.startswith(":")]
+        for l in all_lanes:
+            try:
+                self.cached_lane_lengths[l] = float(traci.lane.getLength(l))
+            except Exception:
+                self.cached_lane_lengths[l] = 50.0
 
     def get_phase_movements(self, tls_id: str) -> dict[int, list[tuple[str, str]]]:
         """Return movements for a junction, needed by the MaxPressure agent."""
@@ -308,23 +336,20 @@ class SumoCorridorEnv:
         sim_time = traci.simulation.getTime()
         done = (sim_time - self.begin_time >= self.sim_seconds) or (traci.simulation.getMinExpectedNumber() <= 0)
 
-        # Count vehicles inside junction boxes (internal lanes starting with ":")
-        all_lanes = traci.lane.getIDList()
-        internal_lanes = [l for l in all_lanes if l.startswith(":")] 
-        box_vehicles = sum(traci.lane.getLastStepHaltingNumber(l) for l in internal_lanes)
+        # Count vehicles inside junction boxes using cached internal lane IDs
+        box_vehicles = sum(traci.lane.getLastStepHaltingNumber(l) for l in self.cached_internal_lanes)
 
-        # Collect basic metrics
-        halting = sum(traci.lane.getLastStepHaltingNumber(l) for l in all_lanes if not l.startswith(":"))
-        vehicles = traci.vehicle.getIDList()
-        mean_speed = (sum(traci.vehicle.getSpeed(v) for v in vehicles) / len(vehicles)) if vehicles else 0.0
+        # Collect basic metrics using cached network lane IDs
+        halting = sum(traci.lane.getLastStepHaltingNumber(l) for l in self.cached_network_lanes)
+        vehicle_count = traci.simulation.getMinExpectedNumber()
 
         info = {
             "time": sim_time,
             "halting_vehicles": halting,
             "box_vehicles": box_vehicles,           # Cars stuck in intersection box
             "suppressed_switches": len(suppressed_transitions),  # Times spillback blocked a switch
-            "vehicle_count": len(vehicles),
-            "mean_speed": mean_speed,
+            "vehicle_count": vehicle_count,
+            "mean_speed": 0.0,
         }
 
         return states, done, info
@@ -332,7 +357,9 @@ class SumoCorridorEnv:
     def build_junction_state(self, tls_id: str) -> JunctionState:
         """Query SUMO and construct a frozen JunctionState contract object."""
         sim_time = float(traci.simulation.getTime())
-        controlled_lanes = list(dict.fromkeys(traci.trafficlight.getControlledLanes(tls_id)))
+        controlled_lanes = self.cached_controlled_lanes.get(
+            tls_id, list(dict.fromkeys(traci.trafficlight.getControlledLanes(tls_id)))
+        )
 
         # Build incoming lane states
         in_lanes = []
@@ -347,17 +374,9 @@ class SumoCorridorEnv:
                 )
             )
 
-        # Build outgoing lane states
-        links = traci.trafficlight.getControlledLinks(tls_id)
-        out_lane_ids = set()
-        for link_list in links:
-            for link in link_list:
-                to_lane = link[1]
-                if to_lane and not to_lane.startswith(":"):
-                    out_lane_ids.add(to_lane)
-
+        # Build outgoing lane states from cached IDs
         out_lanes = []
-        for out in sorted(out_lane_ids):
+        for out in self.cached_out_lanes.get(tls_id, []):
             out_lanes.append(
                 LaneState(
                     lane_id=out,
@@ -372,7 +391,7 @@ class SumoCorridorEnv:
         specials = []
         for lane in controlled_lanes:
             vehs_on_lane = traci.lane.getLastStepVehicleIDs(lane)
-            lane_len = traci.lane.getLength(lane)
+            lane_len = self.cached_lane_lengths.get(lane, 50.0)
             for v in vehs_on_lane:
                 vtype = traci.vehicle.getTypeID(v).lower()
                 vclass = traci.vehicle.getVehicleClass(v).lower()
