@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FlowMind corridor: 3 traffic lights J1-J2-J3 on an east-west main road, 200 m apart.
+     Owner: Adem. Edit this file, then run: python scenarios/build.py -->
+<nodes>
+    <!-- main road ends -->
+    <node id="W"  x="-200" y="0"/>
+    <node id="E"  x="600"  y="0"/>
+    <!-- the 3 junctions with traffic lights -->
+    <node id="J1" x="0"   y="0" type="traffic_light"/>
+    <node id="J2" x="200" y="0" type="traffic_light"/>
+    <node id="J3" x="400" y="0" type="traffic_light"/>
+    <!-- side street ends (north and south of each junction) -->
+    <node id="N1" x="0"   y="150"/>
+    <node id="S1" x="0"   y="-150"/>
+    <node id="N2" x="200" y="150"/>
+    <node id="S2" x="200" y="-150"/>
+    <node id="N3" x="400" y="150"/>
+    <node id="S3" x="400" y="-150"/>
+</nodes>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FlowMind corridor traffic. Owner: Adem.
+     All flows use probability = chance per second that a vehicle/person departs,
+     so a different seed gives different traffic. Only the demo ambulance is fixed. -->
+<routes>
+    <vType id="car"       vClass="passenger"/>
+    <vType id="bus"       vClass="bus" length="12" maxSpeed="13.89" color="0,0.6,1"/>
+    <!-- Ambulance WITHOUT bluelight device: it stops at red lights like everyone else,
+         so it only gets through fast if our system gives it green. -->
+    <vType id="ambulance" vClass="emergency" maxSpeed="16.67" color="1,0,0"/>
+
+    <!-- main road, both directions (~430 veh/h each) -->
+    <flow id="main_we" type="car" from="W_J1" to="J3_E" begin="0" end="3600" probability="0.12" departLane="best" departSpeed="max"/>
+    <flow id="main_ew" type="car" from="E_J3" to="J1_W" begin="0" end="3600" probability="0.12" departLane="best" departSpeed="max"/>
+
+    <!-- side streets, straight across (~145 veh/h each) -->
+    <flow id="side_ns1" type="car" from="N1_J1" to="J1_S1" begin="0" end="3600" probability="0.04" departSpeed="max"/>
+    <flow id="side_sn1" type="car" from="S1_J1" to="J1_N1" begin="0" end="3600" probability="0.04" departSpeed="max"/>
+    <flow id="side_ns2" type="car" from="N2_J2" to="J2_S2" begin="0" end="3600" probability="0.04" departSpeed="max"/>
+    <flow id="side_sn2" type="car" from="S2_J2" to="J2_N2" begin="0" end="3600" probability="0.04" departSpeed="max"/>
+    <flow id="side_ns3" type="car" from="N3_J3" to="J3_S3" begin="0" end="3600" probability="0.04" departSpeed="max"/>
+    <flow id="side_sn3" type="car" from="S3_J3" to="J3_N3" begin="0" end="3600" probability="0.04" departSpeed="max"/>
+
+    <!-- turning traffic between the side streets and the main road -->
+    <flow id="turn_n1_e" type="car" from="N1_J1" to="J3_E"  begin="0" end="3600" probability="0.02" departSpeed="max"/>
+    <flow id="turn_w_s2" type="car" from="W_J1"  to="J2_S2" begin="0" end="3600" probability="0.02" departLane="best" departSpeed="max"/>
+    <flow id="turn_e_n2" type="car" from="E_J3"  to="J2_N2" begin="0" end="3600" probability="0.02" departLane="best" departSpeed="max"/>
+    <flow id="turn_s3_w" type="car" from="S3_J3" to="J1_W"  begin="0" end="3600" probability="0.02" departSpeed="max"/>
+
+    <!-- bus line along the corridor (about one bus every 5 min per direction) -->
+    <flow id="bus_we" type="bus" from="W_J1" to="J3_E" begin="0" end="3600" probability="0.0033" departLane="best"/>
+    <flow id="bus_ew" type="bus" from="E_J3" to="J1_W" begin="0" end="3600" probability="0.0033" departLane="best"/>
+
+    <!-- demo ambulance: same time in every run, west to east through J1, J2, J3 -->
+    <vehicle id="amb_1" type="ambulance" depart="120" departLane="best" departSpeed="max">
+        <route edges="W_J1 J1_J2 J2_J3 J3_E"/>
+    </vehicle>
+
+    <!-- pedestrians crossing the main road at each junction, and walking along it -->
+    <personFlow id="ped_x1" begin="0" end="3600" probability="0.01"><walk from="N1_J1" to="J1_S1"/></personFlow>
+    <personFlow id="ped_x2" begin="0" end="3600" probability="0.01"><walk from="S2_J2" to="J2_N2"/></personFlow>
+    <personFlow id="ped_x3" begin="0" end="3600" probability="0.01"><walk from="N3_J3" to="J3_S3"/></personFlow>
+    <personFlow id="ped_along" begin="0" end="3600" probability="0.01"><walk from="W_J1" to="J3_E"/></personFlow>
+</routes>

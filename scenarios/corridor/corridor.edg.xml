@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Edges are named FROM_TO, e.g. "J1_J2" goes from J1 to J2.
+     Main road: 2 lanes per direction, 50 km/h. Side streets: 1 lane per direction. -->
+<edges>
+    <type id="main" numLanes="2" speed="13.89"/>
+    <type id="side" numLanes="1" speed="11.11"/>
+
+    <edge id="W_J1"  from="W"  to="J1" type="main"/>
+    <edge id="J1_W"  from="J1" to="W"  type="main"/>
+    <edge id="J1_J2" from="J1" to="J2" type="main"/>
+    <edge id="J2_J1" from="J2" to="J1" type="main"/>
+    <edge id="J2_J3" from="J2" to="J3" type="main"/>
+    <edge id="J3_J2" from="J3" to="J2" type="main"/>
+    <edge id="J3_E"  from="J3" to="E"  type="main"/>
+    <edge id="E_J3"  from="E"  to="J3" type="main"/>
+
+    <edge id="N1_J1" from="N1" to="J1" type="side"/>
+    <edge id="J1_N1" from="J1" to="N1" type="side"/>
+    <edge id="S1_J1" from="S1" to="J1" type="side"/>
+    <edge id="J1_S1" from="J1" to="S1" type="side"/>
+    <edge id="N2_J2" from="N2" to="J2" type="side"/>
+    <edge id="J2_N2" from="J2" to="N2" type="side"/>
+    <edge id="S2_J2" from="S2" to="J2" type="side"/>
+    <edge id="J2_S2" from="J2" to="S2" type="side"/>
+    <edge id="N3_J3" from="N3" to="J3" type="side"/>
+    <edge id="J3_N3" from="J3" to="N3" type="side"/>
+    <edge id="S3_J3" from="S3" to="J3" type="side"/>
+    <edge id="J3_S3" from="J3" to="S3" type="side"/>
+</edges>

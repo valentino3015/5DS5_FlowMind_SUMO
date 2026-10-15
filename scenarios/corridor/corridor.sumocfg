@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FlowMind corridor simulation. Owner: Adem. env.py adds the seed, end time and GUI options. -->
+<configuration>
+    <input>
+        <net-file value="corridor.net.xml"/>
+        <route-files value="corridor.rou.xml"/>
+    </input>
+    <processing>
+        <time-to-teleport value="300"/>
+    </processing>
+    <report>
+        <no-step-log value="true"/>
+        <no-warnings value="true"/>
+    </report>
+</configuration>
