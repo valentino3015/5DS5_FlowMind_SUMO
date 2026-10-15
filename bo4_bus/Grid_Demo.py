@@ -4,6 +4,8 @@ BO4 3x3 grid scenario - fixed-time baseline with closed-loop bus dwell.
     python bo4_bus/Grid_Demo.py                         # evaluation seeds 10000-10004
     python bo4_bus/Grid_Demo.py --seeds 10000 --gui
     python bo4_bus/Grid_Demo.py --seeds 1 --duration 1800 --tag grid_calib   # short run
+    python bo4_bus/Grid_Demo.py --controller tsp_all     # rule-based TSP B (rule_tsp.py)
+    python bo4_bus/Grid_Demo.py --controller tsp_cond    # rule-based TSP C
 
 For each seed: generate routes (gen_grid_routes.py), run SUMO for warm-up (600 s)
 + measurement (7200 s), then compute metrics (bus_metrics.py) over the
@@ -20,7 +22,8 @@ and the bus is resumed once the dwell has elapsed. The RNG is seeded per run.
 
 Signal control is plugged in per junction: controllers[tls_id].act(t, sim) is
 called after every simulation step (sim = the traci/libsumo module);
-FixedTimeController does nothing.
+FixedTimeController does nothing; --controller tsp_all / tsp_cond plugs in the
+rule-based TSP controllers of rule_tsp.py. Official results: headless libsumo only.
 """
 import argparse
 import time
@@ -45,8 +48,11 @@ import bus_metrics as bm  # noqa: E402
 import gen_grid_routes as gen  # noqa: E402
 from build_grid import LINES, NET, STOPS_ADD, TLS_IDS, SPEED  # noqa: E402
 from Bus_Demo import import_traci  # noqa: E402
+import rule_tsp  # noqa: E402
 
 RESULTS = os.path.join(HERE, "results")
+CONTROLLER_TAGS = {"fixed": "grid_fixed_time", "tsp_all": "grid_tsp_all", "tsp_cond": "grid_tsp_cond"}
+TSP_REFUSAL_CODES = ("not_late", "queue", "budget", "max_green", "conflict")
 
 T_FIXED, T_BOARD, MEAN_DWELL = 10.0, 2.5, 25.0
 SAMPLE_DT = 5           # s, queue sampling period
@@ -173,7 +179,8 @@ def run_seed(seed, args, geo):
     if args.gui:
         cmd += ["--start", "--quit-on-end"]
     sim.start(cmd)
-    controllers = {tid: FixedTimeController(tid) for tid in TLS_IDS}
+    controllers = rule_tsp.make_controllers(args.controller, geo["net"],
+                                            rule_tsp.params_from_args(args), FixedTimeController)
     for c in controllers.values():
         c.reset(sim)
 
@@ -280,11 +287,23 @@ def run_seed(seed, args, geo):
     row["never_inserted"] = pending
     row["teleports"] = teleports
 
+    decisions = []
+    if args.controller != "fixed":
+        decisions = [dict(r, seed=seed) for c in controllers.values() for r in c.log]
+        outcomes = [o for c in controllers.values() for o in c.outcomes if t0 <= o["t"] < t1]
+        row["tsp_requests"] = len(outcomes)
+        row["tsp_granted"] = sum(1 for o in outcomes if o["outcome"] == "granted")
+        row["tsp_refused"] = sum(1 for o in outcomes if o["outcome"] == "refused")
+        for code in TSP_REFUSAL_CODES:
+            row[f"refused_{code}"] = sum(1 for o in outcomes
+                                         if o["outcome"] == "refused" and o["code"] == code)
+        pd.DataFrame(decisions).to_csv(os.path.join(raw, "decisions.csv"), index=False)
+
     queue_rows = [{"seed": seed, "approach": a, "tls": appr[a][0], "max_halting": max_q[a],
                    "spill_longest_s": longest[a], "spill_share": sum(spill[a]) / len(spill[a])}
                   for a in appr]
     pd.DataFrame(dwells).to_csv(os.path.join(raw, "dwells.csv"), index=False)
-    return row, line_rows, queue_rows
+    return row, line_rows, queue_rows, decisions
 
 
 def main():
@@ -294,30 +313,36 @@ def main():
     ap.add_argument("--gui", action="store_true")
     ap.add_argument("--warmup", type=float, default=600.0)
     ap.add_argument("--duration", type=float, default=7200.0)
-    ap.add_argument("--tag", default="grid_fixed_time",
-                    help="run name: results/<tag>*.csv, raw outputs in results/raw/<tag>")
+    ap.add_argument("--controller", choices=sorted(CONTROLLER_TAGS), default="fixed",
+                    help="fixed-time baseline or rule-based TSP (B = tsp_all, C = tsp_cond)")
+    rule_tsp.add_args(ap)
+    ap.add_argument("--tag", default=None,
+                    help="run name: results/<tag>*.csv, raw outputs in results/raw/<tag> "
+                         "(default from --controller, e.g. grid_tsp_cond)")
     args = ap.parse_args()
+    args.tag = args.tag or CONTROLLER_TAGS[args.controller]
 
     net = sumolib.net.readNet(NET, withInternal=True)
     stops_by_id = {s.id: {"edge": s.lane.rsplit("_", 1)[0], "endPos": float(s.endPos)}
                    for s in sumolib.xml.parse(STOPS_ADD, "busStop")}
     args.cycle = sum(float(p.duration) for p in sumolib.xml.parse(NET, "phase")) / len(TLS_IDS)
     geo = {"ff": segment_free_flow(net, stops_by_id), "approaches": approaches(net),
-           "stop_queue": stop_queue_targets(net, stops_by_id)}
+           "stop_queue": stop_queue_targets(net, stops_by_id), "net": net}
     for d, ffs in geo["ff"].items():
         print(f"{d}: segment free-flow times {[round(x, 1) for x in ffs]} s "
               f"(route distance / {SPEED} m/s)")
 
-    rows, lines, queues = [], [], []
+    rows, lines, queues, decisions = [], [], [], []
 
     for seed in args.seeds:
         tic = time.time()
-        r, l, q = run_seed(seed, args, geo)
+        r, l, q, dec = run_seed(seed, args, geo)
         r["wall_s"] = round(time.time() - tic, 1)
         print(f"--- seed {seed} done in {r['wall_s']} s", flush=True)
         rows.append(r)
         lines += l
         queues += q
+        decisions += dec
 
     os.makedirs(RESULTS, exist_ok=True)
     df = pd.DataFrame(rows)
@@ -326,6 +351,9 @@ def main():
     df.to_csv(os.path.join(RESULTS, f"{args.tag}.csv"), index=False)
     dl.to_csv(os.path.join(RESULTS, f"{args.tag}_lines.csv"), index=False)
     dq.to_csv(os.path.join(RESULTS, f"{args.tag}_queues.csv"), index=False)
+    if args.controller != "fixed":
+        pd.DataFrame(decisions).to_csv(os.path.join(RESULTS, f"{args.tag}_decisions.csv"),
+                                       index=False)
 
     pd.set_option("display.width", 250)
     pd.set_option("display.max_columns", 100)

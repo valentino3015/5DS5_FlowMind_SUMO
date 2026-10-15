@@ -204,3 +204,69 @@ This target came from the single-junction scenario and is **not used for the gri
   Mixing backends would make controller comparisons meaningless.
 - Current official baselines, all libsumo on seeds 10000–10004: `results/fixed_time.csv` (single junction) and `results/grid_fixed_time*.csv` (grid).
   The grid baseline was re-run headless and reproduces the libsumo calibration run exactly.
+
+---
+
+# Step 3: rule-based bus priority on the grid (`rule_tsp.py`)
+The network, demand and metrics are unchanged. Run with `Grid_Demo.py --controller {fixed,tsp_all,tsp_cond}`.
+Results go to `results/grid_<controller>*.csv` (fixed keeps `grid_fixed_time*`), plus `*_decisions.csv` for the TSP runs.
+
+## Structure
+- `sense(sim, ...)` is the only code that calls SUMO. It returns a `JunctionView` of plain data.
+- `decide(view, params)` is a pure function returning a `Decision` with a reason string. It is unit-tested without SUMO.
+- `TspController.act(t, sim)` (one per junction) is the glue. It does the per-cycle extension bookkeeping and the bus-passage
+  bookkeeping used for lateness, then applies the decision.
+
+## Detection
+- Buses are detected on a junction's incoming approach (2-lane piece + turn-lane piece) within **150 m** of the stop line.
+- Excluded: a bus dwelling at a stop, or whose next stop lies ahead on the same edge.
+  This only matters for the entry-link stop `s0`, which is about 130 m before the first junction.
+- A bus "passes" the junction when it leaves the detection zone, i.e. crosses the stop line (or teleports).
+
+## Actions (both respect the team timing)
+- Priority only changes the **remaining time of the current green** (`trafficlight.setPhaseDuration`),
+  or ends it immediately by switching to that green's own yellow.
+  Yellow (3 s) and all-red (2 s) are never shortened or skipped. The program then continues with its normal durations,
+  which is the "return to the normal fixed-time cycle".
+- **Green extension:** the bus's phase is green and the estimated time to clear exceeds the remaining green.
+  - Time to clear = `dist / max(speed, 5 m/s) + 2 s` (`V_MIN_EST`, `CLEAR_MARGIN`).
+  - The extension is the shortfall, rounded up to whole seconds.
+  - It is granted only if the whole shortfall fits in the remaining budget (`MAX_EXT` = 15 s per junction per cycle,
+    reset when the E-W green starts) **and** the green stays ≤ 60 s.
+  - Otherwise it is refused (`budget` / `max_green`). A partial extension the bus cannot use is never given.
+- **Early recall:** the conflicting green is running.
+  - Its remaining time becomes `max(0, 10 s − spent)`, so a green is never cut below 10 s.
+  - Nothing is done if the green would end sooner anyway, or if a yellow/all-red is running.
+- Checked in simulation (seed 1, both controllers, all 9 junctions): greens 10–50 s (E-W) and 10–45 s (N-S),
+  every yellow exactly 3 s, every all-red exactly 2 s.
+
+## Controller B (`tsp_all`, unconditional)
+- Every detected bus that needs it gets an extension or recall. Queues are ignored.
+- **Conflicts** (an E-W and an N-S bus at the same time, only possible at `B1`): the bus served by the current green wins,
+  since its extension serves it immediately; then the nearest bus.
+  This tie rule was not specified in the brief and is my choice.
+
+## Controller C (`tsp_cond`, conditional)
+- **Lateness** = `t − (time the previous bus of the same line direction passed this junction) − H` (H = 180 s).
+  - Priority only if lateness > `LATE_THR` = 0 s.
+  - The first bus of a line direction at a junction has no reference, so it gets no priority.
+  - Lateness grows while a bus waits, so a bus that waits long enough becomes "late".
+- **Queue refusal:** refused if the **largest** halting queue on any approach that would lose green exceeds `QUEUE_THR` = 15 veh.
+  - The losing approaches are the conflicting direction for an extension, and the current green direction for a recall.
+  - Interpretation: per approach (max), not summed over approaches.
+- **Conflicts:** the later bus wins (tie: higher occupancy).
+- All thresholds are constants in `rule_tsp.py` and CLI args (`--detect-dist --max-ext --late-thr --queue-thr`).
+  They were **not tuned**: development runs used non-evaluation seed 1, and the evaluation used the defaults.
+
+## Decision log and request counting
+- Every decision is written to `results/raw/<tag>/seed_N/decisions.csv` and `results/<tag>_decisions.csv`.
+  Columns: t, tls, bus, line, action, code, seconds, lateness, reason. Example reason: `extend 8 s for L1_EB_12, 34 s late`.
+  Repeated identical decisions for the same bus are logged once.
+- **A request** is one bus pass through one junction during which an action would have been needed.
+  Buses that clear in the running green, or arrive during yellow/all-red, make no request.
+  - The outcome is "granted" if at least one action was applied during the pass.
+  - Otherwise it is "refused", with the last refusal reason. Codes: `not_late`, `queue`, `budget`, `max_green`, `conflict`.
+  - Counted for passes in the measurement window.
+  - A bus that loses a conflict but is served later in the same pass counts as granted.
+    That is why `refused_conflict` is 0 in the evaluation, although the decision logs contain conflict refusals
+    (36 for B, 2 for C over 5 seeds).
