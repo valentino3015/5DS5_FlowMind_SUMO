@@ -23,7 +23,7 @@ FlowMind operates on a 3-junction arterial corridor in SUMO. Every 5 seconds, an
 ---
 
 ## 1. Flow Agent (Normal Traffic RL)
-**Owner:** Flow Agent Owner  
+**Owner:** Ahmed  
 **Target Code:** `flowmind/agents/flow.py`, `scripts/train.py`  
 **Objectives:** **BO1** (Reduce Average Vehicle Delay & Improve Travel-Time Predictability) & **BO2** (Corridor Throughput)
 
@@ -54,7 +54,7 @@ FlowMind operates on a 3-junction arterial corridor in SUMO. Every 5 seconds, an
 ---
 
 ## 2. Emergency Agent (Priority & Preemption)
-**Owner:** Emergency Agent Owner  
+**Owner:** Hadyle  
 **Target Code:** `flowmind/agents/emergency.py`  
 **Objectives:** **BO3** (Reduce Emergency Response Time While Maintaining Safety)
 
@@ -85,7 +85,7 @@ FlowMind operates on a 3-junction arterial corridor in SUMO. Every 5 seconds, an
 ---
 
 ## 3. Bus Agent (Transit Priority & Anti-Bunching)
-**Owner:** Bus Agent Owner  
+**Owner:** Firas  
 **Target Code:** `flowmind/agents/bus.py`  
 **Objectives:** **BO4** (Improve Public Transport Reliability & Reduce Bus Bunching)
 
@@ -116,7 +116,7 @@ FlowMind operates on a 3-junction arterial corridor in SUMO. Every 5 seconds, an
 ---
 
 ## 4. Pedestrian Agent (Crossing Safety & Waiting Caps)
-**Owner:** Pedestrian Agent Owner (+ Safety Shield)  
+**Owner:** Omar  
 **Target Code:** `flowmind/agents/pedestrian.py`, `flowmind/control/shield.py`  
 **Objectives:** **BO5** (Improve Pedestrian Safety & Reduce Unnecessary Pedestrian Waiting)
 
@@ -147,7 +147,7 @@ FlowMind operates on a 3-junction arterial corridor in SUMO. Every 5 seconds, an
 ---
 
 ## 5. Incident Agent (Anomaly Detection & Spillback)
-**Owner:** Incident Agent Owner  
+**Owner:** Donia  
 **Target Code:** `flowmind/agents/incident.py`  
 **Objectives:** **BO2** (Throughput & Gridlock Prevention) & **BO7** (Anomaly Detection & Auditable Handling)
 
@@ -178,7 +178,7 @@ FlowMind operates on a 3-junction arterial corridor in SUMO. Every 5 seconds, an
 ---
 
 ## 6. Safety Shield & Evaluation / Emissions Specialist
-**Owner:** Evaluation & Safety Shield Owner  
+**Owner:** Manoubi  
 **Target Code:** `flowmind/control/shield.py`, `flowmind/kpis.py`, `scripts/evaluate.py`  
 **Objectives:** **BO5** (Safety Invariants), **BO6** (Emissions & Fuel), **BO7** (Auditable & Trustworthy Guard)
 
