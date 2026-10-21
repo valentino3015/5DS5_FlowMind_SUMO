@@ -49,6 +49,11 @@ agents:
 fixed_time:
   green: 30                  # green time per phase (s)
 
+green_wave:                  # static green wave along corridor.order (core idea 6, safe version)
+  green: 30                  # green time per phase (s)
+  link_length: 200           # distance between neighbouring junctions (m)
+  speed: 13.89               # free-flow speed on the main road (m/s): offset = 200 / 13.89 = 14.4 s
+
 max_pressure: {}             # no parameters
 
 flow:

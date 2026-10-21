@@ -2,6 +2,7 @@
 
 Usage:
     python scripts/run.py --controller fixed_time [--gui] [--seed 100]
+    python scripts/run.py --controller green_wave --scenario corridor   (static green wave)
     python scripts/run.py --controller max_pressure [--gui]
     python scripts/run.py --controller flow [--gui]
     python scripts/run.py --controller orchestrated --scenario corridor [--gui]
@@ -27,7 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from flowmind.agents.baselines import FixedTime, MaxPressure
+from flowmind.agents.baselines import FixedTime, GreenWave, MaxPressure, green_wave_offset
 from flowmind.agents.bus import BusAgent
 from flowmind.agents.demo_rules import DemoEmergency
 from flowmind.agents.emergency import EmergencyAgent
@@ -87,7 +88,7 @@ def main():
     parser.add_argument(
         "--controller",
         default="fixed_time",
-        choices=["fixed_time", "max_pressure", "flow", "orchestrated"],
+        choices=["fixed_time", "green_wave", "max_pressure", "flow", "orchestrated"],
         help="Controller to run (default: fixed_time)",
     )
     parser.add_argument(
@@ -143,6 +144,9 @@ def main():
     for tls in env.tls_ids:
         if args.controller == "fixed_time":
             agents[tls] = FixedTime(config.get("fixed_time", {}))
+        elif args.controller == "green_wave":
+            order = config.get("corridor", {}).get("order", [])
+            agents[tls] = GreenWave(config["green_wave"], green_wave_offset(config["green_wave"], order, tls))
         elif args.controller == "max_pressure":
             movements = env.get_phase_movements(tls)
             agents[tls] = MaxPressure(config.get("max_pressure", {}), movements)

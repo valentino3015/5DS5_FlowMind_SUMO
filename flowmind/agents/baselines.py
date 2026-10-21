@@ -1,4 +1,4 @@
-"""Two finished example agents: FixedTime and MaxPressure.
+"""Finished example agents: FixedTime, MaxPressure and GreenWave.
 
 Owner: Adem. These are the examples to copy when you write your own agent.
 They are also the baselines we compare our system against.
@@ -78,3 +78,46 @@ class MaxPressure(Specialist):
 
         self.last_reason = f"phase {best} has the highest pressure ({best_pressure})"
         return best
+
+
+class GreenWave(Specialist):
+    """Fixed timer with an offset per junction, so a group of cars driving down the
+    main road meets green lights one after the other (a "green wave").
+
+    Static time-distance plan (backup idea 1 for core idea 6):
+        offset of a junction = its position on the corridor x travel time between junctions
+        travel time = link_length / speed   (200 m / 13.89 m/s = about 14.4 s)
+    The phase is computed from the simulation time, so the plan stays on schedule
+    even after yellow and all-red.
+
+    config.yaml section "green_wave": green (s per phase), link_length (m), speed (m/s).
+    offset: seconds this junction is shifted (run.py computes it from corridor.order).
+    """
+
+    name = "green_wave"
+
+    def __init__(self, params: dict | None = None, offset: float = 0.0):
+        super().__init__(params)
+        self.offset = offset
+
+    def wants_control(self, state: JunctionState, events: list[Event]) -> Claim | None:
+        return Claim(urgency=0.0, reason="green-wave timer")
+
+    def scheduled_phase(self, state: JunctionState) -> int:
+        green = self.params["green"]
+        cycle = green * state.num_phases
+        return int(((state.time - self.offset) % cycle) // green)
+
+    def act(self, state: JunctionState, events: list[Event], allowed: list[bool]) -> int:
+        phase = self.scheduled_phase(state)
+        if allowed[phase]:
+            self.last_reason = f"green wave: phase {phase} (offset {self.offset:.1f} s)"
+            return phase
+        self.last_reason = f"green wave wants phase {phase}, not allowed yet: keep phase"
+        return self.keep_phase(state, allowed)
+
+
+def green_wave_offset(params: dict, order: list[str], tls_id: str) -> float:
+    """Offset of one junction: its position on the corridor x (link_length / speed)."""
+    position = order.index(tls_id) if tls_id in order else 0
+    return position * params["link_length"] / params["speed"]
