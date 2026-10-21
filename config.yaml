@@ -28,6 +28,7 @@ corridor:
 orchestrator:
   priority: [emergency, incident, pedestrian, bus, flow]   # first = most important
   min_hold: 10               # keep the chosen agent at least this long (s)
+  max_decision_ms: 50        # real-time budget for one decision (backup idea 4)
 
 coordinator:
   horizon: 60                # warn junctions an ambulance reaches within this time (s)
@@ -77,6 +78,7 @@ overlay:                     # sumo-gui labels: color of the dot per agent in co
     flow: [0, 170, 0, 255]
     max_pressure: [128, 128, 128, 255]
     fixed_time: [80, 80, 80, 255]
+    operator: [0, 0, 0, 255]
 
 evaluation:
   seeds: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109]

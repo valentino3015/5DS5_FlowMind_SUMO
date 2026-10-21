@@ -5,6 +5,8 @@ Usage:
     python scripts/run.py --controller max_pressure [--gui]
     python scripts/run.py --controller flow [--gui]
     python scripts/run.py --controller orchestrated --scenario corridor [--gui]
+    python scripts/run.py --controller orchestrated --scenario corridor --override J2:2:300:30
+        (operator forces phase 2 at J2 from t=300 s for 30 s; the shield still applies)
 
 --scenario corridor is the 3-junction street with buses, an ambulance and
 pedestrians (scenarios/corridor/). The others are 3x3grid and cologne3.
@@ -57,7 +59,14 @@ def make_orchestrator(config: dict, movements: dict) -> Orchestrator:
     ]
     o = config["orchestrator"]
     return Orchestrator(agents, o["priority"], o["min_hold"],
-                        fallback=MaxPressure(config.get("max_pressure", {}), movements))
+                        fallback=MaxPressure(config.get("max_pressure", {}), movements),
+                        shadow=FixedTime(config.get("fixed_time", {})))  # what-if column only
+
+
+def parse_override(text: str) -> tuple[str, int, float, float]:
+    """"J2:2:300:30" -> ("J2", 2, 300.0, 30.0): junction, phase, start time, duration."""
+    tls, phase, start, duration = text.split(":")
+    return tls, int(phase), float(start), float(duration)
 
 
 def warning_text(events: list) -> str:
@@ -84,6 +93,9 @@ def main():
     parser.add_argument("--gui", action="store_true", help="Open SUMO GUI")
     parser.add_argument("--seed", type=int, default=None, help="Simulation seed")
     parser.add_argument("--seconds", type=int, default=600, help="Simulation duration (s)")
+    parser.add_argument("--override", action="append", default=[], metavar="TLS:PHASE:START:DURATION",
+                        help="orchestrated only: operator forces a phase, e.g. J2:2:300:30 (repeatable)")
+    parser.add_argument("--run-dir", default=None, help="folder for the results (default: runs/<date>_...)")
     args = parser.parse_args()
 
     config = load_config()
@@ -110,9 +122,10 @@ def main():
     print(f"Scenario  : {active_scenario}")
     print(f"Controller: {args.controller} | GUI: {args.gui} | Seed: {seed_text} | Duration: {args.seconds}s\n")
 
-    run_dir = ROOT / "runs" / f"{datetime.now():%Y%m%d-%H%M%S}_{args.controller}_{active_scenario}_seed{seed_text}"
+    default_dir = ROOT / "runs" / f"{datetime.now():%Y%m%d-%H%M%S}_{args.controller}_{active_scenario}_seed{seed_text}"
+    run_dir = Path(args.run_dir) if args.run_dir else default_dir
     tripinfo = run_dir / "tripinfo.xml"
-    logger = DecisionLogger(run_dir)
+    logger = DecisionLogger(run_dir, latency_budget_ms=config["orchestrator"]["max_decision_ms"])
 
     env = SumoCorridorEnv(config=config, use_gui=args.gui, seed=args.seed,
                           begin_time=begin_time, tripinfo_file=tripinfo)
@@ -131,6 +144,14 @@ def main():
             agents[tls] = FlowAgent(config.get("flow", {}))
         elif args.controller == "orchestrated":
             orchestrators[tls] = make_orchestrator(config, env.get_phase_movements(tls))
+
+    for text in args.override:  # operator overrides (core idea 9)
+        tls, phase, start, duration = parse_override(text)
+        if tls in orchestrators:
+            orchestrators[tls].set_override(phase, start, duration)
+            print(f"Operator override: {tls} phase {phase} from t={start:.0f} s for {duration:.0f} s")
+        else:
+            print(f"Override ignored: {tls} is not an orchestrated junction")
 
     # Corridor order for the coordinator (falls back to the junction list of the scenario)
     order = [t for t in config.get("corridor", {}).get("order", []) if t in env.tls_ids] or list(env.tls_ids)
@@ -186,14 +207,15 @@ def main():
         env.close()
 
     summary = summarize_tripinfo(tripinfo)
+    summary.update(logger.stats())  # decision time and what-if figures
     logger.close(summary)
-    print("\nTrip summary (vehicles that finished their trip):")
+    print("\nSummary (trips = vehicles that finished their trip):")
     for key, value in summary.items():
         print(f"  {key:28s} {value}")
     shares = ", ".join(f"{a} {100 * n / sum(logger.control_steps.values()):.0f}%"
                        for a, n in logger.control_steps.most_common())
     print(f"  {'control share by agent':28s} {shares}")
-    print(f"\nLog: {run_dir.relative_to(ROOT)}")
+    print(f"\nLog: {run_dir}")
 
 
 if __name__ == "__main__":
