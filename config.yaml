@@ -55,9 +55,13 @@ emergency:
   detect_distance: 200       # react when the vehicle is closer than this (m)
   preclear_eta: 20           # take control when a warned ambulance arrives within this time (s)
 
-bus:
-  min_delay: 60              # help buses that are at least this late (s)
+bus:                         # BO4 conditional bus priority (Firas), see flowmind/agents/bus.py
   detect_distance: 150       # react when the bus is closer than this (m)
+  headway: 300               # target headway of the scenario's bus lines (s); corridor: ~1 bus / 5 min
+  late_threshold: 0          # help buses later than this, headway-based (s)
+  max_queue: 15              # refuse if an approach that would lose green has more halting vehicles
+  max_hold: 20               # at most this much control per bus (s)
+  urgency_scale: 300         # lateness (s) that gives urgency 1
 
 pedestrian:
   min_waiting: 1             # at least this many people waiting
