@@ -1,11 +1,4 @@
-"""
-Bus / car metrics for the BO4 scenario.
 
-Parsing helpers turn SUMO XML outputs into plain lists of dicts; every metric
-is a pure function over those lists (no SUMO needed -> unit-testable).
-
-Measurement window: only events in [t0, t1) are counted (t0 = end of warm-up).
-"""
 import math
 import statistics
 import xml.etree.ElementTree as ET

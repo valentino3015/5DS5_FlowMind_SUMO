@@ -1,36 +1,4 @@
-"""
-Rule-based transit signal priority (TSP) for the BO4 3x3 grid.
 
-One controller object per signalized junction, plugged into Grid_Demo.py's
-`controllers[tls_id].act(t, sim)` hook.
-
-Structure (so the logic can be ported to the team's JunctionState contract):
-    sense(sim, geo, ...)   the ONLY place that calls SUMO; returns a JunctionView
-                           made of plain data (dataclasses, floats, strings)
-    decide(view, params)   pure function: JunctionView -> Decision (no SUMO)
-    TspController.act()    glue: sense -> lateness bookkeeping -> decide -> apply
-
-Signal program (written by nets/grid/build_grid.py), identical at every junction:
-    0 E-W green 35 | 1 yellow 3 | 2 all-red 2 | 3 N-S green 30 | 4 yellow 3 | 5 all-red 2
-Priority only changes the remaining time of the CURRENT green phase:
-    green extension : remaining += need          (bus on the green approach would not clear)
-    early recall    : remaining  = max(0, MIN_GREEN - spent)   (bus waits on red)
-Yellow and all-red are never touched, the program then continues with its
-normal durations ("return to the normal fixed-time cycle"). Guarantees:
-    green >= MIN_GREEN, green <= MAX_GREEN, extensions <= max_ext per cycle.
-
-Modes:
-    "all"  (controller B, unconditional): every detected bus may get priority.
-           Conflicting requests: the bus served by the current green wins (an
-           extension serves a bus immediately), then the nearest bus.
-    "cond" (controller C, conditional):
-           - only late buses: lateness = t - (last passage of a bus of the same
-             line direction at this junction) - H; priority if lateness > late_thr;
-             a bus with no previous passage on record is not prioritized;
-           - refused if the max halting queue over the approaches that would lose
-             green exceeds queue_thr;
-           - conflicting requests: the later bus wins (tie: higher occupancy).
-"""
 import math
 import os
 import sys

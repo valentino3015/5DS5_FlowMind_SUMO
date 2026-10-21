@@ -1,35 +1,4 @@
-"""
-BO4 3x3 grid scenario - fixed-time baseline with closed-loop bus dwell.
 
-    python bo4_bus/Grid_Demo.py                         # evaluation seeds 10000-10004
-    python bo4_bus/Grid_Demo.py --seeds 10000 --gui
-    python bo4_bus/Grid_Demo.py --seeds 1 --duration 1800 --tag grid_calib   # short run
-    python bo4_bus/Grid_Demo.py --controller tsp_all     # rule-based TSP B (rule_tsp.py)
-    python bo4_bus/Grid_Demo.py --controller tsp_cond    # rule-based TSP C
-
-For each seed: generate routes (gen_grid_routes.py), run SUMO for warm-up (600 s)
-+ measurement (7200 s), then compute metrics (bus_metrics.py) over the
-measurement window. Writes results/<tag>.csv (one row per seed),
-results/<tag>_lines.csv (per line direction and stop) and results/<tag>_queues.csv
-(per signal approach).
-
-Who pays for bus priority: car delay per approach passage (edgeData time loss of
-cars over the approach / cars that left it) is reported separately for the
-approaches on a bus line (bus_appr_delay) and all other approaches
-(cross_delay = "cross-street delay").
-
-Closed-loop dwell (every stop): when a bus starts a stop at time t,
-    gap  = t - (arrival of the previous bus of the same direction at that stop)
-           (H for the first bus at a stop)
-    B    ~ Poisson(lambda * gap),  lambda = (MEAN_DWELL - T_FIXED) / (T_BOARD * H)
-    dwell = T_FIXED + T_BOARD * B          (10 + 2.5 B, mean 25 s at gap = H)
-and the bus is resumed once the dwell has elapsed. The RNG is seeded per run.
-
-Signal control is plugged in per junction: controllers[tls_id].act(t, sim) is
-called after every simulation step (sim = the traci/libsumo module);
-FixedTimeController does nothing; --controller tsp_all / tsp_cond plugs in the
-rule-based TSP controllers of rule_tsp.py. Official results: headless libsumo only.
-"""
 import argparse
 import time
 import math
