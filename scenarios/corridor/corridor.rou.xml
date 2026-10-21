@@ -41,4 +41,21 @@
     <vehicle id="amb_1" type="ambulance" depart="120" departLane="best" departSpeed="max">
         <route edges="W_J1 J1_J2 J2_J3 J3_E"/>
     </vehicle>
+
+    <!-- incident (same in every run): an accident between J1 and J2. Two cars stop side by side
+         and block both eastbound lanes from about t = 700 s for 300 s (5 min), so the queue
+         grows back towards J1 (spillback) -->
+    <vehicle id="accident_1" type="car" depart="690" departLane="1" departPos="0" color="1,0.5,0">
+        <route edges="J1_J2 J2_J3 J3_E"/>
+        <stop lane="J1_J2_1" endPos="120" duration="300"/>
+    </vehicle>
+    <vehicle id="accident_2" type="car" depart="690" departLane="2" departPos="0" color="1,0.5,0">
+        <route edges="J1_J2 J2_J3 J3_E"/>
+        <stop lane="J1_J2_2" endPos="120" duration="300"/>
+    </vehicle>
+
+    <!-- second ambulance (same in every run): east to west through J3, J2, J1 -->
+    <vehicle id="amb_2" type="ambulance" depart="1100" departLane="best" departSpeed="max">
+        <route edges="E_J3 J3_J2 J2_J1 J1_W"/>
+    </vehicle>
 </routes>
