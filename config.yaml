@@ -35,6 +35,11 @@ coordinator:
   min_speed: 2               # speed used for the ETA when the ambulance is (almost) stopped (m/s)
   margin: 5                  # a warning stays valid this long after the ETA (s)
   incident_ttl: 30           # how long an incident warning stays valid (s)
+  # Spillback warning (core idea 5). IDEAS.md says 85 %, but in SUMO a fully jammed lane only
+  # reads about 0.67 (car length vs. gaps) and stuck cars are removed after 60 s. Measured on the
+  # corridor (seed 1, 30 min): normal 0.25, road closure 0.43, double demand 0.51. 0.4 = about 60 %
+  # of a jammed lane.
+  spillback_occupancy: 0.4
 
 agents:
   emergency: demo            # demo = Adem's demo rule (agents/demo_rules.py), team = agents/emergency.py

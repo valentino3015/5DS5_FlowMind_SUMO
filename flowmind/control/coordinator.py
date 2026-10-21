@@ -10,6 +10,11 @@ Every step it rebuilds the list of warnings (Event objects, see contracts.py):
   the ambulance is even on its street ("green corridor").
 - incident: when the incident agent controls a junction, its neighbours on the
   corridor get Event("incident") so they stop feeding the blocked area.
+- spillback: when the road between two neighbouring junctions A -> B is filling
+  up (occupancy above coordinator.spillback_occupancy), A gets
+  Event("incident", data={"cause": "spillback", ...}) so it stops sending more
+  cars into it. The link is found by lane id: A's outgoing lanes that are also
+  B's incoming lanes.
 
 Warnings are recomputed every step: when the ambulance has passed (or stopped
 being expected), its warning simply disappears. That is the cancellation.
@@ -25,8 +30,10 @@ class Coordinator:
         self.params = params
         self.order = order
 
-    def update(self, time: float, approaches: list, decisions: list) -> dict[str, list[Event]]:
-        """approaches: env.emergency_approaches(); decisions: last step's Decisions."""
+    def update(self, time: float, approaches: list, decisions: list,
+               states: dict | None = None) -> dict[str, list[Event]]:
+        """approaches: env.emergency_approaches(); decisions: last step's Decisions;
+        states: current JunctionStates by tls_id (needed for the spillback warning)."""
         events = {tls_id: [] for tls_id in self.order}
 
         # Emergency vehicles: warn every junction they will reach within the horizon.
@@ -51,6 +58,26 @@ class Coordinator:
                     kind="incident",
                     target_tls=neighbour,
                     expires_at=time + self.params["incident_ttl"],
-                    data={"from_tls": d.tls_id, "reason": d.reason},
+                    data={"cause": "incident", "from_tls": d.tls_id, "reason": d.reason},
+                ))
+
+        # Spillback: warn the junction that feeds a link which is filling up.
+        for a, b in self.neighbour_pairs():
+            if not states or a not in states or b not in states:
+                continue
+            link = {lane.lane_id for lane in states[a].out_lanes}
+            occupancy = max((lane.occupancy for lane in states[b].lanes if lane.lane_id in link), default=0.0)
+            if occupancy >= self.params["spillback_occupancy"]:
+                events[a].append(Event(
+                    kind="incident",
+                    target_tls=a,
+                    expires_at=time + self.params["incident_ttl"],
+                    data={"cause": "spillback", "from_tls": b, "occupancy": round(occupancy, 2),
+                          "reason": f"road {a}->{b} is {occupancy:.0%} full"},
                 ))
         return events
+
+    def neighbour_pairs(self) -> list[tuple[str, str]]:
+        """(A, B) for every pair of neighbouring junctions, in both directions."""
+        forward = list(zip(self.order, self.order[1:]))
+        return forward + [(b, a) for a, b in forward]

@@ -71,8 +71,14 @@ def parse_override(text: str) -> tuple[str, int, float, float]:
 
 def warning_text(events: list) -> str:
     """Short text for the overlay, e.g. "WARNING amb_1 in 15 s"."""
-    parts = [f"{e.data['vehicle_id']} in {e.data['eta']:.0f} s" if e.kind == "emergency"
-             else f"incident at {e.data['from_tls']}" for e in events]
+    parts = []
+    for e in events:
+        if e.kind == "emergency":
+            parts.append(f"{e.data['vehicle_id']} in {e.data['eta']:.0f} s")
+        elif e.data.get("cause") == "spillback":
+            parts.append(f"road to {e.data['from_tls']} {e.data['occupancy']:.0%} full")
+        else:
+            parts.append(f"incident at {e.data['from_tls']}")
     return "WARNING " + ", ".join(parts) if parts else ""
 
 
@@ -167,7 +173,7 @@ def main():
             actions = {}
             now = next(iter(states.values())).time
             if args.controller == "orchestrated":
-                events = coordinator.update(now, env.emergency_approaches(), decisions)
+                events = coordinator.update(now, env.emergency_approaches(), decisions, states)
             else:
                 events = {}
             decisions = []
