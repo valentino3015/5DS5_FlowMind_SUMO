@@ -53,5 +53,23 @@ incident:
   halt_time: 60              # a lane stopped this long may be blocked (s)
   min_queue: 5               # halting vehicles needed to suspect an incident
 
+rules:
+  max_red: 90
+  co2_weight: 1.0
+  nox_weight: 1.0
+  fuel_weight: 1.0
+  pm_weight: 1.0
+  switch_margin: 0.05
+  blocked_occupancy: 0.8
+  # min_green / max_green are inherited from signals above.
+
 evaluation:
   seeds: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109]
+
+# Only the emission PPO controller; the fixed-time reference stays unchanged.
+emission_rl:
+  weights: [1, 1, 1, 2]  # CO2, NOx, fuel, PM
+  safety:
+    min_green: 10
+    max_green: 35
+    max_red: 30

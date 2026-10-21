@@ -21,6 +21,7 @@ if str(ROOT) not in sys.path:
 
 from flowmind.agents.baselines import FixedTime, MaxPressure
 from flowmind.agents.flow import FlowAgent
+from flowmind.agents.rules import RuleBasedAgent
 from flowmind.env import SumoCorridorEnv
 
 
@@ -35,7 +36,7 @@ def main():
     parser.add_argument(
         "--controller",
         default="fixed_time",
-        choices=["fixed_time", "max_pressure", "flow", "orchestrated"],
+        choices=["fixed_time", "rules", "max_pressure", "flow", "orchestrated"],
         help="Controller to run (default: fixed_time)",
     )
     parser.add_argument(
@@ -79,6 +80,11 @@ def main():
         elif args.controller == "max_pressure":
             movements = env.get_phase_movements(tls)
             agents[tls] = MaxPressure(config.get("max_pressure", {}), movements)
+        elif args.controller == "rules":
+            agents[tls] = RuleBasedAgent(config.get("rules", {}) | {
+                "min_green": config["signals"]["min_green"],
+                "max_green": config["signals"]["max_green"],
+            })
         elif args.controller == "flow":
             flow_cfg = dict(config.get("flow", {}))
             if args.heuristic:

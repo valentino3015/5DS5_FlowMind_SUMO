@@ -48,6 +48,16 @@ class Crossing:
 
 
 @dataclass(frozen=True)
+class LaneEmissions:
+    """Instantaneous lane emission/consumption rates, all in mg/s."""
+    lane_id: str
+    co2: float
+    nox: float
+    fuel: float
+    pm: float
+
+
+@dataclass(frozen=True)
 class JunctionState:
     """Everything an agent knows about its junction at one decision step."""
 
@@ -64,6 +74,7 @@ class JunctionState:
     phase_lanes: tuple[tuple[str, ...], ...]      # for each green phase, the incoming lane ids that get green
     phase_crossings: tuple[tuple[str, ...], ...]  # for each green phase, the crossing ids where pedestrians may walk
     phase_out_lanes: tuple[tuple[str, ...], ...] = field(default_factory=tuple)  # for each green phase, the outgoing lane ids it discharges into
+    lane_emissions: tuple[LaneEmissions, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)

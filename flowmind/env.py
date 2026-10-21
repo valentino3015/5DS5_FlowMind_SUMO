@@ -16,7 +16,7 @@ import yaml
 import sumolib
 import traci
 
-from flowmind.contracts import Crossing, JunctionState, LaneState, SpecialVehicle
+from flowmind.contracts import Crossing, JunctionState, LaneState, SpecialVehicle, LaneEmissions
 
 # Root directory of the repository
 ROOT = Path(__file__).resolve().parent.parent
@@ -101,6 +101,7 @@ class SumoCorridorEnv:
             self.begin_time = int(begin_time)
 
         self.is_running = False
+        self.metrics_callback = None
         self.tls_ids: list[str] = []
         self.green_states: dict[str, list[str]] = {}
         self.phase_lanes: dict[str, tuple[tuple[str, ...], ...]] = {}
@@ -153,12 +154,23 @@ class SumoCorridorEnv:
             "--duration-log.disable", "true",
         ]
 
+        output_dir = self.config.get("evaluation_output")
+        if output_dir:
+            output_dir = Path(output_dir).resolve()
+            output_dir.mkdir(parents=True, exist_ok=True)
+            cmd += ["--tripinfo-output", str(output_dir / "tripinfo.xml"),
+                    "--tripinfo-output.write-unfinished", "true",
+                    "--device.emissions.probability", "1",
+                    "--statistic-output", str(output_dir / "statistics.xml")]
+        if self.use_gui:
+            cmd += ["--start", "--quit-on-end", "true",
+                    "--delay", str(self.config.get("gui_delay_ms", 100))]
         traci.start(cmd)
         self.is_running = True
         self._init_traffic_lights()
 
         # Step once to populate initial vehicle/lane states
-        traci.simulationStep()
+        self._simulation_step()
 
         states = {tls: self.build_junction_state(tls) for tls in self.tls_ids}
         return states
@@ -166,6 +178,33 @@ class SumoCorridorEnv:
     def reset(self) -> dict[str, JunctionState]:
         """Reset the environment to the beginning."""
         return self.start()
+
+    def _simulation_step(self):
+        """Sample every second including yellow/red transitions; bound the horizon."""
+        if traci.simulation.getTime() >= self.begin_time + self.sim_seconds:
+            return
+        traci.simulationStep()
+        if self.metrics_callback:
+            queues = [traci.lane.getLastStepHaltingNumber(lane) for lane in self.cached_network_lanes]
+            vehicles = traci.vehicle.getIDList()
+            self.metrics_callback({
+                "elapsed_s": traci.simulation.getTime() - self.begin_time,
+                "vehicles": len(vehicles),
+                "departed": traci.simulation.getDepartedNumber(),
+                "arrived": traci.simulation.getArrivedNumber(),
+                "pending": len(traci.simulation.getPendingVehicles()),
+                "halting": sum(queues),
+                "queue_mean_lane": sum(queues) / len(queues) if queues else 0,
+                "queue_max_lane": max(queues, default=0),
+                "speed_sum_m_s": sum(traci.vehicle.getSpeed(v) for v in vehicles),
+                "waiting_mean_active_s": sum(traci.vehicle.getWaitingTime(v) for v in vehicles) / len(vehicles) if vehicles else 0,
+                "co2_mg_s": sum(traci.vehicle.getCO2Emission(v) for v in vehicles),
+                "nox_mg_s": sum(traci.vehicle.getNOxEmission(v) for v in vehicles),
+                "pmx_mg_s": sum(traci.vehicle.getPMxEmission(v) for v in vehicles),
+                "fuel_mg_s": sum(traci.vehicle.getFuelConsumption(v) for v in vehicles),
+                "collisions": traci.simulation.getCollidingVehiclesNumber(),
+                "teleports": traci.simulation.getStartingTeleportNumber(),
+            })
 
     def _init_traffic_lights(self):
         """Analyze traffic light logic, discovering green phases and controlled links."""
@@ -287,7 +326,7 @@ class SumoCorridorEnv:
         occ_values = []
         for lane in out_lanes[target_phase]:
             try:
-                occ_values.append(traci.lane.getLastStepOccupancy(lane))
+                occ_values.append(traci.lane.getLastStepOccupancy(lane) / 100.0)
             except Exception:
                 pass
         if not occ_values:
@@ -297,6 +336,7 @@ class SumoCorridorEnv:
 
     def step(self, actions: dict[str, int]) -> tuple[dict[str, JunctionState], bool, dict]:
         """Execute one decision step (delta_time seconds), inserting yellow/all-red if phases change."""
+        step_start_time = traci.simulation.getTime()
         transitions_needed: dict[str, int] = {}
         suppressed_transitions: list[str] = []   # junctions where spillback blocked a switch
 
@@ -310,12 +350,13 @@ class SumoCorridorEnv:
             # Enforce max_green: if green has been on for >= max_green, FORCE CYCLE to next phase!
             # Starvation prevention: cross-traffic (horizontal) MUST get green after max_green seconds!
             if t_in_phase >= self.max_green and target_phase == current:
-                target_phase = (current + 1) % num_phases
+                alternatives = [(current + offset) % num_phases for offset in range(1, num_phases)]
+                target_phase = next((phase for phase in alternatives
+                                     if not self._is_downstream_blocked(tls, phase)), current)
 
             if target_phase != current:
-                forced_by_max_green = (t_in_phase >= self.max_green)
-                # Max-out overrides suppression so cross-traffic is never starved
-                if not forced_by_max_green and self._is_downstream_blocked(tls, target_phase):
+                # A maximum-green cycle must not release into saturated exits.
+                if self._is_downstream_blocked(tls, target_phase):
                     suppressed_transitions.append(tls)
                 else:
                     transitions_needed[tls] = target_phase
@@ -330,7 +371,7 @@ class SumoCorridorEnv:
                 self.in_transition[tls] = True
 
             for _ in range(self.yellow_time):
-                traci.simulationStep()
+                self._simulation_step()
 
             # 2. Apply All-Red Phase for signals.all_red seconds
             for tls in transitions_needed:
@@ -338,7 +379,7 @@ class SumoCorridorEnv:
                 traci.trafficlight.setRedYellowGreenState(tls, red_state)
 
             for _ in range(self.all_red_time):
-                traci.simulationStep()
+                self._simulation_step()
 
             # 2b. DYNAMIC RED CLEARANCE EXTENSION:
             # If vehicles are STILL clearing or caught inside the intersection box,
@@ -348,7 +389,7 @@ class SumoCorridorEnv:
             while clearance_extra < self.max_red_clearance:
                 if not any(self.is_box_occupied(tls) for tls in transitions_needed):
                     break
-                traci.simulationStep()
+                self._simulation_step()
                 clearance_extra += 1
 
             # 3. Apply New Green Phase
@@ -362,16 +403,16 @@ class SumoCorridorEnv:
             elapsed = self.yellow_time + self.all_red_time + clearance_extra
             remainder = max(0, self.delta_time - elapsed)
             for _ in range(remainder):
-                traci.simulationStep()
+                self._simulation_step()
         else:
             # No transitions: keep all lights green for full delta_time
             for _ in range(self.delta_time):
-                traci.simulationStep()
+                self._simulation_step()
 
         # Update time_in_phase for ALL junctions (regardless of transition status)
         for tls in self.tls_ids:
             if tls not in transitions_needed:
-                self.time_in_phase[tls] += float(self.delta_time)
+                self.time_in_phase[tls] += traci.simulation.getTime() - step_start_time
                 self.in_transition[tls] = False
 
         # Gather new junction states
@@ -423,7 +464,7 @@ class SumoCorridorEnv:
                     queue=int(traci.lane.getLastStepHaltingNumber(lane)),
                     vehicles=int(traci.lane.getLastStepVehicleNumber(lane)),
                     waiting_time=float(traci.lane.getWaitingTime(lane)),
-                    occupancy=float(traci.lane.getLastStepOccupancy(lane)),
+                    occupancy=float(traci.lane.getLastStepOccupancy(lane)) / 100.0,
                 )
             )
 
@@ -436,7 +477,7 @@ class SumoCorridorEnv:
                     queue=int(traci.lane.getLastStepHaltingNumber(out)),
                     vehicles=int(traci.lane.getLastStepVehicleNumber(out)),
                     waiting_time=float(traci.lane.getWaitingTime(out)),
-                    occupancy=float(traci.lane.getLastStepOccupancy(out)),
+                    occupancy=float(traci.lane.getLastStepOccupancy(out)) / 100.0,
                 )
             )
 
@@ -472,6 +513,12 @@ class SumoCorridorEnv:
         curr_phase = self.current_phases[tls_id]
 
         return JunctionState(
+            lane_emissions=tuple(LaneEmissions(
+                lane, max(0.0, traci.lane.getCO2Emission(lane)),
+                max(0.0, traci.lane.getNOxEmission(lane)),
+                max(0.0, traci.lane.getFuelConsumption(lane)),
+                max(0.0, traci.lane.getPMxEmission(lane)),
+            ) for lane in controlled_lanes),
             tls_id=tls_id,
             time=sim_time,
             num_phases=num_phases,

@@ -1,5 +1,22 @@
 # FlowMind: Team Guide
 
+## Modèle RL dédié aux émissions
+
+Entraînement PPO, fine-tuning et comparaison des trois méthodes : [guide français](docs/ENTRAINEMENT_EMISSIONS_FR.md).
+Le modèle de vérification fourni est expérimental, sans preuve de gain de performance.
+
+## Dashboard local et évaluation
+
+Double-cliquez sur `Lancer-dashboard.cmd` ou lancez `python scripts/dashboard.py`.
+Le navigateur permet de lancer SUMO, enregistrer les métriques et comparer les
+contrôleurs disponibles. Instructions complètes : [EVALUATION_FR.md](EVALUATION_FR.md).
+
+Pour une campagne sans interface :
+
+```powershell
+python scripts/evaluate.py --seconds 600 --seeds 100 101 --controllers fixed_time max_pressure flow_heuristic
+```
+
 **Validation: Wed 28 Oct. Everything must work by Sat 24 Oct.**
 
 ## 1. The project in one minute
