@@ -105,9 +105,14 @@ class IncidentAgent(Specialist):
             green_time, left = self._green_check(lid, window)
             judged = green_time >= min_green  # the lane got a fair chance to move
             moving = judged and left >= min_left
-            full = lane.queue >= min_queue and lane.occupancy > min_occ
+            # "full": occupancy high, or every car on the lane stands still. The
+            # second case catches short lanes whose queue spills further upstream
+            # (seen in SUMO: 7 stuck cars on 83 m = occupancy 0.36, never 0.6).
+            all_halted = lane.queue == lane.vehicles
+            full = lane.queue >= min_queue and (lane.occupancy > min_occ or all_halted)
 
-            if moving or lane.occupancy < clear_occ or lane.queue < min_queue:
+            emptied = lane.occupancy < clear_occ and not all_halted
+            if moving or emptied or lane.queue < min_queue:
                 # idea 6: vehicles leave again, or the lane emptied
                 # (hysteresis: a lower threshold to release than to alert)
                 self._clear(lid)

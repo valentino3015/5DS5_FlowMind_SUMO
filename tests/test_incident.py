@@ -76,6 +76,11 @@ def test_creeping_cars_do_not_hide_the_blockage():
     assert first_claim(lane_sequence(queues, [10] * 20)) is not None
 
 
+def test_detects_short_lane_where_every_car_is_stuck():
+    # Seen in SUMO on a short 83 m lane: 7 stuck cars, occupancy only 0.36.
+    assert first_claim(lane_sequence([7] * 20, [7] * 20, occupancy=0.36)) is not None
+
+
 def test_no_false_alarm_on_full_lane_that_drains():
     # A long queue at green that really leaves: vehicle count goes down.
     vehicles = [12, 9, 6, 12] * 5
