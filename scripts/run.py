@@ -22,6 +22,7 @@ if str(ROOT) not in sys.path:
 from flowmind.agents.baselines import FixedTime, MaxPressure
 from flowmind.agents.flow import FlowAgent
 from flowmind.env import SumoCorridorEnv
+from flowmind.kpis import print_kpi_report
 
 
 def load_config() -> dict:
@@ -112,6 +113,11 @@ def main():
 
         print(f"\nSimulation finished successfully after {step_count} decision steps.")
         print(f"Final Status -> Active Vehicles: {info['vehicle_count']}, Halting: {info['halting_vehicles']}")
+
+        # Compute and print executive KPI summary report
+        controller_name = f"{args.controller} (heuristic)" if args.heuristic else args.controller
+        kpis = env.get_kpis(controller=controller_name)
+        print_kpi_report(kpis)
 
     finally:
         env.close()

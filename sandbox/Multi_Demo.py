@@ -44,6 +44,8 @@ from sumo_rl.exploration import EpsilonGreedy
 
 NETS = os.path.join(os.path.dirname(sumo_rl.__file__), "nets")
 
+print(NETS)
+
 # scenario -> (folder inside nets/, net file, default route file)
 PRESETS = {
     "cologne3": ("RESCO/cologne3", "cologne3.net.xml", "cologne3.rou.xml"),          # 3 real intersections
