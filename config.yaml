@@ -18,7 +18,7 @@ signals:
 
 shield:
   ped_clearance_speed: 0.8   # walking speed used to check a crossing is clear (m/s)
-  ped_max_wait: 90           # pedestrians never wait longer than this (s)
+  ped_max_wait: 60           # force pedestrian service at the hard wait cap (s)
   spillback_threshold: 0.75  # suppress green switch if ANY downstream lane exceeds this occupancy
 
 orchestrator:
@@ -46,8 +46,11 @@ bus:
   detect_distance: 150       # react when the bus is closer than this (m)
 
 pedestrian:
-  min_waiting: 1             # at least this many people waiting
-  max_wait: 60               # ask for control after this wait (s)
+  min_waiting: 4             # normal request starts when a group has formed
+  max_wait: 5                # begin batching after this wait (s)
+  hard_wait: 60              # serve even 1-3 pedestrians after this wait (s)
+  batch_service_after: 35    # serve a normal group after enough vehicle green (s)
+  large_group_priority: 10   # a large group may request before that window
 
 incident:
   halt_time: 60              # a lane stopped this long may be blocked (s)

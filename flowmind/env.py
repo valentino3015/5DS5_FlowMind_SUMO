@@ -105,6 +105,7 @@ class SumoCorridorEnv:
         self.green_states: dict[str, list[str]] = {}
         self.phase_lanes: dict[str, tuple[tuple[str, ...], ...]] = {}
         self.phase_crossings: dict[str, tuple[tuple[str, ...], ...]] = {}
+        self.crossing_ids: dict[str, tuple[str, ...]] = {}
         self.movements: dict[str, dict[int, list[tuple[str, str]]]] = {}
         # For each tls, map phase -> list of outgoing lane ids
         self.phase_out_lanes: dict[str, list[list[str]]] = {}
@@ -173,10 +174,13 @@ class SumoCorridorEnv:
         self.green_states.clear()
         self.phase_lanes.clear()
         self.phase_crossings.clear()
+        self.crossing_ids.clear()
         self.movements.clear()
         self.current_phases.clear()
         self.time_in_phase.clear()
         self.in_transition.clear()
+
+        network_crossings = self._network_crossing_ids()
 
         for tls in self.tls_ids:
             logics = traci.trafficlight.getAllProgramLogics(tls)
@@ -194,32 +198,40 @@ class SumoCorridorEnv:
             links = traci.trafficlight.getControlledLinks(tls)
 
             p_lanes: list[tuple[str, ...]] = []
+            p_crossings: list[tuple[str, ...]] = []
             p_out_lanes: list[list[str]] = []
             tls_moves: dict[int, list[tuple[str, str]]] = {}
 
             for p_idx, state_str in enumerate(self.green_states[tls]):
                 active_lanes = set()
+                active_crossings = set()
                 active_out = []
                 moves = []
                 for sig_idx, char in enumerate(state_str):
                     if char in ("G", "g") and sig_idx < len(links):
                         for link in links[sig_idx]:
                             src, dst = link[0], link[1]
+                            for lane_id in link[:3]:
+                                edge_id = self._edge_for_lane(lane_id)
+                                if edge_id in network_crossings:
+                                    active_crossings.add(edge_id)
                             active_lanes.add(src)
                             if not dst.startswith(":"):
                                 moves.append((src, dst))
                                 if dst not in active_out:
                                     active_out.append(dst)
                 p_lanes.append(tuple(sorted(active_lanes)))
+                p_crossings.append(tuple(sorted(active_crossings)))
                 p_out_lanes.append(active_out)
                 tls_moves[p_idx] = moves
 
             self.phase_lanes[tls] = tuple(p_lanes)
+            self.phase_crossings[tls] = tuple(p_crossings)
+            self.crossing_ids[tls] = tuple(
+                sorted({crossing for phase in p_crossings for crossing in phase})
+            )
             self.phase_out_lanes[tls] = p_out_lanes
             self.movements[tls] = tls_moves
-            num_g = len(self.green_states[tls])
-            self.phase_crossings[tls] = tuple(() for _ in range(num_g))
-
             # Cache static controlled lanes, unique outgoing lanes, and internal junction via-lanes
             ctrl = list(dict.fromkeys(traci.trafficlight.getControlledLanes(tls)))
             self.cached_controlled_lanes[tls] = ctrl
@@ -251,6 +263,76 @@ class SumoCorridorEnv:
                 self.cached_lane_lengths[l] = float(traci.lane.getLength(l))
             except Exception:
                 self.cached_lane_lengths[l] = 50.0
+
+    def _network_crossing_ids(self) -> set[str]:
+        """Read crossing edge IDs from whichever SUMO network is configured.
+
+        This deliberately discovers topology from ``self.net_file`` instead of
+        assuming junction names, crossing numbers or a particular scenario.
+        """
+        crossings: set[str] = set()
+        try:
+            for _, elem in ET.iterparse(str(self.net_file), events=("start",)):
+                if elem.tag == "edge" and elem.attrib.get("function") == "crossing":
+                    edge_id = elem.attrib.get("id")
+                    if edge_id:
+                        crossings.add(edge_id)
+        except (OSError, ET.ParseError):
+            pass
+        return crossings
+
+    @staticmethod
+    def _edge_for_lane(lane_id: str) -> str:
+        """Return the parent edge of a SUMO lane, including internal lanes."""
+        if not lane_id:
+            return ""
+        try:
+            return str(traci.lane.getEdgeID(lane_id))
+        except Exception:
+            return lane_id.rsplit("_", 1)[0]
+
+    def _build_crossings(self, tls_id: str) -> tuple[Crossing, ...]:
+        """Measure waiting and crossing pedestrians for one arbitrary TLS."""
+        ids = self.crossing_ids.get(tls_id, ())
+        if not ids:
+            return ()
+
+        waiting: dict[str, list[str]] = {crossing_id: [] for crossing_id in ids}
+        try:
+            people = traci.person.getIDList()
+        except Exception:
+            people = ()
+
+        for person_id in people:
+            try:
+                next_edge = traci.person.getNextEdge(person_id)
+            except Exception:
+                continue
+            if next_edge in waiting:
+                waiting[next_edge].append(person_id)
+
+        result = []
+        for crossing_id in ids:
+            person_ids = waiting[crossing_id]
+            waits = []
+            for person_id in person_ids:
+                try:
+                    waits.append(float(traci.person.getWaitingTime(person_id)))
+                except Exception:
+                    pass
+            try:
+                on_crossing = len(traci.edge.getLastStepPersonIDs(crossing_id))
+            except Exception:
+                on_crossing = 0
+            result.append(
+                Crossing(
+                    crossing_id=crossing_id,
+                    waiting=len(person_ids),
+                    max_wait=max(waits, default=0.0),
+                    on_crossing=on_crossing,
+                )
+            )
+        return tuple(result)
 
     def is_box_occupied(self, tls: str) -> bool:
         """Return True if any vehicles are currently moving or stopped inside this junction box."""
@@ -481,7 +563,7 @@ class SumoCorridorEnv:
             lanes=tuple(in_lanes),
             out_lanes=tuple(out_lanes),
             special_vehicles=tuple(specials),
-            crossings=self.phase_crossings[tls_id],
+            crossings=self._build_crossings(tls_id),
             phase_lanes=self.phase_lanes[tls_id],
             phase_crossings=self.phase_crossings[tls_id],
             phase_out_lanes=tuple(
