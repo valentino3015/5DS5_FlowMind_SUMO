@@ -47,7 +47,7 @@ def test_flow_heuristic_picks_highest_queue():
     action = agent.act(s, [], all_allowed)
     assert action == 0
     assert "heuristic" in agent.explain()
-    assert "highest queue" in agent.explain()
+    assert "phase 0" in agent.explain()  # V3 format: "heuristic: phase 0 (score ..., starvation_k=...)"
 
 
 def test_flow_heuristic_respects_shield_allowed_mask():
@@ -97,18 +97,18 @@ def test_encode_state_shape_and_range():
     assert obs.dtype == np.float32
     assert obs.ndim == 1
 
-    # Features:
-    # incoming lanes * 3  (queue, wait, occ)
-    # + outgoing lanes * 1 (occupancy only)
+    # Features (per FLOW_AGENT.md §3):
+    # incoming lanes × 4  (EMA queue, wait, occupancy, dQ/dt)
+    # + outgoing lanes × 1 (occupancy only)
     # + num_phases one-hot
     # + 1 time_in_phase
     # + num_phases downstream spillback signals
     expected_dim = (
-        len(s.lanes) * 3
+        len(s.lanes) * 4          # EMA queue + wait + occ + dQ/dt
         + len(s.out_lanes) * 1
-        + s.num_phases           # one-hot
-        + 1                      # time_in_phase
-        + s.num_phases           # per-phase downstream spillback
+        + s.num_phases             # one-hot
+        + 1                        # time_in_phase
+        + s.num_phases             # per-phase downstream spillback
     )
     assert obs.shape[0] == expected_dim, (
         f"Expected {expected_dim} features, got {obs.shape[0]}"
@@ -120,7 +120,8 @@ def test_encode_state_shape_and_range():
     assert not np.any(np.isnan(obs))
 
     # Check phase one-hot encoding
-    one_hot_start = len(s.lanes) * 3 + len(s.out_lanes) * 1
+    # Layout: (queue + wait + occ + dQ/dt) per incoming lane, then out_lane occ, then one-hot
+    one_hot_start = len(s.lanes) * 4 + len(s.out_lanes) * 1
     phase_slice = obs[one_hot_start : one_hot_start + s.num_phases]
     assert np.sum(phase_slice) == 1.0
     assert phase_slice[s.phase] == 1.0
