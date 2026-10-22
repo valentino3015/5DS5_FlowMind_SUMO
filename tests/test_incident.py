@@ -10,8 +10,8 @@ from flowmind.contracts import make_example_state
 CONFIG = yaml.safe_load((Path(__file__).parent.parent / "config.yaml").read_text())
 
 
-def lane_sequence(queues, vehicles, occupancy=0.72, dt=5.0):
-    """north_in_0 with the given queue and vehicle counts, while phase 0 gives it green.
+def lane_sequence(queues, vehicles, occupancy=0.72, dt=5.0, lane_ids=("north_in_0",)):
+    """lane_ids (default north_in_0) with the given queue and vehicle counts, while phase 0 gives them green.
 
     0.72 is what SUMO reports for a fully jammed lane (it counts car length, not gaps).
     """
@@ -20,16 +20,36 @@ def lane_sequence(queues, vehicles, occupancy=0.72, dt=5.0):
     for i, (q, v) in enumerate(zip(queues, vehicles)):
         lanes = tuple(
             replace(l, queue=q, vehicles=v, occupancy=occupancy, waiting_time=90 + 5 * i)
-            if l.lane_id == "north_in_0" else l
+            if l.lane_id in lane_ids else l
             for l in base.lanes
         )
         out.append(replace(base, time=1200.0 + i * dt, phase=0, lanes=lanes))
     return out
 
 
-def blocked_sequence(steps=20):
-    """north_in_0 stays full and no vehicle leaves it."""
-    return lane_sequence([9] * steps, [10] * steps)
+def blocked_sequence(steps=20, lane_ids=("north_in_0",)):
+    """lane_ids stay full and no vehicle leaves them."""
+    return lane_sequence([9] * steps, [10] * steps, lane_ids=lane_ids)
+
+
+def blocked_agent(lane_ids=("north_in_0",), model=None):
+    """An agent that has detected lane_ids as blocked, and the last state it saw."""
+    agent = IncidentAgent(CONFIG["incident"], model=model)
+    states = blocked_sequence(lane_ids=lane_ids)
+    for state in states:
+        agent.wants_control(state, [])
+    assert set(lane_ids) <= set(agent.blocked)
+    return agent, states[-1]
+
+
+class FakeModel:
+    """Stands in for a trained PPO: always proposes the same phase."""
+
+    def __init__(self, phase):
+        self.phase = phase
+
+    def predict(self, obs, deterministic=True):
+        return self.phase, None
 
 
 def first_claim(states):
@@ -80,14 +100,36 @@ def test_lets_go_to_recheck_then_releases_when_lane_moves():
     assert claim is None and not agent.blocked
 
 
-def test_never_serves_the_blocked_lane():
-    agent = IncidentAgent(CONFIG["incident"])
-    states = blocked_sequence()
-    for state in states:
-        agent.wants_control(state, [])
-    last = states[-1]
-    phase = agent.act(last, [], [True] * last.num_phases)
-    assert "north_in_0" not in last.phase_lanes[phase]
+def test_never_wastes_green_on_a_fully_blocked_phase():
+    # Phase 0 serves only north_in_0 and south_in_0: both blocked.
+    agent, last = blocked_agent(("north_in_0", "south_in_0"))
+    assert agent.act(last, [], [True] * last.num_phases) != 0
+
+
+def test_mixed_phase_is_scored_without_its_blocked_lane():
+    # Phase 0 still serves south_in_0, but nobody waits there: the 9 cars
+    # stuck on north_in_0 must not count, so phase 1 (4 cars) wins.
+    agent, last = blocked_agent()
+    lanes = tuple(replace(l, queue=0) if l.lane_id == "south_in_0" else l for l in last.lanes)
+    last = replace(last, lanes=lanes, time_in_phase=30.0)
+    assert agent.act(last, [], [True] * last.num_phases) == 1
+
+
+def test_ppo_choice_is_used_when_safe():
+    agent, last = blocked_agent(("north_in_0", "south_in_0"), model=FakeModel(2))
+    assert agent.act(last, [], [True] * last.num_phases) == 2
+    assert agent.explain().startswith("PPO response")
+
+
+def test_rule_replaces_an_unsafe_ppo_choice():
+    agent, last = blocked_agent(("north_in_0", "south_in_0"), model=FakeModel(0))
+    assert agent.act(last, [], [True] * last.num_phases) != 0
+    assert agent.explain().startswith("PPO chose unsafe")
+
+
+def test_observation_has_a_fixed_size():
+    agent, last = blocked_agent()
+    assert agent.encode(last).shape == (6 * CONFIG["incident"]["max_phases"] + 1,)
 
 
 def test_no_false_alarm_on_normal_traffic():

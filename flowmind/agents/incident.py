@@ -12,12 +12,17 @@ How it works, every 5 s:
                     stuck; stuck for halt_time = blocked; vehicles leaving = released
     3. wants_control : claim control while a blockage is recently confirmed,
                     then let go so the lane gets a green that re-tests it
-    4. act        : serve the phase that frees the most vehicles, while never
-                    giving green to a blocked lane or feeding a saturated exit
+    4. act        : PPO picks the green phase (Notion: "RL for the response");
+                    without a model, the rule serves the longest queue that can
+                    move (the baseline). Never a phase whose lanes are all
+                    blocked, never one feeding a saturated exit.
 """
 from __future__ import annotations
 
 from collections import defaultdict, deque
+from pathlib import Path
+
+import numpy as np
 
 from flowmind.agents.base import Specialist
 from flowmind.contracts import Claim, Event, JunctionState
@@ -28,15 +33,29 @@ class IncidentAgent(Specialist):
 
     name = "incident"
 
-    def __init__(self, params: dict | None = None, movements: dict | None = None):
+    def __init__(self, params: dict | None = None, movements: dict | None = None,
+                 model: object | None = None):
         """params: the "incident" section of config.yaml.
 
         movements: {phase: [(incoming lane, outgoing lane), ...]} from
         env.get_phase_movements(tls_id). Optional: when it is missing, the
         box-blocking check is simply skipped.
+
+        model: a trained PPO policy for the response (act). If None and
+        params["use_ppo"] is true, it is loaded from params["model_path"].
+        Without a model, act() uses the rule-based response (the baseline).
         """
         super().__init__(params)
         self.movements = movements or {}
+        self.model = model
+        if self.model is None and self.params.get("use_ppo") and "model_path" in self.params:
+            path = Path(self.params["model_path"])
+            if path.is_file():
+                try:
+                    from stable_baselines3 import PPO  # lazy, like flow.py
+                    self.model = PPO.load(str(path))
+                except Exception:
+                    self.model = None
         self.history: dict[str, deque] = defaultdict(lambda: deque(maxlen=24))
         self.suspect_since: dict[str, float] = {}
         self.blocked: dict[str, float] = {}
@@ -147,19 +166,38 @@ class IncidentAgent(Specialist):
     # 4. Act (IDEAS.md ideas 3 and 5)
     # ------------------------------------------------------------------
     def act(self, state: JunctionState, events: list[Event], allowed: list[bool]) -> int:
+        """PPO response if a model is loaded, otherwise the rule (baseline).
+
+        PPO may only pick a safe phase; anything else falls back to the rule.
+        """
+        if self.model is not None:
+            pred, _ = self.model.predict(self.encode(state), deterministic=True)
+            action = int(pred)
+            safe = self.safe_phases(state, allowed)
+            if action < len(safe) and safe[action]:
+                self.last_reason = f"PPO response: phase {action}"
+                return action
+            phase = self.rule_act(state, events, allowed)
+            self.last_reason = f"PPO chose unsafe phase {action}, rule used: {self.last_reason}"
+            return phase
+        return self.rule_act(state, events, allowed)
+
+    def rule_act(self, state: JunctionState, events: list[Event], allowed: list[bool]) -> int:
+        """Rule-based response, the baseline PPO must beat: serve the longest safe queue."""
+        safe = self.safe_phases(state, allowed)
         blocked = set(self._active_blocks(state.time))
-        saturated = self._saturated_out_lanes(state)
+        hold = float(self.params.get("hold_green", 20))
+        if safe[state.phase] and state.time_in_phase < hold:
+            # each switch costs 5 s of yellow + all-red: do not flip every tick
+            self.last_reason = f"incident: keeping safe phase {state.phase} ({state.time_in_phase:.0f}s < {hold:.0f}s)"
+            return state.phase
         best, best_score = None, -1
 
         for p in range(state.num_phases):
-            if not allowed[p]:
+            if not safe[p]:
                 continue
             lanes = set(state.phase_lanes[p])
-            if lanes & blocked:
-                continue  # idea 3: never serve a lane that cannot move
-            if self._feeds_saturated(p, saturated):
-                continue  # idea 5: never discharge into a full exit
-            score = sum(l.queue for l in state.lanes if l.lane_id in lanes)
+            score = sum(l.queue for l in state.lanes if l.lane_id in lanes - blocked)
             if score > best_score:
                 best, best_score = p, score
 
@@ -172,6 +210,55 @@ class IncidentAgent(Specialist):
             f"({best_score} vehicles waiting)"
         )
         return best
+
+    # ------------------------------------------------------------------
+    # 5. What PPO sees (one block of numbers per phase)
+    # ------------------------------------------------------------------
+    def safe_phases(self, state: JunctionState, allowed: list[bool]) -> list[bool]:
+        """Phases allowed by the shield that are not entirely blocked (idea 3)
+        and do not feed a saturated exit (idea 5).
+
+        A phase that also serves healthy lanes stays allowed: its green is not
+        wasted. Forbidding it starved the healthy lanes and lost to fixed time.
+        """
+        blocked = set(self._active_blocks(state.time))
+        saturated = self._saturated_out_lanes(state)
+        return [
+            allowed[p]
+            and not set(state.phase_lanes[p]) <= blocked
+            and not self._feeds_saturated(p, saturated)
+            for p in range(state.num_phases)
+        ]
+
+    def encode(self, state: JunctionState) -> np.ndarray:
+        """Fixed-size observation, so one PPO policy serves every junction.
+
+        For each phase slot (max_phases of them): queue and waiting time it
+        would serve on lanes that can move, serves a blocked lane, feeds a
+        saturated exit, is the current phase, exists. Then time in phase.
+        """
+        n = int(self.params.get("max_phases", 4))
+        norm_q = float(self.params.get("norm_queue", 20))
+        norm_w = float(self.params.get("norm_wait", 300))
+        blocked = set(self._active_blocks(state.time))
+        saturated = self._saturated_out_lanes(state)
+        lanes = {l.lane_id: l for l in state.lanes}
+        obs = []
+        for p in range(n):
+            if p >= state.num_phases:
+                obs += [0.0] * 6
+                continue
+            served = [lanes[i] for i in state.phase_lanes[p] if i in lanes and i not in blocked]
+            obs += [
+                min(sum(l.queue for l in served) / norm_q, 5.0),
+                min(sum(l.waiting_time for l in served) / norm_w, 5.0),
+                float(bool(set(state.phase_lanes[p]) & blocked)),
+                float(self._feeds_saturated(p, saturated)),
+                float(p == state.phase),
+                1.0,
+            ]
+        obs.append(min(state.time_in_phase / norm_w, 5.0))
+        return np.array(obs, dtype=np.float32)
 
     # ------------------------------------------------------------------
     # Helpers
