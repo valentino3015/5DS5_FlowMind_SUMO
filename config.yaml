@@ -72,6 +72,7 @@ incident:
     block_start: [30, 120]     # breakdown starts this long after the episode begins (s)
     block_duration: [600, 900] # breakdown lasts this long (s): most of the episode is in incident
     after_block: 120       # episode continues this long after the car leaves (s)
+    neighbour_weight: 0.5  # reward also counts cars waiting at the other junctions, at this weight
     n_steps: 128           # PPO: decisions per simulation before each update
     batch_size: 256        # PPO: decisions per gradient step
     learning_rate: 0.0003

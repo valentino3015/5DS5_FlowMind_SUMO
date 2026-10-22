@@ -16,7 +16,8 @@ One episode:
        single stopped car is just overtaken and no jam forms.
     2. run cologne3 with fixed-time lights; the rule-based detector watches
     3. when the detector claims a junction, PPO decides that junction's phase
-    4. reward = minus the vehicles waiting on lanes that can move,
+    4. reward = minus the vehicles waiting on lanes that can move (plus, at
+       neighbour_weight, those waiting at the other junctions),
        minus a penalty if PPO picks a phase it may not use (the rule is used then)
 
 Training seeds start at incident.train.seed; evaluation uses other seeds.
@@ -156,7 +157,10 @@ class IncidentTrainEnv(gym.Env):
         det, st = self.det[tls], self.states[tls]
         blocked = set(det.blocked)
         waiting = sum(l.queue for l in st.lanes if l.lane_id not in blocked)
-        return -waiting / float(self.params["norm_queue"])
+        # Neighbours count too, so PPO does not push the jam onto the next junction.
+        neighbours = sum(l.queue for t, s in self.states.items() if t != tls for l in s.lanes)
+        weight = float(self.train["neighbour_weight"])
+        return -(waiting + weight * neighbours) / float(self.params["norm_queue"])
 
     # --- gym API -------------------------------------------------------
     def reset(self, seed: int | None = None, options: dict | None = None):
