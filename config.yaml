@@ -90,5 +90,12 @@ overlay:                     # sumo-gui labels: color of the dot per agent in co
     fixed_time: [80, 80, 80, 255]
     operator: [0, 0, 0, 255]
 
+xai:                         # explanation layer (xai/, scripts/explain.py), never controls a light
+  llm_url: http://localhost:11434   # local Ollama server (optional: without it, template answers are used)
+  llm_model: qwen2.5:3b      # small local model (1.9 GB, chosen over gemma3:4b in tests); only rewords facts
+  llm_timeout_s: 120         # give up and use the template answer after this (s)
+  max_rows: 4                # at most this many log decisions retrieved per question (small model: keep it short)
+  perturb_cars: 5            # sensitivity: cars added to a lane in the "more cars" test
+
 evaluation:
   seeds: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109]

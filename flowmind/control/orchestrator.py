@@ -41,6 +41,13 @@ class Decision:
     explanation: str     # the agent's explain(): why this phase
     latency_ms: float = 0.0                # how long decide() took (ms)
     fixed_time_would: int | None = None    # what-if: phase the fixed timer would have chosen
+    claims: str = ""     # every agent that asked, "name:urgency:reason; ..." (for "why not" explanations)
+
+
+def claims_text(claims: dict, rank) -> str:
+    """{"flow": Claim(0.1, "normal traffic")} -> "flow:0.10:normal traffic", most important first."""
+    names = sorted(claims, key=lambda n: (rank(n), -claims[n].urgency))
+    return "; ".join(f"{n}:{claims[n].urgency:.2f}:{claims[n].reason}" for n in names)
 
 
 class Orchestrator:
@@ -124,6 +131,7 @@ class Orchestrator:
             final=final,
             shield_note=note,
             explanation=agent.explain(),
+            claims=claims_text(claims, self.rank),
         ))
 
     def _finish(self, started: float, state: JunctionState, allowed: list[bool], d: Decision) -> Decision:

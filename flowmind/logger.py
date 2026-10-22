@@ -9,16 +9,20 @@ Writes into one folder per run (runs/<date>_<controller>_seed<N>/):
 - decisions.log: the same decisions as plain sentences, e.g.
   [Step 28 | t=140 s | J2] Active: emergency | Phase: 0 | Reason: ... | Shield: approved
 - summary.csv: the totals at the end of the run
+- states.jsonl (only with save_states=True): every JunctionState as JSON, for the
+  XAI sensitivity analysis (xai/sensitivity.py)
 """
 from __future__ import annotations
 
 import csv
+import json
 import xml.etree.ElementTree as ET
 from collections import Counter
+from dataclasses import asdict
 from pathlib import Path
 
 COLUMNS = ["time", "tls_id", "agent", "urgency", "reason", "proposed", "final",
-           "shield_note", "explanation", "events", "latency_ms", "fixed_time_would"]
+           "shield_note", "explanation", "events", "latency_ms", "fixed_time_would", "claims"]
 
 
 def event_text(e) -> str:
@@ -26,17 +30,20 @@ def event_text(e) -> str:
     if e.kind == "emergency":
         return f"emergency {e.data.get('vehicle_id', '')} eta {e.data.get('eta', 0):.0f}s"
     cause = e.data.get("cause", "incident")
+    if cause == "spillback":  # e.g. "spillback: road J1->J2 is 43% full"
+        return f"spillback: {e.data.get('reason', 'from ' + str(e.data.get('from_tls', '?')))}"
     return f"{cause} from {e.data.get('from_tls', '?')}"
 
 
 class DecisionLogger:
-    def __init__(self, run_dir: Path, latency_budget_ms: float = 50.0):
+    def __init__(self, run_dir: Path, latency_budget_ms: float = 50.0, save_states: bool = False):
         self.run_dir = Path(run_dir)
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self.file = open(self.run_dir / "decisions.csv", "w", newline="", encoding="utf-8")
         self.writer = csv.writer(self.file)
         self.writer.writerow(COLUMNS)
         self.text = open(self.run_dir / "decisions.log", "w", encoding="utf-8")
+        self.states = open(self.run_dir / "states.jsonl", "w", encoding="utf-8") if save_states else None
         self.latency_budget_ms = latency_budget_ms
         self.control_steps = Counter()  # how many steps each agent was in control
         self.steps = Counter()          # decision number per junction
@@ -49,7 +56,8 @@ class DecisionLogger:
         warnings = "; ".join(event_text(e) for e in events)
         self.writer.writerow([d.time, d.tls_id, d.agent, round(d.urgency, 2), d.reason, d.proposed,
                               d.final, d.shield_note, d.explanation, warnings, d.latency_ms,
-                              "" if d.fixed_time_would is None else d.fixed_time_would])
+                              "" if d.fixed_time_would is None else d.fixed_time_would,
+                              getattr(d, "claims", "")])
         self.control_steps[d.agent] += 1
         self.steps[d.tls_id] += 1
         self.latencies.append(d.latency_ms)
@@ -67,6 +75,13 @@ class DecisionLogger:
             line += f" | Warnings: {warnings}"
         self.text.write(line + "\n")
 
+    def log_state(self, state, events: list = ()) -> None:
+        """Save one JunctionState and the coordinator's warnings for it as a JSON line
+        (only when save_states is on)."""
+        if self.states is not None:
+            line = {"state": asdict(state), "events": [asdict(e) for e in events]}
+            self.states.write(json.dumps(line) + "\n")
+
     def stats(self) -> dict:
         """Decision-time and what-if figures for the summary."""
         result = {}
@@ -82,6 +97,8 @@ class DecisionLogger:
         """Write summary.csv (summary + share of steps per agent) and close the files."""
         self.file.close()
         self.text.close()
+        if self.states is not None:
+            self.states.close()
         total = sum(self.control_steps.values()) or 1
         rows = {}
         for key, value in summary.items():

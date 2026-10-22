@@ -113,6 +113,8 @@ def main():
     parser.add_argument("--override", action="append", default=[], metavar="TLS:PHASE:START:DURATION",
                         help="orchestrated only: operator forces a phase, e.g. J2:2:300:30 (repeatable)")
     parser.add_argument("--run-dir", default=None, help="folder for the results (default: runs/<date>_...)")
+    parser.add_argument("--save-states", action="store_true",
+                        help="also save every junction state to states.jsonl (for scripts/explain.py --sensitivity)")
     args = parser.parse_args()
 
     config = load_config()
@@ -141,7 +143,8 @@ def main():
 
     run_dir = Path(args.run_dir) if args.run_dir else default_run_dir(args.controller, active_scenario, seed_text)
     tripinfo = run_dir / "tripinfo.xml"
-    logger = DecisionLogger(run_dir, latency_budget_ms=config["orchestrator"]["max_decision_ms"])
+    logger = DecisionLogger(run_dir, latency_budget_ms=config["orchestrator"]["max_decision_ms"],
+                            save_states=args.save_states)
 
     env = SumoCorridorEnv(config=config, use_gui=args.gui, seed=args.seed,
                           begin_time=begin_time, tripinfo_file=tripinfo)
@@ -192,6 +195,7 @@ def main():
             decisions = []
 
             for tls, st in states.items():
+                logger.log_state(st, events.get(tls, []))  # only written with --save-states
                 if args.controller == "orchestrated":
                     allowed = shield.allowed(st, config)
                     decision = orchestrators[tls].decide(st, events.get(tls, []), allowed)
