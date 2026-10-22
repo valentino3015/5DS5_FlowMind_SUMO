@@ -13,6 +13,10 @@ The other 8 junctions run controller C (../rule_tsp.py, C_tuned parameters).
 Episode: warm-up (default 600 s, not learned; B1 runs its fixed-time program), then
 `duration` s (default 3600) of decision ticks every `delta` = 5 s -> 720 steps.
 
+Reward (reward=): "vehicle" (D), "person" (E) or "regular" (F, weight w); see reward.py.
+Observation (obs=): "v1" (default, 24 values; the RL-D / RL-E models) or "v2" (36 values);
+see observation.py.
+
 Action: index k of the next green phase of B1 (0 = E-W, 1 = N-S). Keeping the current
 index keeps the green; another index starts a switch. The agent never sets yellow or
 red: B1Signal runs yellow 3 s + all-red 2 s (= exactly one tick), then the new green.
@@ -26,6 +30,7 @@ yellow == 3 s, all-red == 2 s, 10 s <= green <= 60 s in env.violations (expected
 B1Signal (shield + transitions + monitor) is also used by evaluate.py, so the policy
 drives B1 identically in training and in the evaluation runs.
 """
+import functools
 import os
 import shutil
 import sys
@@ -153,16 +158,21 @@ class BusPriorityEnv(gym.Env):
     metadata = {"render_modes": []}
 
     def __init__(self, reward="vehicle", reward_scale=0.01, warmup=600.0, duration=3600.0,
-                 delta=5, entry_flow=675.0, c_params=None, train_seeds=TRAIN_SEEDS):
+                 delta=5, entry_flow=675.0, c_params=None, train_seeds=TRAIN_SEEDS,
+                 w=1.0, obs="v1"):
         assert delta == YELLOW + ALL_RED, "a switch must fill exactly one tick"
         self.reward_fn = rw.REWARDS[reward]
+        if reward == "regular":
+            self.reward_fn = functools.partial(self.reward_fn, w=w)
         self.reward_name = reward
         self.reward_scale = reward_scale
+        self.w = w
+        self.obs_version = obs
         self.warmup, self.duration, self.delta = warmup, duration, delta
         self.entry_flow = entry_flow
         self.c_params = dict(c_params or C_TUNED)
         self.train_seeds = train_seeds
-        self.observation_space = gym.spaces.Box(ob.LOW, ob.HIGH, dtype=np.float32)
+        self.observation_space = gym.spaces.Box(*ob.bounds(obs), dtype=np.float32)
         self.action_space = gym.spaces.Discrete(len(GREEN_PROGRAM_IDX))
 
         import sumolib
@@ -241,7 +251,10 @@ class BusPriorityEnv(gym.Env):
         self.t_end = t + self.duration
         self.sensor.reset()
         self.state = self._sense(t)
-        return ob.observe(self.state), {"sumo_seed": self.sumo_seed, "t": t}
+        return self._observe(), {"sumo_seed": self.sumo_seed, "t": t}
+
+    def _observe(self):
+        return ob.observe(self.state, version=self.obs_version)
 
     def _sense(self, t):
         return self.sensor.sense(self.sim, t, self.signal.current_green,
@@ -264,7 +277,7 @@ class BusPriorityEnv(gym.Env):
                 "switch": switch, "reward_raw": r_raw, **terms}
         if truncated:
             info["episode_stats"] = self.episode_stats()
-        return ob.observe(self.state), r, False, truncated, info
+        return self._observe(), r, False, truncated, info
 
     def episode_stats(self):
         return {"sumo_seed": self.sumo_seed, "steps": self.ep_steps, "reward": self.ep_reward,

@@ -6,6 +6,11 @@ Main rewards (delay incurred this tick, as in the BO4 delay metrics):
 D  reward_vehicle(prev, state) = -(halting vehicles on the incoming lanes) * dt
 E  reward_person(prev, state)  = -(halting persons on the incoming lanes) * dt,
    cars weighted CAR_OCCUPANCY, buses their persons_on_board.
+F  reward_regular(prev, state, w) = E
+   - w * sum over halting buses at B1 of (max(0, lateness) / H) * persons_on_board * dt:
+   a queued late bus costs its passengers' delay (in E) plus w x its lateness in
+   headways, so the agent is pushed to serve late buses (regularity) and not early ones.
+   Unknown lateness (no previous passage on record) counts as 0.
 "Halting" = below 0.1 m/s (LaneState.halting_count). A bus dwelling at a stop is
 halted but is not signal delay, so it is excluded (VehicleInfo.at_stop). Car
 halting = lane halting - all halting buses; the sensor covers the whole approach,
@@ -18,6 +23,7 @@ Their episode sum telescopes to (waiting at start - waiting at end), ~0 for any 
 """
 CAR_OCCUPANCY = 1.3
 TICK = 5.0            # s, decision interval
+H = 180.0             # s, scheduled headway
 HALT_SPEED = 0.1      # m/s, SUMO's halting threshold
 
 
@@ -36,6 +42,11 @@ def halting_counts(state, car_occupancy=CAR_OCCUPANCY):
     return cars + len(queued), persons, cars, len(queued)
 
 
+def _queued_buses(state):
+    """Halting buses on the incoming lanes that are not dwelling at a stop."""
+    return [b for b in _incoming_buses(state) if b.speed < HALT_SPEED and not b.at_stop]
+
+
 def reward_vehicle(prev, state, dt=TICK):
     veh, _, cars, buses = halting_counts(state)
     r = -veh * dt
@@ -50,6 +61,15 @@ def reward_person(prev, state, dt=TICK, car_occupancy=CAR_OCCUPANCY):
     return r, {"r_person": r, "halting_persons": persons, "halting_bus_persons": bus_persons,
                "halting_veh": float(veh), "halting_buses": float(buses),
                "queue": float(state.total_queue())}
+
+
+def reward_regular(prev, state, dt=TICK, w=1.0, headway=H, car_occupancy=CAR_OCCUPANCY):
+    r_person, terms = reward_person(prev, state, dt, car_occupancy)
+    late = sum(max(0.0, b.headway_lateness or 0.0) / headway * (b.persons_on_board or 0)
+               for b in _queued_buses(state))
+    r_late = -w * late * dt
+    r = r_person + r_late
+    return r, {"r_regular": r, **terms, "r_late": r_late, "late_person_headways": late}
 
 
 # ---------------------------------------------------------------- reference (phase 1)
@@ -86,5 +106,5 @@ def reward_person_diff(prev, state, car_occupancy=CAR_OCCUPANCY):
                "queue": float(state.total_queue())}
 
 
-REWARDS = {"vehicle": reward_vehicle, "person": reward_person,
+REWARDS = {"vehicle": reward_vehicle, "person": reward_person, "regular": reward_regular,
            "vehicle_diff": reward_vehicle_diff, "person_diff": reward_person_diff}
