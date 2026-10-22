@@ -38,6 +38,8 @@ flow:
   max_queue: 25.0
   max_wait: 120.0
   ema_alpha: 0.25        # EMA smoothing for queue observations (smoother than 0.4)
+  min_green: 10          # minimum green time before the heuristic may switch phase (s)
+  wait_weight: 0.3       # per-lane wait bonus weight; 0 = pure max-pressure, higher = more wait-fairness
 
 emergency:
   detect_distance: 200       # react when the vehicle is closer than this (m)
