@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime
+import os
 from pathlib import Path
 import sys
 import yaml
@@ -68,6 +69,15 @@ def parse_override(text: str) -> tuple[str, int, float, float]:
     """"J2:2:300:30" -> ("J2", 2, 300.0, 30.0): junction, phase, start time, duration."""
     tls, phase, start, duration = text.split(":")
     return tls, int(phase), float(start), float(duration)
+
+
+def default_run_dir(controller: str, scenario: str, seed_text: str, pid: int | None = None) -> Path:
+    """runs/<date-time>_<controller>_<scenario>_seed<N>_p<process id>.
+
+    The process id keeps two runs started in the same second apart
+    (otherwise both write the same tripinfo.xml and the second one crashes)."""
+    pid = os.getpid() if pid is None else pid
+    return ROOT / "runs" / f"{datetime.now():%Y%m%d-%H%M%S}_{controller}_{scenario}_seed{seed_text}_p{pid}"
 
 
 def warning_text(events: list) -> str:
@@ -129,8 +139,7 @@ def main():
     print(f"Scenario  : {active_scenario}")
     print(f"Controller: {args.controller} | GUI: {args.gui} | Seed: {seed_text} | Duration: {args.seconds}s\n")
 
-    default_dir = ROOT / "runs" / f"{datetime.now():%Y%m%d-%H%M%S}_{args.controller}_{active_scenario}_seed{seed_text}"
-    run_dir = Path(args.run_dir) if args.run_dir else default_dir
+    run_dir = Path(args.run_dir) if args.run_dir else default_run_dir(args.controller, active_scenario, seed_text)
     tripinfo = run_dir / "tripinfo.xml"
     logger = DecisionLogger(run_dir, latency_budget_ms=config["orchestrator"]["max_decision_ms"])
 
