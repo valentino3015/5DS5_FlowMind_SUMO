@@ -3,6 +3,7 @@
 Usage:
     python scripts/train_incident.py                 (settings from config.yaml, incident.train)
     python scripts/train_incident.py --timesteps 2000 --n-envs 2   (quick check)
+    python scripts/train_incident.py --resume --timesteps 30000    (continue the saved model)
 
 Notion: "Anomaly detector + RL (PPO) for the response". The detector stays
 rule-based (IncidentAgent.wants_control). PPO only learns act(): which green
@@ -191,6 +192,8 @@ def main():
     parser = argparse.ArgumentParser(description="Train the incident agent's PPO response")
     parser.add_argument("--timesteps", type=int, default=None, help="Override incident.train.timesteps")
     parser.add_argument("--n-envs", type=int, default=None, help="Override incident.train.n_envs")
+    parser.add_argument("--resume", action="store_true",
+                        help="Continue training the saved model instead of starting from zero")
     args = parser.parse_args()
 
     from stable_baselines3 import PPO
@@ -208,20 +211,27 @@ def main():
     print("== Incident agent: PPO training ==")
     print(f"Decisions: {timesteps} | Parallel simulations: {n_envs} | Model: {model_path}\n")
 
-    venv = VecMonitor(SubprocVecEnv([partial(make_env, config, i) for i in range(n_envs)]))
-    model = PPO(
-        "MlpPolicy", venv, verbose=1, seed=int(train["seed"]),
-        n_steps=int(train["n_steps"]), batch_size=int(train["batch_size"]),
-        learning_rate=float(train["learning_rate"]), gamma=float(train["gamma"]),
-        ent_coef=float(train["ent_coef"]),
-    )
+    resume = args.resume and model_path.is_file()
+    # When resuming, shift the ranks so the new episodes differ from the first run's.
+    first_rank = 100 if resume else 0
+    venv = VecMonitor(SubprocVecEnv([partial(make_env, config, first_rank + i) for i in range(n_envs)]))
+    if resume:
+        model = PPO.load(str(model_path), env=venv)
+        print(f"Resuming from {model_path} ({model.num_timesteps} decisions already learned)\n")
+    else:
+        model = PPO(
+            "MlpPolicy", venv, verbose=1, seed=int(train["seed"]),
+            n_steps=int(train["n_steps"]), batch_size=int(train["batch_size"]),
+            learning_rate=float(train["learning_rate"]), gamma=float(train["gamma"]),
+            ent_coef=float(train["ent_coef"]),
+        )
     model.set_logger(configure(str(WORK_DIR / "log"), ["stdout", "csv"]))
     checkpoints = CheckpointCallback(
         save_freq=max(1, int(train["checkpoint_every"]) // n_envs),
         save_path=str(WORK_DIR / "checkpoints"), name_prefix="incident_ppo",
     )
     try:
-        model.learn(total_timesteps=timesteps, callback=checkpoints)
+        model.learn(total_timesteps=timesteps, callback=checkpoints, reset_num_timesteps=not resume)
     finally:
         model.save(str(model_path))
         venv.close()
