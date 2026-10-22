@@ -66,11 +66,14 @@ Run closed-loop traffic light simulations on the **3x3 Grid** (default, 9 juncti
 
 ### Default: 3x3 Grid (9 Intersections)
 ```powershell
-# Run Flow Agent on 3x3 grid (fast / headless)
+# Run Flow Agent on 3x3 grid (uses trained model if available)
 python scripts/run.py --controller flow
 
 # Watch cars and lights live in sumo-gui on 3x3 grid
 python scripts/run.py --controller flow --gui
+
+# Run Flow Agent with pure starvation-aware heuristic (no checkpoint loaded)
+python scripts/run.py --controller flow --heuristic --gui
 
 # Run baseline controllers on 3x3 grid
 python scripts/run.py --controller fixed_time --gui
@@ -145,11 +148,24 @@ python scripts/train.py --device cuda --timesteps 5000
 
 ## 5. Evaluation & KPIs (`scripts/evaluate.py`)
 
-Benchmark trained agents against baselines across multiple random seeds.
+Benchmark controllers (`fixed_time`, `max_pressure`, `flow_heuristic`, `flow`) head-to-head across seeds and automatically generate reports for all 5 core transportation engineering KPIs:
+1. **Total vehicles that arrived at their destinations** (throughput & completion rate)
+2. **Average and total waiting time** (stopped delay)
+3. **Average travel time** (completed trip durations)
+4. **Average speed over the entire run** (m/s and km/h)
+5. **Cumulative halting and box-blocking delay** (veh·s and intersection spillback incidents)
 
 ```powershell
-# Run benchmark across all 10 evaluation seeds ([100..109])
-python scripts/evaluate.py
+# Run benchmark on 3x3 grid (comparing fixed_time, flow_heuristic, flow)
+python scripts/evaluate.py --scenario 3x3grid --seconds 600 --seeds 100
+
+# Benchmark across multiple seeds with all controllers
+python scripts/evaluate.py --scenario 3x3grid --controllers fixed_time max_pressure flow_heuristic flow --seconds 600 --seeds 100 101 102
+
+# Benchmark on Cologne corridor
+python scripts/evaluate.py --scenario cologne3 --seconds 600 --seeds 100
+
+# Results are saved as CSV to runs/evaluation_<scenario>.csv and printed in the terminal
 ```
 
 ---

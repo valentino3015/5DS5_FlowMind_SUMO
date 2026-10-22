@@ -13,10 +13,12 @@ import sys
 import xml.etree.ElementTree as ET
 import yaml
 
+import numpy as np
 import sumolib
 import traci
 
 from flowmind.contracts import Crossing, JunctionState, LaneState, SpecialVehicle
+from flowmind.kpis import KPITracker, SimulationKPIs
 
 # Root directory of the repository
 ROOT = Path(__file__).resolve().parent.parent
@@ -63,6 +65,8 @@ class SumoCorridorEnv:
         self.yellow_time: int = int(sig_cfg.get("yellow", 3))
         self.all_red_time: int = int(sig_cfg.get("all_red", 2))
         self.max_red_clearance: int = int(sig_cfg.get("max_red_clearance", 4))
+        self.min_green: int = int(sig_cfg.get("min_green", 10))
+        self.max_green: int = int(sig_cfg.get("max_green", 60))
 
         # Discover or set scenario files
         scenarios_dir = ROOT / "scenarios"
@@ -129,6 +133,11 @@ class SumoCorridorEnv:
         self.cached_out_lanes: dict[str, list[str]] = {}
         self.cached_lane_lengths: dict[str, float] = {}
 
+        # KPI Tracking
+        self.tripinfo_path = ROOT / "runs" / "tripinfo.xml"
+        self.tripinfo_path.parent.mkdir(parents=True, exist_ok=True)
+        self.kpi_tracker = KPITracker(scenario=scenario_name)
+
         # Spillback threshold: don't release green into downstream lanes above this occupancy
         shield_cfg = self.config.get("shield", {})
         self.spillback_threshold: float = float(
@@ -155,6 +164,7 @@ class SumoCorridorEnv:
             "-b", str(self.begin_time),
             "--seed", str(self.seed),
             "--time-to-teleport", "60",
+            "--tripinfo-output", str(self.tripinfo_path),
             "--no-step-log", "true",
             "--no-warnings", "true",
             "--duration-log.disable", "true",
@@ -162,8 +172,11 @@ class SumoCorridorEnv:
 
         # --- added by Adem ---
         if self.tripinfo_file:
+            # one trip file per run (parallel runs must not share runs/tripinfo.xml); SUMO accepts
+            # the option only once, so replace the default path, and the KPI tracker reads it too
             self.tripinfo_file.parent.mkdir(parents=True, exist_ok=True)
-            cmd += ["--tripinfo-output", str(self.tripinfo_file)]
+            cmd[cmd.index("--tripinfo-output") + 1] = str(self.tripinfo_file)
+            self.tripinfo_path = self.tripinfo_file
         if self.use_gui:
             cmd += ["--start", "--quit-on-end", "--delay", str(self.gui_delay), "--window-size", "1400,750"]
             gui_settings = self.net_file.parent / "gui-settings.xml"
@@ -175,6 +188,7 @@ class SumoCorridorEnv:
 
         traci.start(cmd)
         self.is_running = True
+        self.kpi_tracker.reset()
         self._init_traffic_lights()
         if self.use_gui:  # added by Adem: zoom on the whole map
             (x1, y1), (x2, y2) = traci.simulation.getNetBoundary()
@@ -315,17 +329,7 @@ class SumoCorridorEnv:
         return "".join(res)
 
     def _is_downstream_blocked(self, tls: str, target_phase: int) -> bool:
-        """Return True if outgoing lanes or the box for this phase are jammed.
-
-        Anti-Gridlock Protection:
-        1. If cars are currently halted inside the box of this junction, don't switch into them.
-        2. If ANY outgoing lane this phase discharges into is above spillback_threshold,
-           releasing green would cause vehicles to enter and straddle the intersection.
-        """
-        # If the intersection box already has trapped halting vehicles, hold current phase
-        if self.get_box_halting_count(tls) > 0:
-            return True
-
+        """Return True if ALL outgoing lanes for this phase are severely jammed (> spillback_threshold)."""
         out_lanes = self.phase_out_lanes.get(tls, [])
         if not out_lanes or target_phase >= len(out_lanes) or not out_lanes[target_phase]:
             return False  # No downstream data -> allow
@@ -338,8 +342,8 @@ class SumoCorridorEnv:
                 pass
         if not occ_values:
             return False
-        # Suppress switch if ANY exit lane is congested to prevent spillback into the box
-        return any(o >= self.spillback_threshold for o in occ_values)
+        # Block only if EVERY exit lane is jam-packed (> spillback_threshold)
+        return all(o >= self.spillback_threshold for o in occ_values)
 
     def step(self, actions: dict[str, int]) -> tuple[dict[str, JunctionState], bool, dict]:
         """Execute one decision step (delta_time seconds), inserting yellow/all-red if phases change."""
@@ -352,10 +356,16 @@ class SumoCorridorEnv:
             num_phases = len(self.green_states[tls])
             target_phase = max(0, min(num_phases - 1, target_phase))
             current = self.current_phases[tls]
+            t_in_phase = self.time_in_phase[tls]
+            # Enforce max_green: if green has been on for >= max_green, FORCE CYCLE to next phase!
+            # Starvation prevention: cross-traffic (horizontal) MUST get green after max_green seconds!
+            if t_in_phase >= self.max_green and target_phase == current:
+                target_phase = (current + 1) % num_phases
 
             if target_phase != current:
-                # Gridlock prevention: don't switch if downstream is fully blocked
-                if self._is_downstream_blocked(tls, target_phase):
+                forced_by_max_green = (t_in_phase >= self.max_green)
+                # Max-out overrides suppression so cross-traffic is never starved
+                if not forced_by_max_green and self._is_downstream_blocked(tls, target_phase):
                     suppressed_transitions.append(tls)
                 else:
                     transitions_needed[tls] = target_phase
@@ -436,6 +446,22 @@ class SumoCorridorEnv:
         else:
             mean_speed = 0.0
 
+        # Update KPI tracker
+        departed_ids = list(traci.simulation.getDepartedIDList())
+        arrived_ids = list(traci.simulation.getArrivedIDList())
+        self.kpi_tracker.update_step(
+            sim_time=sim_time,
+            delta_time=float(self.delta_time),
+            departed_ids=departed_ids,
+            arrived_ids=arrived_ids,
+            halting_count=halting,
+            mean_speed=mean_speed,
+            box_count=box_vehicles,
+        )
+
+        avg_travel = float(np.mean(self.kpi_tracker.travel_times)) if self.kpi_tracker.travel_times else 0.0
+        avg_wait = (self.kpi_tracker.total_waiting_seconds / max(1, self.kpi_tracker.total_departed)) if self.kpi_tracker.total_departed else 0.0
+
         info = {
             "time": sim_time,
             "halting_vehicles": halting,
@@ -443,9 +469,21 @@ class SumoCorridorEnv:
             "suppressed_switches": len(suppressed_transitions),  # Times spillback blocked a switch
             "vehicle_count": vehicle_count,
             "mean_speed": mean_speed,
+            # Core Traffic Engineering KPIs:
+            "total_arrived": self.kpi_tracker.total_arrived,
+            "total_waiting_time": self.kpi_tracker.total_waiting_seconds,
+            "average_waiting_time": avg_wait,
+            "average_travel_time": avg_travel,
+            "average_speed": float(np.mean(self.kpi_tracker.step_speeds)) if self.kpi_tracker.step_speeds else mean_speed,
+            "cumulative_halting": self.kpi_tracker.cumulative_halting_seconds,
         }
 
         return states, done, info
+
+    def get_kpis(self, controller: str = "flow") -> SimulationKPIs:
+        """Return the finalized, comprehensive KPI report for this run."""
+        self.kpi_tracker.controller = controller
+        return self.kpi_tracker.compute(tripinfo_file=self.tripinfo_path)
 
     def build_junction_state(self, tls_id: str) -> JunctionState:
         """Query SUMO and construct a frozen JunctionState contract object."""

@@ -40,6 +40,7 @@ from flowmind.control import shield
 from flowmind.control.coordinator import Coordinator
 from flowmind.control.orchestrator import Decision, Orchestrator
 from flowmind.env import SumoCorridorEnv
+from flowmind.kpis import print_kpi_report
 from flowmind.logger import DecisionLogger, summarize_tripinfo
 
 
@@ -108,6 +109,7 @@ def main():
         help="Traffic scenario: 3x3grid (default), cologne3 or corridor",
     )
     parser.add_argument("--gui", action="store_true", help="Open SUMO GUI")
+    parser.add_argument("--heuristic", action="store_true", help="Run FlowAgent heuristic directly without loading checkpoint")
     parser.add_argument("--seed", type=int, default=None, help="Simulation seed")
     parser.add_argument("--seconds", type=int, default=600, help="Simulation duration (s)")
     parser.add_argument("--override", action="append", default=[], metavar="TLS:PHASE:START:DURATION",
@@ -163,7 +165,10 @@ def main():
             movements = env.get_phase_movements(tls)
             agents[tls] = MaxPressure(config.get("max_pressure", {}), movements)
         elif args.controller == "flow":
-            agents[tls] = FlowAgent(config.get("flow", {}))
+            flow_cfg = dict(config.get("flow", {}))
+            if args.heuristic:
+                flow_cfg.pop("model_path", None)
+            agents[tls] = FlowAgent(flow_cfg)
         elif args.controller == "orchestrated":
             orchestrators[tls] = make_orchestrator(config, env.get_phase_movements(tls))
 
@@ -225,6 +230,11 @@ def main():
 
         print(f"\nSimulation finished successfully after {step_count} decision steps.")
         print(f"Final Status -> Active Vehicles: {info['vehicle_count']}, Halting: {info['halting_vehicles']}")
+
+        # Compute and print executive KPI summary report
+        controller_name = f"{args.controller} (heuristic)" if args.heuristic else args.controller
+        kpis = env.get_kpis(controller=controller_name)
+        print_kpi_report(kpis)
 
     finally:
         env.close()

@@ -61,6 +61,7 @@ flow:
   model_path: runs/models/flow_ppo.zip   # trained PPO model (not on GitHub)
   max_queue: 25.0
   max_wait: 120.0
+  ema_alpha: 0.25        # EMA smoothing for queue observations (smoother than 0.4)
 
 emergency:
   detect_distance: 200       # react when the vehicle is closer than this (m)
