@@ -3,6 +3,7 @@
 Usage:
     python scripts/demo_incident.py --gui
     python scripts/demo_incident.py            (no window, text only)
+    python scripts/demo_incident.py --ppo      (trained PPO response instead of the rules)
 
 Scenario: scenarios/cologne3_incident.sumocfg. A red car breaks down on one
 approach of the first junction and blocks its lane for a while.
@@ -78,10 +79,12 @@ def main():
     parser.add_argument("--gui", action="store_true", help="Open SUMO GUI")
     parser.add_argument("--seed", type=int, default=None, help="Simulation seed")
     parser.add_argument("--seconds", type=int, default=900, help="Simulation duration (s)")
+    parser.add_argument("--ppo", action="store_true", help="Use the trained PPO response (default: rules)")
     args = parser.parse_args()
 
     config = load_config()
     config.setdefault("sim", {})["seconds"] = args.seconds
+    config["incident"]["use_ppo"] = args.ppo
     sc = read_scenario(SCENARIO)
     block_end = sc["block_end"]
 
@@ -99,6 +102,7 @@ def main():
     incident = IncidentAgent(config["incident"], env.get_phase_movements(junction))
 
     print("== FlowMind incident demo ==")
+    print(f"Response: {'PPO' if incident.model is not None else 'rules (baseline)'}")
     print(f"Junction {junction}, lane {sc['lane']} blocked from t={sc['block_start']:.0f} "
           f"to t={block_end:.0f}\n")
 
