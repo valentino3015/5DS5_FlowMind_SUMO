@@ -19,13 +19,17 @@ before the first update) the deterministic policy is evaluated on validation see
 900-904 with the BO4 measures (evaluate.run_one: the policy at B1 inside the grid
 runner, C elsewhere, warm-up 600 s + --val-duration s). The best checkpoint is kept by
     reward D (vehicle): veh_delay_B1       reward E (person) and F (regular): person_delay_B1_h
-(mean over the 5 validation seeds). For F, bunching and headway CV are logged as well;
-compare the w values with evaluate.py val (see its rank()). C at B1 on the same seeds is evaluated once as a
-reference. Outputs in bo4_bus/rl/runs/<name>/ (gitignored):
+(mean over the 5 validation seeds). C at B1 on the same seeds is evaluated once as a
+reference. Reward F (regular) also keeps best_regular.zip: the lowest bunch_last_total
+among the checkpoints whose person_delay_B1_h is not worse than C_all's (ties: lower
+person_delay_B1_h; see better_regular). Compare the w values with evaluate.py val.
+Outputs in bo4_bus/rl/runs/<name>/ (gitignored):
     tb/                      TensorBoard (SB3 train/* and rollout/*, plus val/*)
     validation.csv           one row per (checkpoint, seed), written as soon as it finishes
     validation_summary.csv   one row per checkpoint (means over the validation seeds)
     ckpt_<steps>.zip, best_model.zip, best.json, final_model.zip, monitor.csv
+    best_regular.zip         reward F only; best.json then also holds "best_regular"
+                             (None until a checkpoint qualifies) and "c_all_reference"
 """
 import argparse
 import json
@@ -80,14 +84,31 @@ def validate(out, name, steps, policy, val_duration, obs="v1"):
     return cur[VAL_COLS].mean().to_dict()
 
 
-def make_callback(out, reward, every, val_duration, obs="v1"):
+REGULAR_KEY, REGULAR_GUARD = "bunch_last_total", "person_delay_B1_h"
+
+
+def better_regular(m, best, c_ref):
+    """Reward F's second checkpoint: is validation result `m` better than `best` (None
+    if no checkpoint qualified yet)? Only checkpoints whose person delay at B1 is not
+    worse than C_all's qualify; then lowest bunching, ties broken by person delay."""
+    if m[REGULAR_GUARD] > c_ref[REGULAR_GUARD]:
+        return False
+    return best is None or ((m[REGULAR_KEY], m[REGULAR_GUARD])
+                            < (best[REGULAR_KEY], best[REGULAR_GUARD]))
+
+
+def make_callback(out, reward, every, val_duration, obs="v1", c_ref=None):
+    """c_ref: C_all's validation means (reference_c), needed for reward "regular"."""
     from stable_baselines3.common.callbacks import BaseCallback
+    regular = reward == "regular"
+    assert not regular or c_ref is not None
 
     class ValidationCallback(BaseCallback):
         def __init__(self):
             super().__init__()
             self.next_eval = 0
             self.best = None
+            self.best_regular = None
             self.summary_path = os.path.join(out, "validation_summary.csv")
             self.summary = _load(self.summary_path)
 
@@ -104,19 +125,46 @@ def make_callback(out, reward, every, val_duration, obs="v1"):
             if is_best:
                 self.best = {"steps": steps, key: m[key], **m}
                 model.save(os.path.join(out, "best_model.zip"))
-                with open(os.path.join(out, "best.json"), "w") as f:
-                    json.dump(self.best, f, indent=1)
+            is_best_regular = regular and better_regular(m, self.best_regular, c_ref)
+            if is_best_regular:
+                self.best_regular = {"steps": steps, REGULAR_KEY: m[REGULAR_KEY], **m}
+                model.save(os.path.join(out, "best_regular.zip"))
+            if is_best or is_best_regular:
+                self._write_best()
             for k, v in m.items():
                 self.logger.record(f"val/{k}", v)
             self.logger.record("val/is_best", float(is_best))
+            extra = {}
+            if regular:
+                self.logger.record("val/is_best_regular", float(is_best_regular))
+                extra = {"best_regular": is_best_regular}
             self.logger.dump(steps)
-            self.summary.append({"steps": steps, "best": is_best,
+            self.summary.append({"steps": steps, "best": is_best, **extra,
                                  "val_wall_s": round(time.time() - tic, 1), **m})
             _save_summary(self.summary, self.summary_path)
-            print(f"[val] {steps} steps: {key} = {m[key]:.3f} (best {self.best[key]:.3f} "
-                  f"@ {self.best['steps']}), bunching {m['bunch_last_total']:.1f}, "
-                  f"violations {m['rl_violations']:.0f}", flush=True)
+            msg = (f"[val] {steps} steps: {key} = {m[key]:.3f} (best {self.best[key]:.3f} "
+                   f"@ {self.best['steps']}), bunching {m['bunch_last_total']:.1f}, "
+                   f"violations {m['rl_violations']:.0f}")
+            if regular:
+                br = self.best_regular
+                msg += ("; best_regular " +(f"bunching {br[REGULAR_KEY]:.1f} @ {br['steps']}"
+                                               if br else "none yet (no checkpoint within "
+                                               f"C_all's {REGULAR_GUARD} {c_ref[REGULAR_GUARD]:.3f})"))
+            print(msg, flush=True)
             self.next_eval = steps + every
+
+        def _write_best(self):
+            """best.json: best_model.zip's validation means at the top level (as for D/E);
+            for reward F also best_regular.zip's (None if no checkpoint qualified) and the
+            C_all reference it was checked against."""
+            best = dict(self.best)
+            if regular:
+                best.update(best_regular=self.best_regular,
+                            best_regular_rule=f"lowest {REGULAR_KEY} (ties: {REGULAR_GUARD}) "
+                                              f"among checkpoints with {REGULAR_GUARD} <= C_all's",
+                            c_all_reference=c_ref)
+            with open(os.path.join(out, "best.json"), "w") as f:
+                json.dump(best, f, indent=1)
 
         def _on_training_start(self):
             self._evaluate()                                  # untrained policy
@@ -179,7 +227,7 @@ def main():
     with open(os.path.join(out, "config.json"), "w") as f:
         json.dump(cfg, f, indent=1)
 
-    reference_c(out, a.val_duration)
+    c_ref = reference_c(out, a.val_duration)
     vec = VecMonitor(SubprocVecEnv([make_env(a.reward, i, a.w, a.obs) for i in range(a.n_envs)],
                                    start_method="spawn"),
                      os.path.join(out, "monitor.csv"))
@@ -189,7 +237,7 @@ def main():
                 tensorboard_log=os.path.join(out, "tb"))
     tic = time.time()
     model.learn(total_timesteps=a.steps, callback=make_callback(out, a.reward, a.eval_every,
-                                                                a.val_duration, a.obs),
+                                                                a.val_duration, a.obs, c_ref),
                 tb_log_name="ppo")
     model.save(os.path.join(out, "final_model.zip"))
     vec.close()

@@ -175,3 +175,91 @@ def test_trained_d_e_models_still_load_and_run_v1(run):
     assert version == "v1"
     s = state(b1_lanes(halting=3), [bus("L1_EB_01", "A1B1_0", 30.0, late=60.0)])
     assert policy(ob.observe(s, version=version)) in (0, 1)
+
+
+# ------------------------------------------------------------------ F checkpoints
+C_REF = {"person_delay_B1_h": 6.0, "bunch_last_total": 2.4}
+
+
+def val(pd_b1, bunch):
+    return {"person_delay_B1_h": pd_b1, "bunch_last_total": bunch, "veh_delay_B1": 20.0,
+            "rl_violations": 0.0}
+
+
+def test_better_regular_rule():
+    from train_ppo import better_regular
+    assert not better_regular(val(6.1, 0.0), None, C_REF)          # worse than C_all
+    assert better_regular(val(6.0, 3.0), None, C_REF)              # equal to C_all qualifies
+    best = val(5.0, 2.0)
+    assert better_regular(val(5.9, 1.8), best, C_REF)              # less bunching
+    assert not better_regular(val(4.0, 2.2), best, C_REF)          # more bunching
+    assert better_regular(val(4.9, 2.0), best, C_REF)              # tie -> lower person delay
+    assert not better_regular(val(5.0, 2.0), best, C_REF)          # identical: keep the first
+
+
+class FakeLogger:
+    def record(self, *a, **k):
+        pass
+
+    def dump(self, *a, **k):
+        pass
+
+
+class FakeModel:
+    logger = FakeLogger()
+
+    def __init__(self):
+        self.saved = []
+
+    def save(self, path):
+        self.saved.append(os.path.basename(path))
+        open(path, "wb").close()
+
+
+def run_callback(tmp_path, monkeypatch, reward, results):
+    """Drive the validation callback over (steps, metrics) without SUMO."""
+    import json
+    import train_ppo as tp
+    seq = iter(results)
+    monkeypatch.setattr(tp, "validate", lambda *a, **k: dict(next(seq)[1]))
+    cb = tp.make_callback(str(tmp_path), reward, 1000, 600.0, "v2",
+                          C_REF if reward == "regular" else None)
+    model = FakeModel()
+    cb.model = model
+    for steps, _ in results:
+        cb.num_timesteps = steps
+        cb._evaluate()
+    with open(tmp_path / "best.json") as f:
+        return json.load(f), model.saved
+
+
+def test_regular_keeps_best_model_and_best_regular(tmp_path, monkeypatch):
+    results = [(0, val(7.0, 1.0)),          # best person delay so far, not within C_all
+               (1000, val(5.5, 2.0)),       # best_model and first best_regular
+               (2000, val(5.9, 1.6)),       # best_regular (less bunching, within C_all)
+               (3000, val(5.0, 3.0)),       # best_model (lowest person delay), more bunching
+               (4000, val(6.5, 0.2))]       # least bunching but worse than C_all
+    best, saved = run_callback(tmp_path, monkeypatch, "regular", results)
+    assert best["steps"] == 3000 and best["person_delay_B1_h"] == 5.0
+    assert best["best_regular"]["steps"] == 2000
+    assert best["best_regular"]["bunch_last_total"] == 1.6
+    assert best["c_all_reference"] == C_REF
+    assert [s for s in saved if s.startswith("best")] == [
+        "best_model.zip", "best_model.zip", "best_regular.zip", "best_regular.zip",
+        "best_model.zip"]
+    summary = __import__("pandas").read_csv(tmp_path / "validation_summary.csv")
+    assert list(summary.best_regular) == [False, True, True, False, False]
+
+
+def test_regular_best_regular_none_until_a_checkpoint_qualifies(tmp_path, monkeypatch):
+    best, saved = run_callback(tmp_path, monkeypatch, "regular", [(0, val(7.0, 1.0))])
+    assert best["best_regular"] is None and "best_regular.zip" not in saved
+
+
+def test_person_and_vehicle_unchanged(tmp_path, monkeypatch):
+    results = [(0, val(7.0, 1.0)), (1000, val(5.5, 2.0)), (2000, val(5.9, 0.0))]
+    best, saved = run_callback(tmp_path, monkeypatch, "person", results)
+    assert best["steps"] == 1000 and set(best) == {"steps", *val(0, 0)}
+    assert "best_regular.zip" not in saved
+    summary = __import__("pandas").read_csv(tmp_path / "validation_summary.csv")
+    assert "best_regular" not in summary
