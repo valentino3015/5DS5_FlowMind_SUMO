@@ -55,8 +55,13 @@ pilotent les règles Python ; ils ne réentraînent pas le modèle chargé.
 
 Validation sur des seeds distinctes, tous les 2048 pas par défaut
 (`--validation-every`). La sélection minimise d'abord les collisions, puis les
-téléportations sur toute la validation, puis le coût pondéré des émissions.
-Ainsi une meilleure récompense avec davantage de blocages ne remplace pas
+téléportations sur toute la validation. Les nouveaux entraînements établissent
+aussi une référence FixedTime sur ces mêmes seeds de validation. Ils comparent
+les quatre totaux officiels de `tripinfo.xml` par paire, puis minimisent la plus
+forte dégradation relative aux feux classiques. Une baisse des arrivées ou des
+départs est prise en compte dans cette dégradation pour éviter un gain apparent
+obtenu en retenant les véhicules. Le coût environnemental pondéré départage les
+checkpoints à égalité. Ainsi une meilleure récompense avec davantage de blocages ne remplace pas
 le checkpoint retenu. Ce checkpoint est enregistré dans `best.zip`.
 `last.zip` conserve l’état final, et les CSV
 conservent les récompenses par épisode et par validation. PPO travaille par
@@ -67,6 +72,16 @@ aucun nouveau checkpoint ne le dépasse selon ces critères. Les diagnostics de
 validation incluent les téléportations, collisions, arrivées et émissions TraCI.
 Ces dernières servent au suivi ; les comparaisons finales utilisent les totaux
 officiels de tripinfo.xml, qui incluent les trajets inachevés.
+
+Dans `validation.csv`, les colonnes `*_mg` sont les anciennes sommes TraCI de
+suivi, tandis que `co2_ratio`, `nox_ratio`, `fuel_ratio` et `pm_ratio` reposent sur
+les totaux officiels SUMO. Les ratios sont moyennés sur les paires de seeds :
+1 signifie égalité avec FixedTime, moins de 1 une baisse, plus de 1 une hausse.
+`all_emissions_lower` exige les quatre ratios sous 1. `worst_ratio` inclut aussi
+les éventuels déficits d'arrivées et de départs ; son minimum est 1.
+Les références et XML utilisés sont conservés dans `validation_baseline.json`,
+`validation_baseline/` et `validation_trials/`. Ces données de validation ne
+servent ni à apprendre les paramètres PPO ni à normaliser ses observations.
 `best_timesteps` indique l’étape du checkpoint retenu, `actual_timesteps` le total
 exécuté. `progress.json` permet de suivre l’avancement entre deux validations.
 
@@ -108,7 +123,30 @@ Réserver ces seeds de test : elles ne doivent jamais servir au réglage des rè
 de la récompense ou du modèle. Les seeds d’entraînement et de validation sont
 refusées pour une évaluation finale du modèle. Garder mêmes carte, routes, durée,
 seed et protections pour chaque paire. Le modèle est chargé en inférence
-déterministe et ne s’entraîne pas durant la comparaison.
+sans apprentissage durant la comparaison. Les anciens modèles et les manifestes
+sans `deterministic_inference` conservent le choix de la phase la plus probable.
+Un modèle peut aussi porter `deterministic_inference: false` : il tire alors les
+phases selon les probabilités apprises par PPO. Ce n'est pas un contrôleur
+uniformément aléatoire ; les probabilités dépendent du modèle et de ses entrées.
+La seed de cette politique est la seed SUMO + `policy_seed_offset` (100000 par
+défaut). Elle est enregistrée dans les résultats pour reproduire les essais.
+Ce mode doit être choisi sur la validation avant les tests, et reste soumis au
+même SafetyGate. Le dashboard indique le mode retenu dans le manifeste.
+
+La commande de diagnostic suivante évalue les probabilités apprises sur les
+seeds de validation, avec les mêmes références officielles que l'entraînement :
+
+```powershell
+python scripts/validate_emission_sampling.py --model-dir runs/models/emission_ppo_v4_20261021 --checkpoint last --baseline runs/models/emission_ppo_v4_20261021/validation_baseline.json --output runs/models/emission_ppo_v4_20261021/sampling_validation_manual --seeds 1002 1003
+```
+
+Le dossier de sortie doit être nouveau. La référence doit correspondre au même
+scénario et à la même durée que le manifeste. Le diagnostic ne modifie pas le
+modèle : il écrit les mesures et ratios dans `result.json`. L'entraînement actuel
+valide ses checkpoints avec le choix le plus probable ; ce diagnostic permet de
+comparer ensuite un mode probabiliste sans utiliser les seeds de test. Les
+tirages ne doivent pas être répétés avec différentes seeds pour sélectionner
+uniquement les résultats favorables.
 
 Vérifier les quatre émissions, les arrivées, les véhicules restants, les collisions
 et téléportations. Une politique peut émettre moins tout en bloquant les véhicules,

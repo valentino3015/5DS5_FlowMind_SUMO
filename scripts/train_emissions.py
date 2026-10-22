@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import sys
 import uuid
+import xml.etree.ElementTree as ET
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import gymnasium as gym
 import numpy as np
@@ -99,8 +100,60 @@ def calibrate(config, seeds):
     return layout, scales
 
 
+def official_emissions(path):
+    """Whole-window SUMO totals, including unfinished trips, in mg."""
+    trips = ET.parse(path).getroot().findall("tripinfo")
+    emissions = [t.find("emissions") for t in trips]
+    if any(e is None for e in emissions):
+        raise ValueError("Bilan d’émissions absent pendant la validation")
+    values = [sum(float(e.get(key, "0")) for e in emissions)
+              for key in ("CO2_abs", "NOx_abs", "fuel_abs", "PMx_abs")]
+    if not all(np.isfinite(x) and x >= 0 for x in values):
+        raise ValueError("Bilan d’émissions invalide pendant la validation")
+    return {"emissions_mg": values, "departed": len(trips),
+            "arrived": sum(float(t.get("arrival", "-1")) >= 0 for t in trips)}
+
+
+def validation_baseline(config, seeds, output):
+    """Reference used for model selection, never for learning or normalization."""
+    result = {}
+    for seed in seeds:
+        directory = output / "validation_baseline" / f"seed_{seed}"
+        cfg = copy.deepcopy(config)
+        cfg["evaluation_output"] = str(directory)
+        env = SumoCorridorEnv(config=cfg, seed=seed, use_gui=False)
+        samples = []
+        env.metrics_callback = samples.append
+        try:
+            states = env.reset()
+            agents = {key: FixedTime(config["fixed_time"]) for key in states}
+            while samples[-1]["elapsed_s"] < env.sim_seconds:
+                states, _, _ = env.step({key: agent.act(states[key], [], [True]*states[key].num_phases)
+                                        for key, agent in agents.items()})
+        finally:
+            env.close()
+        result[seed] = official_emissions(directory / "tripinfo.xml")
+        print(f"Référence de validation : seed={seed}, arrivées={result[seed]['arrived']}", flush=True)
+    atomic_json(output / "validation_baseline.json", {"seeds": result})
+    return result
+
+
+def compare_validation(measured, baseline):
+    """Paired ratios; discourage apparent savings from holding back traffic."""
+    ratios = [float(np.mean([row["emissions_mg"][i] / max(1., baseline[seed]["emissions_mg"][i])
+                            for seed, row in measured.items()])) for i in range(4)]
+    arrivals = float(np.mean([baseline[seed]["arrived"] / max(1, row["arrived"])
+                             for seed, row in measured.items()]))
+    departures = float(np.mean([baseline[seed]["departed"] / max(1, row["departed"])
+                               for seed, row in measured.items()]))
+    return {**{f"{name}_ratio": r for name, r in zip(METRICS, ratios)},
+            "arrival_shortfall_ratio": arrivals, "departure_shortfall_ratio": departures,
+            "worst_ratio": max(1., *ratios, arrivals, departures),
+            "all_emissions_lower": all(r < 1 for r in ratios)}
+
+
 class Validate(BaseCallback):
-    def __init__(self, raw, config, manifest, seeds, output, every):
+    def __init__(self, raw, config, manifest, seeds, output, every, baseline=None):
         super().__init__()
         self.raw, self.config, self.manifest = raw, config, manifest
         self.seeds, self.output, self.every = seeds, output, every
@@ -108,14 +161,20 @@ class Validate(BaseCallback):
         self.best_timesteps = None
         self.best_key = None
         self.best_teleports = self.best_collisions = None
+        self.baseline = baseline
+        self.best_comparison = None
 
     def assess(self):
         # Training and validation share the default TraCI connection: close first.
         self.raw.close()
         validation = EmissionTrainingEnv(self.config, self.manifest, self.seeds)
-        scores, diagnostics, quantities = [], [], []
+        scores, diagnostics, quantities, measured = [], [], [], {}
         try:
-            for _ in self.seeds:
+            for seed in self.seeds:
+                if self.baseline is not None:
+                    directory = self.output / "validation_trials" / f"step_{self.num_timesteps}" / f"seed_{seed}"
+                    validation.config = copy.deepcopy(self.config)
+                    validation.config["evaluation_output"] = str(directory)
                 obs, _ = validation.reset()
                 finished = False
                 while not finished:
@@ -124,22 +183,31 @@ class Validate(BaseCallback):
                 scores.append(validation.total_reward)
                 diagnostics.append(getattr(validation, "episode_stats", {}))
                 quantities.append(getattr(validation, "episode_quantities", [0.] * 4))
+                if self.baseline is not None:
+                    validation.env.close()
+                    measured[seed] = official_emissions(directory / "tripinfo.xml")
         finally:
             validation.close()
         score = float(np.mean(scores))
         totals = {k: sum(d.get(k, 0) for d in diagnostics) for k in ("teleports", "collisions", "departed", "arrived")}
+        comparison = compare_validation(measured, self.baseline) if self.baseline is not None else {}
         self.rows.append({"timesteps": self.num_timesteps, "validation_reward": score, **totals,
-                          **{f"{name}_mg": float(np.mean([q[i] for q in quantities])) for i,name in enumerate(METRICS)}})
+                          **{f"{name}_mg": float(np.mean([q[i] for q in quantities])) for i,name in enumerate(METRICS)},
+                          **comparison})
         write_csv(self.output / "validation.csv", self.rows)
         write_csv(self.output / "training_episodes.csv", self.raw.episode_rows)
-        selection_key = (-totals["collisions"], -totals["teleports"], score)
+        selection_key = (-totals["collisions"], -totals["teleports"],
+                         -comparison.get("worst_ratio", 1.), score)
         if self.best_key is None or selection_key > self.best_key:
             self.best_key = selection_key
             self.best = score
             self.best_teleports, self.best_collisions = totals["teleports"], totals["collisions"]
             self.best_timesteps = self.num_timesteps
+            self.best_comparison = comparison
             self.model.save(self.output / "best.zip")
         print(f"Validation step={self.num_timesteps}, reward={score:.4f}, teleports={totals['teleports']}, collisions={totals['collisions']}, best={self.best:.4f}", flush=True)
+        if comparison:
+            print(f"Ratios face aux classiques : {comparison}", flush=True)
 
     def _on_step(self):
         if self.num_timesteps % 64 == 0:
@@ -203,7 +271,9 @@ def main():
     env = EmissionTrainingEnv(config,manifest,args.train_seeds)
     model = PPO.load(args.resume/"best.zip", env=env,device="cpu") if args.resume else PPO(
         "MlpPolicy",env,n_steps=64,batch_size=32,n_epochs=4,seed=args.train_seeds[0],device="cpu",verbose=0)
-    callback=Validate(env,config,manifest,args.validation_seeds,output,max(64,args.timesteps))
+    print("Références feux classiques sur seeds de validation uniquement…", flush=True)
+    baseline = validation_baseline(config, args.validation_seeds, output)
+    callback=Validate(env,config,manifest,args.validation_seeds,output,max(64,args.timesteps),baseline=baseline)
     try:
         callback.init_callback(model)
         start_steps=model.num_timesteps
@@ -227,7 +297,8 @@ def main():
         manifest["best_timesteps"]=callback.best_timesteps
         manifest["best_validation_teleports"]=callback.best_teleports
         manifest["best_validation_collisions"]=callback.best_collisions
-        manifest["selection"]="minimize validation collisions, then teleports, then weighted emission cost"
+        manifest["best_validation_comparison"] = callback.best_comparison
+        manifest["selection"]="minimize collisions, teleports, worst paired validation ratio to FixedTime (four emissions and traffic shortfall), then weighted emission cost"
         atomic_json(output/"manifest.json",manifest)
     finally:
         env.close()

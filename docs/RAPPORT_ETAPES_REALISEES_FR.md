@@ -1,9 +1,9 @@
 # FlowMind - Rapport explicatif
 Étapes réalisées
 
-Projet SUMO et agent RL d’émissions | 21 octobre 2026
+Projet SUMO et agent RL d’émissions | Mise à jour du 22 octobre 2026
 
-Ce rapport explique le travail réalisé dans le projet local, depuis la collecte des métriques jusqu’au dernier entraînement. Il distingue les changements du programme, l’apprentissage du modèle et les résultats réellement mesurés.
+Ce rapport explique le travail réalisé dans le projet local, depuis la collecte des métriques jusqu’au dernier entraînement. Il distingue les changements du programme, l’apprentissage du modèle et les résultats réellement mesurés. Les résultats du 21 octobre sont conservés comme historique ; les pages finales présentent la reprise du 22 octobre et la configuration actuellement active.
 
 ## 1. Le but de notre travail
 
@@ -111,9 +111,9 @@ Un checkpoint est une sauvegarde du modèle à un moment de l’entraînement. N
 
 | Jeu | Utilisation |
 | --- | --- |
-| Entraînement | Produire des expériences et modifier les paramètres du modèle. Seeds utilisées au fil de la lignée : 0 à 5. |
-| Validation | Évaluer les checkpoints et choisir celui à conserver. Dernières validations : 1000 et 1001. |
-| Test | Comparer sans apprentissage. Derniers tests : 10020, 10021, 10022, distincts de l’entraînement et de la validation. |
+| Entraînement | Produire des expériences et modifier le modèle. Seeds des premières campagnes : 0 à 5 ; reprise du 22 octobre : 6, 7, 8. |
+| Validation | Choisir le checkpoint et le mode de décision. Première campagne : 1000, 1001 ; dernière reprise : 1002, 1003. |
+| Test | Comparer sans apprentissage. Ancienne campagne : 10020 à 10022 ; dernier bilan : 10040, 10041, 10042. |
 
 ## 10. Les entraînements réalisés
 
@@ -157,9 +157,9 @@ Doubler le poids des PM les rend plus importantes dans l’objectif, sans garant
 
 Pour retenir un checkpoint, nous minimisons d’abord les collisions, puis les téléportations, puis le coût environnemental. Le modèle protégé avant apprentissage a aussi été validé : cela distingue l’effet des protections de celui des nouvelles mises à jour.
 
-# Comparer les résultats obtenus
+# Historique : résultats du 21 octobre
 
-Dernière comparaison : trois seeds (10020, 10021, 10022), 600 secondes et 300 véhicules partis par essai. Les valeurs sont les moyennes sur ces trois essais. Les conditions et les empreintes des fichiers sont enregistrées pour chaque expérience.
+Comparaison précédente : trois seeds (10020, 10021, 10022), 600 secondes et 300 véhicules partis par essai. Ces chiffres décrivent la version antérieure à la reprise du 22 octobre ; les résultats actuels figurent à la fin du rapport.
 
 | Mesure | Classiques | RL corrigé | RL / classiques |
 | --- | --- | --- | --- |
@@ -170,7 +170,7 @@ Dernière comparaison : trois seeds (10020, 10021, 10022), 600 secondes et 300 v
 | Véhicules arrivés (véhicules) | 245.00 | 231.67 | -5.4 % |
 | Téléportations (événements) | 0.00 | 0.00 | - |
 
-![Comparaison des émissions](assets/comparaison_emissions_pm.png)
+![Comparaison des émissions](../runs/reports/pm_rl_20261021/emissions.png)
 
 Le RL corrigé n’a enregistré aucune collision ni téléportation sur les trois tests. Les PM sont inférieures de 1,8 % à celles des feux classiques. En revanche, CO₂, NOx et carburant restent supérieurs : il ne bat pas encore la référence globalement.
 
@@ -190,15 +190,77 @@ Les PM restent environ 1,9 % au-dessus de celles de l’ancien RL. Il faut lire 
 | flowmind/evaluation.py scripts/evaluate.py | Exécution et enregistrement des expériences comparables. |
 | flowmind/kpis.py | Calcul des indicateurs et des variations entre méthodes. |
 | scripts/dashboard.py dashboard/index.html | Serveur local et interface Simulation / Historique. |
-| runs/models/emission_ppo/ | Modèle actuellement actif. L’ancienne version est sauvegardée dans runs/models/emission_ppo_before_pm_v3_20261021/. |
-| runs/reports/pm_rl_20261021/ | Dernier rapport, comparaison.csv, details.json et graphiques. |
+| runs/models/emission_ppo/ | Modèle actif : checkpoint 7 296, mode probabiliste. Archive avant dernière reprise : emission_ppo_before_v4_20261021/. |
+| runs/reports/rl_v4_20261022/ | Dernier bilan : rapport.md, comparaison.csv, details.json, activation.json et comparaison.png. |
 
 ## Ce qui est vérifié et ce qui reste à faire
 
-Les 61 tests Python passent et la syntaxe JavaScript du dashboard a été vérifiée. L’absence de téléportation est confirmée sur les trois derniers essais ; elle ne garantit pas l’absence de blocage sur tous les trafics.
+Les 64 tests Python passent et la syntaxe JavaScript du dashboard a été vérifiée. Les neuf essais du dernier bilan ont produit zéro collision et zéro téléportation ; cela ne garantit pas l’absence de blocage sur tous les trafics.
 
 Le modèle reste un prototype : un seul scénario et trois seeds de test ne suffisent pas à prouver sa généralisation. Il faut encore étudier des demandes et durées variées, améliorer les décisions sans dégrader une métrique et valider un débit de véhicules comparable aux feux classiques.
 
 Pour ouvrir le dashboard, lancer scripts/dashboard.py avec Python, puis consulter http://127.0.0.1:8501/simulation ou /history. Cette adresse fonctionne lorsque le serveur est lancé. Les métriques sont des mesures de simulation, pas des mesures réelles de pollution.
 
-Sources du rapport : code local sur la branche manoubi ; manifest.json du modèle actif ; détails des trois campagnes dans runs/reports/evaluation_rl_20261021/, fine_tuning_rl_20261021/ et pm_rl_20261021/. Le dernier dossier contient les identifiants des neuf simulations de référence et de test.
+Sources : code local sur manoubi ; manifest.json du modèle actif ; campagnes historiques dans runs/reports/ ; dernier bilan détaillé dans runs/reports/rl_v4_20261022/. scripts/validate_emission_sampling.py permet de valider le mode probabiliste avec les bilans officiels SUMO.
+
+# Reprise du 22 octobre : méthode
+
+## 14. Continuer l’entraînement sans imposer le dernier modèle
+
+Nous avons repris le checkpoint de 7 296 étapes et exécuté 8 192 étapes supplémentaires, soit 64 nouveaux épisodes complets. Le compteur final atteint 15 488 étapes. Il repart du meilleur checkpoint chargé, et non du dernier état de la campagne précédente. Les poids restent 1 / 1 / 1 / 2 et les protections restent inchangées.
+
+Les nouveaux checkpoints n’ont pas amélioré la validation. Ils ont donc été conservés comme traces d’expérience, sans remplacer les meilleurs paramètres du réseau. Entraîner plus longtemps ne garantit pas une amélioration.
+
+## 15. Renforcer le choix du modèle
+
+La validation compare désormais chaque candidat aux feux classiques sur les mêmes seeds, à partir des totaux officiels tripinfo.xml, trajets inachevés compris. Après les collisions et téléportations, elle minimise la plus forte dégradation relative parmi les quatre émissions et les déficits de véhicules arrivés ou partis. Le coût pondéré départage les égalités. La récompense d’apprentissage reste limitée aux quatre émissions.
+
+## 16. Comparer deux façons d’utiliser PPO
+
+Avant, le programme choisissait toujours l’action la plus probable. Le mode testé tire une action selon les probabilités apprises par le modèle : ce n’est pas un choix uniforme au hasard. Le tirage est reproductible avec une seed de politique égale à la seed SUMO + 100000 ; cet offset n’a pas été ajusté pour favoriser les résultats.
+
+Le checkpoint et le mode ont été choisis uniquement sur la validation (1002, 1003), avant les tests finaux (10040, 10041, 10042). Le checkpoint précédent de 7 296 étapes avec tirage probabiliste a été retenu. Le rapprochement des résultats vers les feux classiques vient ici du mode de décision, pas d’une amélioration des poids par les 8 192 étapes ajoutées.
+
+Le dashboard indique ce mode de décision et distingue les étapes exécutées du checkpoint retenu. Les résultats enregistrent également le mode et la seed de la politique. Une simulation d’évaluation ne réentraîne pas le modèle.
+
+# Résultats actuels et limites
+
+## 17. Comparaison finale avec les feux classiques
+
+Trois essais de 600 secondes par méthode, sur 3x3grid, avec les mêmes conditions et les seeds 10040, 10041, 10042. Le bilan complet comprend neuf simulations : feux classiques, ancien RL déterministe et RL probabiliste retenu. Les valeurs ci-dessous sont les moyennes des trois essais.
+
+| Métrique | Classiques | RL retenu | Variation |
+| --- | --- | --- | --- |
+| CO₂ (kg) | 64,8673 | 65,3981 | +0,82 % |
+| NOx (g) | 22,7889 | 22,7685 | -0,09 % |
+| Carburant (kg) | 21,0292 | 21,2012 | +0,82 % |
+| PM (g) | 4,8722 | 4,8821 | +0,20 % |
+| Véhicules arrivés | 246 | 244 | -0,81 % |
+| Véhicules partis | 300 | 300 | 0 % |
+
+Les pourcentages comparent le RL aux feux classiques : (RL - classiques) / classiques × 100. Pour les émissions, une valeur négative indique une baisse ; une valeur positive indique une hausse. Aucun des neuf essais n’a enregistré de collision ou de téléportation.
+
+![Dernière comparaison](../runs/reports/rl_v4_20261022/comparaison.png)
+
+L’objectif des quatre baisses n’est pas atteint. Les écarts sont faibles ; trois essais ne démontrent pas une supériorité générale. Le RL fait aussi arriver deux véhicules de moins en moyenne : ce débit doit rester visible dans l’interprétation.
+
+# Configuration retenue et suite
+
+## 18. Ce qui est actif et sauvegardé
+
+La configuration retenue est active dans runs/models/emission_ppo/. Elle conserve les paramètres du checkpoint de 7 296 étapes, avec le mode probabiliste. Elle a été activée pour son meilleur résultat de validation et l’absence de collision et de téléportation dans les tests, et non parce que les quatre émissions seraient inférieures aux feux classiques.
+
+| Emplacement dans runs/ | Contenu |
+| --- | --- |
+| models/emission_ppo_before_v4_20261021/ | Archive de la configuration précédente. |
+| models/emission_ppo_v4_20261021/ | Nouvel entraînement, best.zip, last.zip et validations. |
+| models/emission_ppo_v4_selected_20261022/ | Copie de la configuration retenue avant activation et traces du choix du mode. |
+| reports/rl_v4_20261022/ | Résultats, identifiants des essais, comparaison CSV, graphique et décision d’activation. |
+
+## 19. Interpréter et poursuivre
+
+La configuration est expérimentale. Pour atteindre quatre réductions simultanées, il faut poursuivre les expériences sur les observations, les actions et la récompense, puis valider chaque proposition sans sélectionner le modèle sur les résultats de test. Davantage d’étapes seules n’ont pas suffi dans cette campagne.
+
+Les prochaines comparaisons devront inclure plusieurs demandes de trafic, durées et seeds, ainsi que les arrivées et les trajets inachevés. Le poids PM renforcé accepte des compromis dans une récompense pondérée ; il n’impose pas mathématiquement la baisse de chaque polluant.
+
+Les chiffres du 21 octobre et ceux du 22 octobre utilisent des seeds de test différentes. Pour mesurer directement l’évolution, le dernier graphique compare aussi l’ancien et le nouveau mode sur les mêmes trois seeds finales. Il faut éviter de soustraire des résultats provenant de campagnes différentes.

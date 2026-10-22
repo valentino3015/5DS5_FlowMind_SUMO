@@ -129,3 +129,57 @@ def test_rl_serves_queued_red_direction_before_teleport_deadline():
 def test_doubled_pm_weight_changes_only_environmental_reward():
     assert environmental_reward([0,0,0,10], [10]*4, [1,1,1,2]) == -.4
     assert environmental_reward([0,0,0,10], [10]*4, [1]*4) == -.25
+
+
+def test_validation_compares_all_four_emissions_and_traffic_to_reference():
+    from scripts.train_emissions import compare_validation
+    reference = {1000: {"emissions_mg":[100.,10.,50.,2.], "arrived":100, "departed":120}}
+    all_better = {1000: {"emissions_mg":[90.,9.,45.,1.8], "arrived":100, "departed":120}}
+    compared = compare_validation(all_better, reference)
+    assert compared["all_emissions_lower"]
+    assert compared["worst_ratio"] == 1
+    worse_pm = {1000: all_better[1000] | {"emissions_mg":[80.,8.,40.,2.4]}}
+    assert not compare_validation(worse_pm, reference)["all_emissions_lower"]
+    assert compare_validation(worse_pm, reference)["worst_ratio"] == pytest.approx(1.2)
+    blocked = {1000: all_better[1000] | {"arrived":80}}
+    assert compare_validation(blocked, reference)["worst_ratio"] == 1.25
+
+
+def test_official_validation_totals_include_unfinished_trips(tmp_path):
+    from scripts.train_emissions import official_emissions
+    path = tmp_path / "tripinfo.xml"
+    path.write_text('<tripinfos><tripinfo arrival="10"><emissions CO2_abs="10" NOx_abs="2" fuel_abs="3" PMx_abs="1"/></tripinfo>'
+                    '<tripinfo arrival="-1"><emissions CO2_abs="20" NOx_abs="4" fuel_abs="6" PMx_abs="2"/></tripinfo></tripinfos>')
+    data = official_emissions(path)
+    assert data == {"emissions_mg":[30.,6.,9.,3.], "departed":2, "arrived":1}
+
+
+def test_sampling_inference_requires_seed_and_repeats_learned_probabilities(tmp_path, monkeypatch):
+    import json
+    from stable_baselines3 import PPO
+    from flowmind.emission_rl import EmissionPolicy
+    params = {"min_green":10, "max_green":60, "max_red":90, "blocked_occupancy":.8}
+    manifest = {"scenario":"3x3grid", "topology":topology(states()), "scales_mg_s":[10,2,5,1],
+                "safety":params, "deterministic_inference":False, "policy_seed_offset":100000}
+    (tmp_path/'manifest.json').write_text(json.dumps(manifest))
+    calls=[]
+    class FakeModel:
+        def set_random_seed(self, seed):
+            self.rng=np.random.default_rng(seed)
+        def predict(self, obs, deterministic):
+            calls.append(deterministic)
+            return np.array([0 if deterministic else self.rng.choice([0,1],p=[.3,.7])]),None
+    monkeypatch.setattr(PPO,'load',lambda *args,**kwargs:FakeModel())
+    with pytest.raises(ValueError,match="seed"):
+        EmissionPolicy('3x3grid',params,directory=tmp_path)
+    first=EmissionPolicy('3x3grid',params,directory=tmp_path,seed=1002)
+    second=EmissionPolicy('3x3grid',params,directory=tmp_path,seed=1002)
+    assert first.policy_seed==101002
+    a=[first.act_all(states())[0]['J'] for _ in range(25)]
+    b=[second.act_all(states())[0]['J'] for _ in range(25)]
+    assert a==b and len(set(a))==2
+    assert not any(calls)
+    manifest.pop('deterministic_inference')
+    (tmp_path/'manifest.json').write_text(json.dumps(manifest))
+    legacy=EmissionPolicy('3x3grid',params,directory=tmp_path)
+    assert legacy.deterministic and legacy.act_all(states())[0]['J']==0

@@ -95,16 +95,23 @@ class SafetyGate:
 
 
 class EmissionPolicy:
-    def __init__(self, scenario, params, directory=MODEL_DIR):
+    def __init__(self, scenario, params, directory=MODEL_DIR, seed=None):
         from stable_baselines3 import PPO
         directory = Path(directory)
         self.manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
         if self.manifest["scenario"] != scenario:
             raise ValueError("Le modèle d’émissions a été entraîné pour un autre scénario")
         self.model = PPO.load(directory / "best.zip", device="cpu")
+        self.deterministic = self.manifest.get("deterministic_inference", True)
+        self.policy_seed = None
+        if not self.deterministic:
+            if seed is None:
+                raise ValueError("Une seed est requise pour reproduire les décisions probabilistes du modèle")
+            self.policy_seed = int(seed) + int(self.manifest.get("policy_seed_offset", 100000))
+            self.model.set_random_seed(self.policy_seed)
         self.gate = SafetyGate(inference_safety(self.manifest, params))
 
     def act_all(self, states):
-        predictions, _ = self.model.predict(encode(states, self.manifest), deterministic=True)
+        predictions, _ = self.model.predict(encode(states, self.manifest), deterministic=self.deterministic)
         proposed = dict(zip((item["id"] for item in self.manifest["topology"]), np.asarray(predictions).reshape(-1)))
         return self.gate.apply(states, proposed)

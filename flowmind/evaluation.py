@@ -108,7 +108,10 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
     if emission_manifest and (controller == "emission_model" or runtime_control):
         meta.update(emission_model_qualification=emission_manifest.get("qualification", "experimental"),
                     emission_model_timesteps=emission_manifest.get("actual_timesteps"),
-                    emission_model_directory=str(model_directory.resolve()))
+                    emission_model_directory=str(model_directory.resolve()),
+                    emission_model_deterministic=emission_manifest.get("deterministic_inference", True),
+                    emission_policy_seed=(int(seed) + int(emission_manifest.get("policy_seed_offset", 100000))
+                                          if not emission_manifest.get("deterministic_inference", True) else None))
     atomic_json(directory / "metadata.json", meta | {"config": config, "protocol": protocol})
     config["evaluation_output"] = str(directory)
     config["gui_delay_ms"] = int(gui_delay_ms)
@@ -121,7 +124,7 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
     try:
         states = env.reset()
         if controller == "emission_model":
-            emission_policy = EmissionPolicy(scenario, config["rules"] | {k:config["signals"][k] for k in ("min_green","max_green")}, directory=model_directory)
+            emission_policy = EmissionPolicy(scenario, config["rules"] | {k:config["signals"][k] for k in ("min_green","max_green")}, directory=model_directory, seed=seed)
         agents = {}
         for tls in env.tls_ids:
             if controller == "fixed_time":
@@ -153,7 +156,7 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
                         if control["method"] == "emission_model":
                             if emission_manifest and seed in emission_manifest["train_seeds"] + emission_manifest["validation_seeds"]:
                                 raise ValueError("Seed de test distincte de l’entraînement/validation requise")
-                            emission_policy = EmissionPolicy(scenario, control["rules"], directory=model_directory)
+                            emission_policy = EmissionPolicy(scenario, control["rules"], directory=model_directory, seed=seed)
                         for tls in env.tls_ids:
                             if control["method"] == "rules":
                                 agent = RuleBasedAgent(control["rules"])
