@@ -17,11 +17,13 @@ sys.path.insert(0, os.path.join(HERE, "..", "nets", "grid"))
 from build_grid import LINES  # noqa: E402
 
 TLS = "B1"
-APPROACHES = ("A1B1", "C1B1", "B0B1", "B2B1")   # fixed order: from W, E, S, N
+APPROACHES = ("A1B1", "C1B1", "B0B1", "B2B1")   # B1's approaches: from W, E, S, N
 NEIGHBOURS = ("A1", "C1", "B0", "B2")
+COMPASS = ("W", "E", "S", "N")                  # order of the approach slots, every junction
 EW_GREEN_IDX, NS_GREEN_IDX = 0, 3               # program phase indices of the 2 greens
 GREEN_PROGRAM_IDX = (EW_GREEN_IDX, NS_GREEN_IDX)  # action k -> program phase
 BUS_PREFIXES = tuple(f"{d}_" for d in LINES)
+PIECE = ".250.00"                               # netgenerate's turn-lane piece of an approach
 
 
 def line_of(bus_id):
@@ -33,21 +35,71 @@ def approach_of(lane_id):
     return lane_id.rsplit("_", 1)[0].split(".")[0]
 
 
-class Geometry:
-    """Incoming / outgoing lanes of one junction (sumolib, once)."""
+def compass_of(net, from_node, tls):
+    """Side of junction `tls` that an approach from `from_node` comes from: W/E/S/N."""
+    (x0, y0), (x1, y1) = net.getNode(from_node).getCoord(), net.getNode(tls).getCoord()
+    dx, dy = x0 - x1, y0 - y1
+    if abs(dx) >= abs(dy):
+        return "W" if dx < 0 else "E"
+    return "S" if dy < 0 else "N"
 
-    def __init__(self, net, tls=TLS, approaches=APPROACHES):
+
+def junction_approaches(net, tls):
+    """{W/E/S/N: approach id} of junction `tls` from the network (sides without an
+    approach are absent). Approach id = the upstream (main) edge, e.g. 'left1A1'."""
+    out = {}
+    for e in net.getNode(tls).getIncoming():
+        if e.getID().startswith(":"):
+            continue
+        main = e.getID()[:-len(PIECE)] if e.getID().endswith(PIECE) else e.getID()
+        main_edge = net.getEdge(main)
+        side = compass_of(net, main_edge.getFromNode().getID(), tls)
+        assert side not in out, f"{tls}: two approaches from {side}"
+        out[side] = main
+    return out
+
+
+class Geometry:
+    """Incoming / outgoing lanes of one junction (sumolib, once), for any junction.
+
+    approaches: one approach id (or None if the side has no approach) per COMPASS slot,
+    W, E, S, N. Default: read from the network (junction_approaches); for B1 this is
+    exactly APPROACHES. An approach is its main edge plus, if present, the turn-lane
+    piece main + '.250.00' that ends at the stop line.
+    straight: approach id -> outgoing edge reached by its straight ('s') connections.
+    neighbours: controlled junctions at the upstream end of the approaches.
+    """
+
+    def __init__(self, net, tls=TLS, approaches=None):
         self.tls = tls
-        self.approaches = approaches
+        if approaches is None:
+            sides = junction_approaches(net, tls)
+            approaches = tuple(sides.get(s) for s in COMPASS)
+        self.approaches = tuple(approaches)
         self.lanes_in = []           # (lane id, length, offset: distance from lane end to stop line)
         self.edge_dist = {}          # edge id -> (length, offset)
-        for a in approaches:
-            main, piece = net.getEdge(a), net.getEdge(a + ".250.00")
-            lp = piece.getLength()
-            for edge, off in ((piece, 0.0), (main, lp)):
+        self.straight = {}
+        neighbours = []
+        for a in self.approaches:
+            if a is None:
+                continue
+            main = net.getEdge(a)
+            piece = net.getEdge(a + PIECE) if net.hasEdge(a + PIECE) else None
+            chain = ((piece, 0.0), (main, piece.getLength())) if piece else ((main, 0.0),)
+            for edge, off in chain:
                 self.edge_dist[edge.getID()] = (edge.getLength(), off)
                 for lane in edge.getLanes():
                     self.lanes_in.append((lane.getID(), lane.getLength(), off))
+            last = chain[0][0]                       # the edge that ends at the stop line
+            straight = {to.getID() for to, conns in last.getOutgoing().items()
+                        if any(c.getDirection() == "s" for c in conns)}
+            assert len(straight) <= 1, f"{a}: several straight exits {straight}"
+            if straight:
+                self.straight[a] = straight.pop()
+            frm = main.getFromNode()
+            if frm.getType() == "traffic_light":
+                neighbours.append(frm.getID())
+        self.neighbours = tuple(neighbours)
         node = net.getNode(tls)
         self.lanes_out = [(lane.getID(), lane.getLength()) for e in node.getOutgoing()
                           if not e.getID().startswith(":") for lane in e.getLanes()]
@@ -121,4 +173,4 @@ class Sensor:
         return JunctionState(tls_id=tls, sim_time=t, green_phases=self.green_states,
                              current_green=current_green, time_in_phase=time_in_phase,
                              in_transition=in_transition, incoming=incoming, outgoing=outgoing,
-                             approaching=tuple(approaching), crossings=(), neighbours=NEIGHBOURS)
+                             approaching=tuple(approaching), crossings=(), neighbours=self.g.neighbours)

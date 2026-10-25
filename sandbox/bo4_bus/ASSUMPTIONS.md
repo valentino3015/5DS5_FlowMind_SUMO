@@ -368,3 +368,54 @@ picked in set order.
 - **C does not shift delay to cross streets** at 675 veh/h. The paired cross-street change is −0.6 ± 1.6 s, while B's is +3.0 ± 4.3 s.
 - **Figure:** `results/cv_along_line.png` shows headway CV by stop index (0–3), one panel per line direction, for fixed / B / C_tuned,
   with the mean and 95 % CI over the 20 evaluation seeds.
+
+# Step 5b: the RL agent at all 9 junctions (`rl/evaluate.py --scope all9`)
+One trained policy (agent F, observation v2), one independent copy per junction, no
+retraining and no communication between junctions. Own libsumo loop as in `--scope b1`
+(no SUMO-RL multi-agent mode). `--scope b1` (the default) is unchanged: on seed 900 it
+reproduces the stored C_all and F rows on every numeric column.
+
+## Per-junction observation (`rl/sense.py` Geometry, `rl/observation.py` observe_at)
+- **Approaches are read from the network** for any junction: each incoming edge that ends at
+  the stop line (the 3-lane `.250.00` turn-lane piece) plus its upstream 2-lane main edge.
+  The approach id is the main edge (e.g. `left1A1`).
+- **Slot order is W, E, S, N for every junction**, from the from-node coordinates relative to
+  the junction. For B1 this is exactly the old fixed tuple `A1B1, C1B1, B0B1, B2B1`.
+- **Straight exit** (v2 `out_occ`): the outgoing edge reached by the approach's `s` (straight)
+  connections in the network, not parsed from edge names (fringe edges such as `left1A1`
+  do not follow the grid naming).
+- **Missing approach -> zeros**: a side without an approach is a `None` slot and all its
+  values (queue, bus, v2 extras) are 0. No junction of this grid has one; all 9 have 4
+  approaches, 20 incoming lanes, 8 outgoing lanes, 16 links and the same 6-phase program
+  (phase 0 = E-W green, phase 3 = N-S green), so action k means the same green everywhere.
+- **B1 is unchanged.** Checked on 360 real decision ticks (seed 900) against the code before
+  the change (identical geometry, states, v1 and v2 vectors), and by a pytest on a stored
+  60-tick fixture (`rl/tests/data/b1_golden.pkl`).
+
+## What differs between junctions (and the policy never saw at B1)
+| | B1 | A1, C1 | B0, B2 | A0, A2, C0, C2 |
+|---|---|---|---|---|
+| fringe approaches (main edge 246 m, not 234 m) | 0 | 1 | 1 | 2 |
+| fringe exits (one 288 m edge, not 234 m) | 0 | 1 | 1 | 2 |
+| bus lines | L1 + L2 | L1 only (E-W) | L2 only (N-S) | none |
+- Queue features are normalised by each approach's own capacity (fringe: 79.2 cars, others 76.0).
+- At the 4 corners every bus feature is always 0: the policy acts on queues and phase only.
+- **Bus at the entry stop is visible at A1, C1, B0, B2.** The first stop of each line is on its
+  entry link, ~130 m before the line's first junction, inside the 150 m bus range. At B1 the
+  nearest upstream stop is ~168 m away, so the policy never saw a bus dwelling within range in
+  training. Kept as is (it is what the junction's own sensor sees), not filtered out.
+- Headway lateness is measured per junction (last passage of the same line at that junction),
+  as at B1; at a line's first junction it reflects the dispatch jitter.
+
+## Each junction's controller
+- `RLController(policy, net, tls=J)`: its own Sensor (with its own last-passage memory per
+  line), its own B1Signal (shield 10-60 s green, yellow 3 s, all-red 2 s, safety monitor),
+  decisions every 5 s after the 600 s warm-up, taking over at its first green.
+- Every run row has per-junction `rl_switches_J`, `rl_shield_J`, `rl_violations_J`, and
+  per-junction / per-junction-type delays (bus_delay_J where a line crosses J, car_delay_J =
+  car time loss on J's approaches / cars that left them, person_delay_J_h).
+
+## Known quirk (pre-existing, not changed)
+- `spill_worst_appr` (Grid_Demo) is the arg-max of the longest spillback over approaches;
+  `Grid_Demo.approaches()` iterates a Python set, so on ties the reported approach depends on
+  the process' string-hash seed. `spill_longest_s` itself is deterministic.

@@ -22,6 +22,11 @@ OBS_SIZE_V2 = 24 + 3 * 4 = 36:
         second_bus   1 if a second bus is within 150 m on that approach (a bunched pair)
         out_occ      max occupancy of the outgoing lanes straight ahead of that approach
                      (spillback risk: a green there is wasted if the exit is full), [0, 1]
+
+Any junction: pass `approaches` = Geometry(net, tls).approaches (W, E, S, N slots) and
+`straight` = Geometry.straight. A slot that is None (side without an approach) gives
+zeros in all its values. The defaults are B1's approaches, so observe(state) is
+unchanged for B1. observe_at(state, geometry, version) does both.
 """
 import numpy as np
 
@@ -57,8 +62,9 @@ def version_of_size(n):
 
 
 def straight_out(approach):
-    """Outgoing edge straight ahead of an incoming approach of the grid, 'A1B1' -> 'B1C1'
-    (node ids are a column letter + a row digit)."""
+    """Outgoing edge straight ahead of an approach between two inner grid nodes,
+    'A1B1' -> 'B1C1' (node ids = column letter + row digit). B1's default only; for
+    other junctions (fringe edges such as 'left1A1') use Geometry.straight."""
     (c0, r0), (c1, r1) = approach[:2], approach[2:4]
     return f"{c1}{r1}{chr(2 * ord(c1) - ord(c0))}{2 * int(r1) - int(r0)}"
 
@@ -67,19 +73,25 @@ def _clip(x, lo, hi):
     return min(max(x, lo), hi)
 
 
-def observe(state, approaches=APPROACHES, version="v1"):
+def observe_at(state, geometry, version="v1"):
+    """Observation of the junction described by a sense.Geometry."""
+    return observe(state, geometry.approaches, version, geometry.straight)
+
+
+def observe(state, approaches=APPROACHES, version="v1", straight=None):
     if version not in VERSIONS:
         raise ValueError(f"unknown observation version {version!r}")
     n = len(approaches)
     obs = np.zeros(OBS_SIZE if version == "v1" else OBS_SIZE_V2, dtype=np.float32)
-    halting = dict.fromkeys(approaches, 0)
-    capacity = dict.fromkeys(approaches, 0.0)
+    present = [a for a in approaches if a is not None]
+    halting = dict.fromkeys(present, 0)
+    capacity = dict.fromkeys(present, 0.0)
     for lane in state.incoming:
         a = approach_of(lane.lane_id)
         if a in halting:
             halting[a] += lane.halting_count
             capacity[a] += lane.length / JAM_SPACING
-    nearest, n_buses = {}, dict.fromkeys(approaches, 0)
+    nearest, n_buses = {}, dict.fromkeys(present, 0)
     for bus in state.approaching:
         a = approach_of(bus.lane_id)
         if bus.distance_to_stopline <= DETECT:
@@ -88,6 +100,8 @@ def observe(state, approaches=APPROACHES, version="v1"):
             if a not in nearest or bus.distance_to_stopline < nearest[a].distance_to_stopline:
                 nearest[a] = bus
     for k, a in enumerate(approaches):
+        if a is None:
+            continue
         o = 5 * k
         obs[o] = _clip(halting[a] / capacity[a], 0.0, 1.0) if capacity[a] else 0.0
         bus = nearest.get(a)
@@ -110,9 +124,12 @@ def observe(state, approaches=APPROACHES, version="v1"):
         out_occ[e] = max(out_occ.get(e, 0.0), lane.occupancy)
     o = OBS_SIZE
     for k, a in enumerate(approaches):
+        if a is None:
+            continue
         bus = nearest.get(a)
         if bus is not None and bus.headway_lateness is not None:
             obs[o + 3 * k] = _clip((bus.headway_lateness + H) / H, 0.0, SINCE_MAX)
         obs[o + 3 * k + 1] = 1.0 if n_buses[a] >= 2 else 0.0
-        obs[o + 3 * k + 2] = _clip(out_occ.get(straight_out(a), 0.0), 0.0, 1.0)
+        exit_edge = straight.get(a) if straight is not None else straight_out(a)
+        obs[o + 3 * k + 2] = _clip(out_occ.get(exit_edge, 0.0), 0.0, 1.0)
     return obs
