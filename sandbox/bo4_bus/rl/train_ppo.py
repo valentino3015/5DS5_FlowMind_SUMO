@@ -106,11 +106,22 @@ def validate(out, name, steps, policy, val_duration, obs="v1"):
 
 
 def _val_job(job):
-    """ProcessPool worker: one validation run of a saved checkpoint (or C_all)."""
-    row, _ = ev.run_one(job["name"], job["seed"], model_path=job["model"],
-                        duration=job["duration"], scope=job["scope"],
-                        tag=f"rl_val_{job['run']}_{job['scope']}")
-    return job, row
+    """ProcessPool worker: one validation run of a saved checkpoint (or C_all).
+    Each (run, checkpoint, scope, attempt) writes its own raw folder; a run whose SUMO
+    output cannot be read (e.g. a truncated tripinfo.xml) is retried once in a fresh
+    folder instead of aborting the training."""
+    for attempt in (1, 2):
+        tag = (f"rl_val_{job['run']}_{job['steps']}_{job['scope']}"
+               + ("" if attempt == 1 else f"_retry{os.getpid()}"))
+        try:
+            row, _ = ev.run_one(job["name"], job["seed"], model_path=job["model"],
+                                duration=job["duration"], scope=job["scope"], tag=tag)
+            return job, row
+        except Exception as e:                      # noqa: BLE001
+            if attempt == 2:
+                raise
+            print(f"[val] {job['name']} {job['steps']} {job['scope']} seed {job['seed']}: "
+                  f"{type(e).__name__}: {e}; retrying once", flush=True)
 
 
 def validate_pool(out, name, steps, model_path, val_duration, scopes=("b1",), workers=4):
@@ -122,7 +133,7 @@ def validate_pool(out, name, steps, model_path, val_duration, scopes=("b1",), wo
     rows = _load(path)
     done = {(r["name"], int(r["steps"]), r.get("scope", "b1"), int(r["seed"])) for r in rows}
     jobs = [dict(name=name, seed=s, model=model_path, duration=val_duration, scope=sc,
-                 run=os.path.basename(out))
+                 run=os.path.basename(out), steps=steps)
             for sc in scopes for s in ev.VAL_SEEDS if (name, steps, sc, s) not in done]
     if jobs:
         with ProcessPoolExecutor(min(workers, len(jobs))) as ex:
@@ -187,6 +198,21 @@ def make_callback(out, reward, every, val_duration, obs="v1", c_ref=None, val_al
             self.best_stable = None
             self.summary_path = os.path.join(out, "validation_summary.csv")
             self.summary = _load(self.summary_path)
+            self._restore()
+
+        def _restore(self):
+            """Best-so-far from validation_summary.csv (same rules as _evaluate), so a
+            checkpoint validated later (--validate-ckpt) competes with the earlier ones."""
+            key = SELECT[reward]
+            for r in self.summary:
+                m = {k: v for k, v in r.items()
+                     if k not in ("best", "best_regular", "best_stable", "val_wall_s")}
+                if self.best is None or m[key] < self.best[key]:
+                    self.best = {"steps": int(m["steps"]), key: m[key], **m}
+                if regular and better_regular(m, self.best_regular, c_ref):
+                    self.best_regular = {"steps": int(m["steps"]), REGULAR_KEY: m[REGULAR_KEY], **m}
+                if val_all9 and better_stable(m, self.best_stable, c_ref):
+                    self.best_stable = {"steps": int(m["steps"]), STABLE_KEY: m[STABLE_KEY], **m}
 
         def _evaluate(self):
             steps = int(self.num_timesteps)
@@ -297,6 +323,35 @@ def reference_c(out, val_duration, workers=None):
     return m
 
 
+def validate_checkpoint(out, a, val_workers):
+    """Finish an interrupted run: validate ckpt_<steps>.zip like the training callback
+    would have (same rules, best-so-far restored from validation_summary.csv). Rows
+    already in validation.csv are not rerun."""
+    ckpt = os.path.join(out, f"ckpt_{a.validate_ckpt}.zip")
+    if not os.path.exists(ckpt):
+        raise SystemExit(f"{ckpt} not found")
+    with open(os.path.join(out, "config.json")) as f:
+        cfg = json.load(f)
+    for k in ("reward", "w", "w_early", "c_switch", "obs", "mask", "val_all9", "val_duration"):
+        if cfg.get(k) != getattr(a, k):
+            raise SystemExit(f"--{k.replace('_', '-')} {getattr(a, k)} differs from the run's "
+                             f"config.json ({cfg.get(k)}); use the training command's options")
+    from stable_baselines3.common.logger import configure
+    if a.mask:
+        from sb3_contrib import MaskablePPO as Algo
+    else:
+        from stable_baselines3 import PPO as Algo
+    model = Algo.load(ckpt, device="cpu")
+    model.set_logger(configure(os.path.join(out, "tb", "validate_ckpt"), ["csv"]))
+    c_ref = reference_c(out, a.val_duration, val_workers)       # from validation.csv
+    cb = make_callback(out, a.reward, a.eval_every, a.val_duration, a.obs, c_ref,
+                       a.val_all9, val_workers)
+    cb.model = model
+    cb.num_timesteps = a.validate_ckpt
+    cb._evaluate()
+    print(f"validated {ckpt}; best checkpoints in {out}/best.json", flush=True)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--reward", default="vehicle",
@@ -321,6 +376,9 @@ def main():
     ap.add_argument("--train-seed", "--seed", dest="train_seed", type=int, default=0,
                     help="seed of PPO / torch and of the envs' SUMO-seed draws (not a SUMO seed)")
     ap.add_argument("--name", default=None)
+    ap.add_argument("--validate-ckpt", type=int, default=None, metavar="STEPS",
+                    help="no training: validate runs/<name>/ckpt_STEPS.zip of an existing run "
+                         "(same options as its training) and update its best_* checkpoints")
     a = ap.parse_args()
     g = a.reward == "regular_g"
     if a.reward not in REGULAR_REWARDS and a.w != 1.0:
@@ -343,6 +401,8 @@ def main():
     name = a.name or run_name(a.reward, a.w, a.obs, a.train_seed, a.steps, a.w_early,
                               a.c_switch, a.mask)
     out = os.path.join(HERE, "runs", name)
+    if a.validate_ckpt:
+        return validate_checkpoint(out, a, val_workers)
     os.makedirs(out, exist_ok=True)
     cfg = {**vars(a), "name": name, "agent": LETTER[a.reward],
            "w": a.w if a.reward in REGULAR_REWARDS else None,
