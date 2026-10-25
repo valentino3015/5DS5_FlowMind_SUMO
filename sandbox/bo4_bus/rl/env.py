@@ -13,9 +13,15 @@ The other 8 junctions run controller C (../rule_tsp.py, C_tuned parameters).
 Episode: warm-up (default 600 s, not learned; B1 runs its fixed-time program), then
 `duration` s (default 3600) of decision ticks every `delta` = 5 s -> 720 steps.
 
-Reward (reward=): "vehicle" (D), "person" (E) or "regular" (F, weight w); see reward.py.
+Reward (reward=): "vehicle" (D), "person" (E), "regular" (F, weight w) or "regular_g"
+(G: F + early-bus penalty w_early + switch cost c_switch); see reward.py.
 Observation (obs=): "v1" (default, 24 values; the RL-D / RL-E models) or "v2" (36 values);
 see observation.py.
+
+Action mask (agent G): env.action_masks() = action_mask(...) of the current state, the
+actions the shield would apply unchanged (no switch before min green or during a
+transition, forced switch at max green). sb3-contrib MaskablePPO only samples those, so
+the shield below stays as the final safety check but should never override.
 
 Action: index k of the next green phase of B1 (0 = E-W, 1 = N-S). Keeping the current
 index keeps the green; another index starts a switch. The agent never sets yellow or
@@ -58,6 +64,8 @@ TRAIN_SEEDS = (0, 900)           # [lo, hi): training seeds; 900-999 kept for va
 YELLOW_IDX = {g + 1 for g in GREEN_PROGRAM_IDX}
 ALL_RED_IDX = {g + 2 for g in GREEN_PROGRAM_IDX}
 HOLD = 100000.0                  # s, "infinite" duration of a phase the controller holds
+EPISODE_KEYS = ("ep_switches", "ep_shield_overrides", "ep_shield_min_green",
+                "ep_shield_max_green", "ep_violations", "ep_teleports")
 
 
 def shield(proposed, current, time_in_phase, n_greens=2, delta=5,
@@ -71,6 +79,22 @@ def shield(proposed, current, time_in_phase, n_greens=2, delta=5,
         return ((current + 1) % n_greens, "max_green",
                 f"max green reached ({time_in_phase:.0f} s of {max_green} s)")
     return proposed, None, None
+
+
+def action_mask(current, time_in_phase, in_transition=False, n_greens=2, delta=5,
+                min_green=MIN_GREEN, max_green=MAX_GREEN):
+    """Valid actions under the shield rules, pure: bool array of length n_greens.
+    True exactly for the actions the shield applies unchanged, so a policy that only
+    picks True actions is never overridden. During yellow / all-red only "keep the
+    target" is valid (cannot occur at a decision tick when delta = yellow + all-red)."""
+    mask = np.zeros(n_greens, dtype=bool)
+    if in_transition or time_in_phase < min_green:
+        mask[current] = True                      # no switch before min green
+    elif time_in_phase + delta > max_green:
+        mask[(current + 1) % n_greens] = True     # forced switch at max green
+    else:
+        mask[:] = True
+    return mask
 
 
 class B1Signal:
@@ -101,6 +125,11 @@ class B1Signal:
 
     def time_in_phase(self, t):
         return t - self.green_start
+
+    def mask(self, t):
+        """action_mask at time t (decision ticks): the actions apply() leaves unchanged."""
+        return action_mask(self.current_green, self.time_in_phase(t), self._switch_t0 is not None,
+                           self.n_greens, self.delta)
 
     def _set(self, sim, phase):
         sim.trafficlight.setPhase(self.tls, phase)
@@ -159,14 +188,17 @@ class BusPriorityEnv(gym.Env):
 
     def __init__(self, reward="vehicle", reward_scale=0.01, warmup=600.0, duration=3600.0,
                  delta=5, entry_flow=675.0, c_params=None, train_seeds=TRAIN_SEEDS,
-                 w=1.0, obs="v1"):
+                 w=1.0, obs="v1", w_early=0.0, c_switch=0.0):
         assert delta == YELLOW + ALL_RED, "a switch must fill exactly one tick"
         self.reward_fn = rw.REWARDS[reward]
         if reward == "regular":
             self.reward_fn = functools.partial(self.reward_fn, w=w)
+        elif reward == "regular_g":
+            self.reward_fn = functools.partial(self.reward_fn, w=w, w_early=w_early,
+                                               c_switch=c_switch)
         self.reward_name = reward
         self.reward_scale = reward_scale
-        self.w = w
+        self.w, self.w_early, self.c_switch = w, w_early, c_switch
         self.obs_version = obs
         self.warmup, self.duration, self.delta = warmup, duration, delta
         self.entry_flow = entry_flow
@@ -243,6 +275,7 @@ class BusPriorityEnv(gym.Env):
         self.signal = B1Signal(TLS, self.delta)
         self._start(self.sumo_seed)
         self.ep_reward, self.ep_steps, self.ep_tic = 0.0, 0, time.time()
+        self.ep_switches = 0
 
         t = self.sim.simulation.getTime()
         while t < self.warmup or not self.signal.ready(self.sim):
@@ -260,10 +293,15 @@ class BusPriorityEnv(gym.Env):
         return self.sensor.sense(self.sim, t, self.signal.current_green,
                                  self.signal.time_in_phase(t), False)
 
+    def action_masks(self):
+        """Valid actions now (sb3-contrib MaskablePPO reads this through the VecEnv)."""
+        return self.signal.mask(self.sim.simulation.getTime())
+
     def step(self, action):
         t = self.sim.simulation.getTime()
         proposed = int(action)
         applied, rule, _, switch = self.signal.apply(self.sim, t, proposed)
+        self.ep_switches += switch
         for _ in range(self.delta):
             t = self._sim_step()
 
@@ -277,10 +315,14 @@ class BusPriorityEnv(gym.Env):
                 "switch": switch, "reward_raw": r_raw, **terms}
         if truncated:
             info["episode_stats"] = self.episode_stats()
+            # flat copies for VecMonitor(info_keywords=EPISODE_KEYS) -> monitor.csv
+            for k in EPISODE_KEYS:
+                info[k] = info["episode_stats"][k[3:]]
         return self._observe(), r, False, truncated, info
 
     def episode_stats(self):
         return {"sumo_seed": self.sumo_seed, "steps": self.ep_steps, "reward": self.ep_reward,
+                "switches": self.ep_switches,
                 "shield_overrides": len(self.shield_log),
                 "shield_min_green": sum(1 for s in self.shield_log if s["rule"] == "min_green"),
                 "shield_max_green": sum(1 for s in self.shield_log if s["rule"] == "max_green"),

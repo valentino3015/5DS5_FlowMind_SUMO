@@ -11,6 +11,20 @@ F  reward_regular(prev, state, w) = E
    a queued late bus costs its passengers' delay (in E) plus w x its lateness in
    headways, so the agent is pushed to serve late buses (regularity) and not early ones.
    Unknown lateness (no previous passage on record) counts as 0.
+G  reward_regular_g(prev, state, w, w_early, c_switch) = F (same w)
+   - w_early * [no late bus on any approach] * sum over early buses on the approaches
+       that have green now of (-lateness / H) * persons_on_board * dt
+   - c_switch * SWITCH_UNIT * [the green changed during the tick]
+   Early-bus penalty: C's rule (no priority for an early bus) made soft. Each second of
+   green given or held for an approach with an early bus costs that bus's passengers
+   x its earliness in headways, the mirror of F's lateness term, but only while no late
+   bus is waiting (a late bus always has precedence, as in C). "Bus on an approach" =
+   within DETECT = 150 m of the stop line (the observation's range), not dwelling at a
+   stop; "late" = lateness > 0, "early" = lateness < 0 (unknown counts as neither).
+   Green approaches: green 0 (E-W) serves the W and E slots, green 1 the S and N slots.
+   Switch cost: SWITCH_UNIT = 100 person-seconds = 20 persons waiting through the 5 s
+   change interval (yellow 3 + all-red 2), the order of one tick of reward E at B1;
+   a switch = prev.current_green != state.current_green (a switch fills one tick).
 "Halting" = below 0.1 m/s (LaneState.halting_count). A bus dwelling at a stop is
 halted but is not signal delay, so it is excluded (VehicleInfo.at_stop). Car
 halting = lane halting - all halting buses; the sensor covers the whole approach,
@@ -21,10 +35,15 @@ Reference only (phase 1, not used for training):
 reward_vehicle_diff / reward_person_diff = -(change in total accumulated waiting time).
 Their episode sum telescopes to (waiting at start - waiting at end), ~0 for any policy.
 """
+from sense import APPROACHES, approach_of
+
 CAR_OCCUPANCY = 1.3
 TICK = 5.0            # s, decision interval
 H = 180.0             # s, scheduled headway
 HALT_SPEED = 0.1      # m/s, SUMO's halting threshold
+DETECT = 150.0        # m, bus range of the early/late test (= observation.DETECT)
+SWITCH_UNIT = 100.0   # person-seconds per switch at c_switch = 1
+GREEN_OF_SLOT = (0, 0, 1, 1)   # approach slots W, E, S, N -> green index serving them
 
 
 def _incoming_buses(state):
@@ -72,6 +91,33 @@ def reward_regular(prev, state, dt=TICK, w=1.0, headway=H, car_occupancy=CAR_OCC
     return r, {"r_regular": r, **terms, "r_late": r_late, "late_person_headways": late}
 
 
+def _buses_in_range(state):
+    """Buses within DETECT of the stop line, not dwelling at a stop, on the incoming lanes."""
+    return [b for b in _incoming_buses(state)
+            if b.distance_to_stopline <= DETECT and not b.at_stop]
+
+
+def reward_regular_g(prev, state, dt=TICK, w=5.0, w_early=1.0, c_switch=1.0, headway=H,
+                     car_occupancy=CAR_OCCUPANCY, approaches=APPROACHES):
+    r_f, terms = reward_regular(prev, state, dt, w, headway, car_occupancy)
+    buses = _buses_in_range(state)
+    late_waiting = any((b.headway_lateness or 0.0) > 0 for b in buses)
+    green_appr = {a for a, g in zip(approaches, GREEN_OF_SLOT)
+                  if a is not None and g == state.current_green}
+    early = 0.0
+    if not late_waiting:
+        early = sum(-b.headway_lateness / headway * (b.persons_on_board or 0) for b in buses
+                    if b.headway_lateness is not None and b.headway_lateness < 0
+                    and approach_of(b.lane_id) in green_appr)
+    r_early = -w_early * early * dt
+    switched = prev is not None and prev.current_green != state.current_green
+    r_switch = -c_switch * SWITCH_UNIT * float(switched)
+    r = r_f + r_early + r_switch
+    return r, {"r_regular_g": r, **terms, "r_early": r_early, "early_person_headways": early,
+               "late_bus_waiting": float(late_waiting), "r_switch": r_switch,
+               "switched": float(switched)}
+
+
 # ---------------------------------------------------------------- reference (phase 1)
 def _bus_waiting(state):
     """(unweighted, occupancy-weighted) waiting of buses on the incoming lanes."""
@@ -107,4 +153,5 @@ def reward_person_diff(prev, state, car_occupancy=CAR_OCCUPANCY):
 
 
 REWARDS = {"vehicle": reward_vehicle, "person": reward_person, "regular": reward_regular,
+           "regular_g": reward_regular_g,
            "vehicle_diff": reward_vehicle_diff, "person_diff": reward_person_diff}

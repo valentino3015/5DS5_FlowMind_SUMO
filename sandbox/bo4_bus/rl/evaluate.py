@@ -116,7 +116,8 @@ class RLController:
             s = self.sensor.sense(sim, t, self.signal.current_green,
                                   self.signal.time_in_phase(t), False)
             obs = ob.observe_at(s, self.geometry, version=self.obs_version)
-            self.switches += self.signal.apply(sim, t, self.policy(obs))[3]
+            action = self.policy(obs, self.signal.mask(t))   # plain PPO ignores the mask
+            self.switches += self.signal.apply(sim, t, action)[3]
             self.next_tick += self.delta
 
 
@@ -143,12 +144,34 @@ def rl_policy(policy, holder, obs_version="v1", scope="b1"):
         rule_tsp.make_controllers = orig
 
 
+def is_maskable(model_path):
+    """True for a sb3-contrib MaskablePPO zip (its policy class module says so)."""
+    import json
+    import zipfile
+    with zipfile.ZipFile(model_path) as z:
+        data = json.loads(z.read("data"))
+    return "maskable" in str(data.get("policy_class", {}).get("__module__", ""))
+
+
+def as_policy(model):
+    """policy(obs, mask=None) -> action of a loaded SB3 model, deterministic. A
+    MaskablePPO model only picks actions allowed by the mask; plain PPO ignores it."""
+    if type(model).__name__ == "MaskablePPO":
+        return lambda obs, mask=None: int(model.predict(obs, deterministic=True,
+                                                        action_masks=mask)[0])
+    return lambda obs, mask=None: int(model.predict(obs, deterministic=True)[0])
+
+
 def sb3_policy(model_path):
-    """(policy obs -> action, observation version read from the model's input size)."""
-    from stable_baselines3 import PPO
-    model = PPO.load(model_path, device="cpu")
+    """(policy(obs, mask) -> action, observation version read from the model's input size).
+    PPO (agents D, E, F) or MaskablePPO (agent G), detected from the zip."""
+    if is_maskable(model_path):
+        from sb3_contrib import MaskablePPO as Algo
+    else:
+        from stable_baselines3 import PPO as Algo
+    model = Algo.load(model_path, device="cpu")
     version = ob.version_of_size(model.observation_space.shape[0])
-    return (lambda obs: int(model.predict(obs, deterministic=True)[0])), version
+    return as_policy(model), version
 
 
 def _junction_raw(stops, occ, ed, geo, t0, t1, tls):

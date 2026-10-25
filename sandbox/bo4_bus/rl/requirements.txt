@@ -6,6 +6,7 @@ numpy>=1.26
 pandas>=2.0
 gymnasium==1.4.0
 stable-baselines3==2.9.0
+sb3-contrib==2.9.0           # MaskablePPO (agent G)
 torch>=2.0
 tensorboard>=2.15
 pytest>=8.0
