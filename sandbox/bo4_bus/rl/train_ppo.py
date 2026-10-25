@@ -403,6 +403,10 @@ def main():
     out = os.path.join(HERE, "runs", name)
     if a.validate_ckpt:
         return validate_checkpoint(out, a, val_workers)
+    if os.path.exists(os.path.join(out, "validation_summary.csv")):
+        raise SystemExit(f"{out} already holds a trained run; training again would overwrite "
+                         f"its checkpoints while reusing its old validation rows. Use another "
+                         f"--name / --train-seed, or --validate-ckpt to finish that run.")
     os.makedirs(out, exist_ok=True)
     cfg = {**vars(a), "name": name, "agent": LETTER[a.reward],
            "w": a.w if a.reward in REGULAR_REWARDS else None,
