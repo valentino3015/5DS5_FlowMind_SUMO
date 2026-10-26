@@ -37,22 +37,29 @@ def series(rl, fixed, pool):
     if fixed is not None:
         out.append((fixed[fixed.name == "fixed"], "fixed-time (all 9)", "#9a9a9a"))
     out.append((rl[rl.name == "C_all"], "C rules (all 9)", "#00798c"))
-    shades = {"B1": ["#edae49", "#d1495b", "#a4161a"], "all9": ["#2060cc", "#7b2cbf", "#3a0ca3"]}
-    text = {"B1": "PPO F at B1, C elsewhere", "all9": "PPO F at all 9"}
+    shades = {"B1": ["#edae49", "#d1495b", "#a4161a", "#f3722c"],
+              "all9": ["#2060cc", "#7b2cbf", "#3a0ca3", "#4cc9f0"]}
+    text = {"B1": "at B1, C elsewhere", "all9": "at all 9"}
     for scope in ("B1", "all9"):
         names = [n for n in rl.name.unique() if str(n).endswith(f"@{scope}")]
         if not names:
             continue
         if pool:
-            sub = rl[rl.name.isin(names)].copy()
-            # one value per (seed, line, stop): mean over the models of that scope
-            sub = sub.groupby(["seed", "line", "stop_idx"], as_index=False).cv.mean()
-            label = text[scope] + (f" (mean of {len(names)} models)" if len(names) > 1 else "")
-            out.append((sub, label, shades[scope][0]))
+            # one curve per agent (label before "_s<seed>", e.g. G_s0, G_s1 -> G): per
+            # (seed, line, stop) the mean over that agent's models
+            agents = {}
+            for n in names:
+                agents.setdefault(n.split("@")[0].rsplit("_s", 1)[0], []).append(n)
+            for i, (agent, ns) in enumerate(agents.items()):
+                sub = rl[rl.name.isin(ns)].groupby(["seed", "line", "stop_idx"],
+                                                   as_index=False).cv.mean()
+                label = f"PPO {agent} {text[scope]}" + (
+                    f" (mean of {len(ns)} training seeds)" if len(ns) > 1 else "")
+                out.append((sub, label, shades[scope][i % 4]))
         else:
             for i, n in enumerate(names):
-                out.append((rl[rl.name == n], f"{text[scope]} [{n.split('@')[0]}]",
-                            shades[scope][i % 3]))
+                out.append((rl[rl.name == n], f"PPO {n.split('@')[0]} {text[scope]}",
+                            shades[scope][i % 4]))
     return out
 
 
