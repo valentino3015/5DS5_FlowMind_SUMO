@@ -283,8 +283,11 @@ def final_job(job):
 SEEDS = {"final": EVAL_SEEDS, "val": VAL_SEEDS}
 
 
-def experiment(what, scope):
-    """Output prefix in results/: b1 keeps the old names, all9 gets its own files."""
+def experiment(what, scope, prefix=None):
+    """Output prefix in results/: b1 keeps the old names, all9 gets its own files;
+    --prefix P gives P (final) / P_<what> (val), e.g. rl_g -> rl_g_val_runs.csv."""
+    if prefix:
+        return prefix if what == "final" else f"{prefix}_{what}"
     if scope == "b1":
         return f"rl_{what}"
     return "rl_all9" if what == "final" else f"rl_all9_{what}"
@@ -303,7 +306,7 @@ def plan(models, scope="b1", with_b1=False):
     return out
 
 
-def evaluate(what, models, workers, scope="b1", with_b1=False):
+def evaluate(what, models, workers, scope="b1", with_b1=False, prefix=None):
     """models: {label: model path}, run after C_all in the given order."""
     runs = plan(models, scope, with_b1)
     names = [n for n, _, _ in runs]
@@ -311,7 +314,7 @@ def evaluate(what, models, workers, scope="b1", with_b1=False):
     jobs = [dict(name=n, seed=s, flow=ce.FLOW, model=m, controller="rl", scope=sc)
             for n, m, sc in runs for s in seeds]
     ce.N_WORKERS = workers
-    exp = experiment(what, scope)
+    exp = experiment(what, scope, prefix)
     df, _, _ = ce.run_all(jobs, exp, os.path.join(RESULTS, f"{exp}_runs.csv"),
                           os.path.join(RESULTS, f"{exp}_lines.csv"), fn=final_job)
     assert (df.backend == "libsumo").all()
@@ -423,6 +426,8 @@ def main():
                          "smoke: one run per model, nothing written")
     ap.add_argument("--scope", default="b1", choices=SCOPES,
                     help="b1: the model at B1, C elsewhere (default); all9: a copy at every junction")
+    ap.add_argument("--prefix", default=None,
+                    help="output name in results/ instead of rl_<what> / rl_all9*, e.g. rl_g")
     ap.add_argument("--with-b1", action="store_true",
                     help="with --scope all9: also run each model at B1 only (<label>@B1)")
     ap.add_argument("--seed", type=int, default=VAL_SEEDS[0], help="smoke: seed (not 10000+)")
@@ -444,7 +449,7 @@ def main():
         if not models or a.seed >= EVAL_SEEDS[0]:
             ap.error("smoke needs --model and a seed below 10000 (never an evaluation seed)")
         sys.exit(smoke(models, a.scope, a.seed, a.duration))
-    evaluate(a.what, models, a.workers, a.scope, a.with_b1)
+    evaluate(a.what, models, a.workers, a.scope, a.with_b1, a.prefix)
 
 
 def parse_models(specs):
