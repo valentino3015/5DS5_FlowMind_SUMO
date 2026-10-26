@@ -121,6 +121,7 @@ class Sensor:
         self._last_pass = {}         # line -> sim time a bus of it last left the approaches
         self._prev_buses = set()
         self._occ = {}
+        self.passages = ()           # buses that passed during the last sense() interval
 
     def _lane_state(self, sim, lane_id, length):
         return LaneState(lane_id=lane_id, length=length,
@@ -155,8 +156,16 @@ class Sensor:
                 buses.append((v, lid, dist))
 
         now = {v for v, _, _ in buses}
-        for v in self._prev_buses - now:            # left the approach: passed the junction
+        passed = []
+        for v in sorted(self._prev_buses - now):    # left the approach: passed the junction
+            prev = self._last_pass.get(line_of(v))
+            passed.append({"vehicle_id": v, "line_id": line_of(v), "t": t,
+                           "gap": None if prev is None else t - prev,
+                           "persons_on_board": self._occ.get(v, 0)})
             self._last_pass[line_of(v)] = t
+        # events for reward G2: gap = time since the previous bus of the same line passed
+        # this junction (None for the first one seen); not part of the JunctionState
+        self.passages = tuple(passed)
         self._prev_buses = now
 
         approaching = []

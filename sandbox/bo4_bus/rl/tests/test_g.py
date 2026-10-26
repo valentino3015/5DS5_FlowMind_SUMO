@@ -150,3 +150,63 @@ def test_f_models_still_load_as_plain_ppo():
     assert version == "v2"
     obs = np.zeros(36, dtype=np.float32)
     assert policy(obs) == policy(obs, np.array([True, False]))   # PPO ignores the mask
+
+
+# ------------------------------------------------------------------ agent G2
+def ev_pass(gap, occ=30):
+    return {"vehicle_id": "L1_EB_01", "line_id": "L1_EB", "t": 0.0, "gap": gap,
+            "persons_on_board": occ}
+
+
+def test_g2_headway_term_penalises_early_and_late_passages():
+    s = g_state([])
+    r_e, _ = rw.reward_person(None, s)
+    r, t = rw.reward_regular_g2(s, s, events=(), w_headway=4.0, c_switch=0.0)
+    assert r == pytest.approx(r_e) and t["r_headway"] == 0 and t["passages"] == 0
+    on_time = rw.reward_regular_g2(s, s, events=(ev_pass(180.0),), w_headway=4.0)[1]
+    assert on_time["r_headway"] == 0
+    early = rw.reward_regular_g2(s, s, events=(ev_pass(90.0),), w_headway=4.0)[1]
+    late = rw.reward_regular_g2(s, s, events=(ev_pass(270.0),), w_headway=4.0)[1]
+    assert early["r_headway"] == pytest.approx(-4.0 * rw.HEADWAY_UNIT * 0.25)
+    assert late["r_headway"] == pytest.approx(early["r_headway"])      # symmetric
+    both = rw.reward_regular_g2(s, s, events=(ev_pass(90.0), ev_pass(None)), w_headway=2.0)[1]
+    assert both["passages"] == 1 and both["r_headway"] == pytest.approx(-2.0 * 250.0)
+
+
+def test_g2_delay_weight_and_switch_cost():
+    prev, now = g_state([], green=0), g_state([], green=1)
+    r_e, _ = rw.reward_person(None, now)
+    r, t = rw.reward_regular_g2(prev, now, w_delay=0.5, w_headway=0.0, c_switch=2.0)
+    assert t["r_switch"] == pytest.approx(-200.0)
+    assert r == pytest.approx(0.5 * r_e - 200.0)
+    assert rw.REWARDS["regular_g2"] is rw.reward_regular_g2
+
+
+C_REF2 = {"never_inserted": 0.0, "person_delay_h": 250.0, "person_delay_B1_h": 40.0}
+
+
+def val2(b1, all9, pd_b1=35.0, pd_all9=240.0, ni=0.0, viol=0.0):
+    return {"bunch_last_total": b1, "all9_bunch_last_total": all9, "person_delay_B1_h": pd_b1,
+            "all9_person_delay_h": pd_all9, "all9_never_inserted": ni,
+            "rl_violations": viol, "all9_rl_violations": 0.0}
+
+
+def test_better_bunch_rule():
+    from train_ppo import better_bunch, bunch_score
+    assert bunch_score(val2(16, 18)) == 17
+    assert better_bunch(val2(16, 18), None, C_REF2)
+    assert better_bunch(val2(16, 18, pd_b1=42.0, pd_all9=262.0), None, C_REF2)   # within 5 %
+    assert not better_bunch(val2(16, 18, pd_b1=42.1), None, C_REF2)
+    assert not better_bunch(val2(16, 18, pd_all9=263.0), None, C_REF2)
+    assert not better_bunch(val2(16, 18, ni=1.1), None, C_REF2)
+    assert not better_bunch(val2(16, 18, viol=1), None, C_REF2)
+    best = val2(16, 18)
+    assert better_bunch(val2(15, 18.5), best, C_REF2)                  # 16.75 < 17
+    assert better_bunch(val2(16, 18, pd_all9=230.0), best, C_REF2)     # tie -> lower delay
+    assert not better_bunch(val2(17, 18), best, C_REF2)
+
+
+def test_run_name_g2():
+    import train_ppo as tp
+    assert tp.run_name("regular_g2", 1.0, "v2", 0, 200000, None, 0.5, True, 4, 1.0) == \
+        "ppo_G2_h4_d1_c0.5_v2_s0_200k"

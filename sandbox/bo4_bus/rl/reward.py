@@ -25,6 +25,18 @@ G  reward_regular_g(prev, state, w, w_early, c_switch) = F (same w)
    Switch cost: SWITCH_UNIT = 100 person-seconds = 20 persons waiting through the 5 s
    change interval (yellow 3 + all-red 2), the order of one tick of reward E at B1;
    a switch = prev.current_green != state.current_green (a switch fills one tick).
+G2 reward_regular_g2(prev, state, events, w_delay, w_headway, c_switch) =
+     w_delay * E
+   - w_headway * HEADWAY_UNIT * sum over buses that passed the junction this tick of
+       ((gap - H) / H)^2                  (gap = time since the previous bus of the same
+                                           line passed this junction; skipped if unknown)
+   - c_switch * SWITCH_UNIT * [the green changed during the tick]
+   The headway term scores regularity where the signal acts on it: an early bus passing
+   (small gap) and a late bus passing (large gap) both cost, so holding early buses and
+   speeding late ones pays, unlike E/F/G where any bus saved is a gain. `events` are the
+   Sensor's passages of the tick (env.py passes them). HEADWAY_UNIT = 1000 person-s:
+   with ~80 bus passages per hour at B1 and a mean ((gap-H)/H)^2 of about 0.2, w_headway
+   = 4 weighs regularity about as much as one hour of reward E.
 "Halting" = below 0.1 m/s (LaneState.halting_count). A bus dwelling at a stop is
 halted but is not signal delay, so it is excluded (VehicleInfo.at_stop). Car
 halting = lane halting - all halting buses; the sensor covers the whole approach,
@@ -43,6 +55,7 @@ H = 180.0             # s, scheduled headway
 HALT_SPEED = 0.1      # m/s, SUMO's halting threshold
 DETECT = 150.0        # m, bus range of the early/late test (= observation.DETECT)
 SWITCH_UNIT = 100.0   # person-seconds per switch at c_switch = 1
+HEADWAY_UNIT = 1000.0  # person-seconds per (headway deviation / H)^2 at w_headway = 1
 GREEN_OF_SLOT = (0, 0, 1, 1)   # approach slots W, E, S, N -> green index serving them
 
 
@@ -118,6 +131,19 @@ def reward_regular_g(prev, state, dt=TICK, w=5.0, w_early=1.0, c_switch=1.0, hea
                "switched": float(switched)}
 
 
+def reward_regular_g2(prev, state, events=(), dt=TICK, w_delay=1.0, w_headway=4.0,
+                      c_switch=0.5, headway=H, car_occupancy=CAR_OCCUPANCY):
+    r_person, terms = reward_person(prev, state, dt, car_occupancy)
+    devs = [((e["gap"] - headway) / headway) ** 2 for e in events if e.get("gap") is not None]
+    dev2 = sum(devs)
+    r_headway = -w_headway * HEADWAY_UNIT * dev2
+    switched = prev is not None and prev.current_green != state.current_green
+    r_switch = -c_switch * SWITCH_UNIT * float(switched)
+    r = w_delay * r_person + r_headway + r_switch
+    return r, {"r_regular_g2": r, **terms, "r_headway": r_headway, "headway_dev2": dev2,
+               "passages": float(len(devs)), "r_switch": r_switch, "switched": float(switched)}
+
+
 # ---------------------------------------------------------------- reference (phase 1)
 def _bus_waiting(state):
     """(unweighted, occupancy-weighted) waiting of buses on the incoming lanes."""
@@ -153,5 +179,5 @@ def reward_person_diff(prev, state, car_occupancy=CAR_OCCUPANCY):
 
 
 REWARDS = {"vehicle": reward_vehicle, "person": reward_person, "regular": reward_regular,
-           "regular_g": reward_regular_g,
+           "regular_g": reward_regular_g, "regular_g2": reward_regular_g2,
            "vehicle_diff": reward_vehicle_diff, "person_diff": reward_person_diff}

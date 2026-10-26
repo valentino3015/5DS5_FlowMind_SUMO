@@ -14,7 +14,8 @@ Episode: warm-up (default 600 s, not learned; B1 runs its fixed-time program), t
 `duration` s (default 3600) of decision ticks every `delta` = 5 s -> 720 steps.
 
 Reward (reward=): "vehicle" (D), "person" (E), "regular" (F, weight w) or "regular_g"
-(G: F + early-bus penalty w_early + switch cost c_switch); see reward.py.
+(G: F + early-bus penalty w_early + switch cost c_switch) or "regular_g2" (G2: w_delay x E
++ headway penalty w_headway on each bus passage + switch cost); see reward.py.
 Observation (obs=): "v1" (default, 24 values; the RL-D / RL-E models) or "v2" (36 values);
 see observation.py.
 
@@ -188,11 +189,14 @@ class BusPriorityEnv(gym.Env):
 
     def __init__(self, reward="vehicle", reward_scale=0.01, warmup=600.0, duration=3600.0,
                  delta=5, entry_flow=675.0, c_params=None, train_seeds=TRAIN_SEEDS,
-                 w=1.0, obs="v1", w_early=0.0, c_switch=0.0):
+                 w=1.0, obs="v1", w_early=0.0, c_switch=0.0, w_delay=1.0, w_headway=0.0):
         assert delta == YELLOW + ALL_RED, "a switch must fill exactly one tick"
         self.reward_fn = rw.REWARDS[reward]
         if reward == "regular":
             self.reward_fn = functools.partial(self.reward_fn, w=w)
+        elif reward == "regular_g2":
+            self.reward_fn = functools.partial(self.reward_fn, w_delay=w_delay,
+                                               w_headway=w_headway, c_switch=c_switch)
         elif reward == "regular_g":
             self.reward_fn = functools.partial(self.reward_fn, w=w, w_early=w_early,
                                                c_switch=c_switch)
@@ -306,7 +310,10 @@ class BusPriorityEnv(gym.Env):
             t = self._sim_step()
 
         prev, self.state = self.state, self._sense(t)
-        r_raw, terms = self.reward_fn(prev, self.state)
+        if self.reward_name == "regular_g2":       # needs the bus passages of this tick
+            r_raw, terms = self.reward_fn(prev, self.state, events=self.sensor.passages)
+        else:
+            r_raw, terms = self.reward_fn(prev, self.state)
         r = r_raw * self.reward_scale
         self.ep_reward += r
         self.ep_steps += 1

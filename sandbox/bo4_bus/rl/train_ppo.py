@@ -20,6 +20,15 @@ Agent G (--reward regular_g) differs from F in four ways (all defaults for regul
              <= C_all's (ties: lower all9 person_delay_h); see better_stable
 G's run folder: runs/ppo_G_w<w>_e<w_early>_c<c_switch>_<obs>_s<seed>_<steps/1000>k.
 
+Agent G2 (--reward regular_g2): reward = --w-delay x E - --w-headway x headway deviation
+of each bus passing B1 - --c-switch per switch (reward.py); mask and all9 validation as
+G; extra checkpoint best_bunch.zip (see better_bunch): lowest mean of B1 and all9
+bunching among checkpoints with 0 violations, all9 never_inserted <= C_all's + 1 and
+person delay at B1 and at all 9 <= 1.05 x C_all's.
+    python bo4_bus/rl/train_ppo.py --reward regular_g2 --w-headway 4 --c-switch 0.5 \
+                                   --obs v2 --train-seed 0
+Run folder: runs/ppo_G2_h<w_headway>_d<w_delay>_c<c_switch>_<obs>_s<seed>_<steps/1000>k.
+
 Run folder (unless --name): runs/ppo_<D|E|F>[_w<w>]_<obs>_s<train seed>_<steps/1000>k,
 e.g. runs/ppo_F_w1_v2_s0_200k; config.json holds every option. (The older runs
 ppo_D_200k / ppo_E_200k are v1, train seed 0.)
@@ -65,23 +74,31 @@ from env import EPISODE_KEYS, TRAIN_SEEDS, BusPriorityEnv  # noqa: E402
 from c_experiments import _load, _save  # noqa: E402
 
 SELECT = {"vehicle": "veh_delay_B1", "person": "person_delay_B1_h",
-          "regular": "person_delay_B1_h", "regular_g": "person_delay_B1_h"}
-LETTER = {"vehicle": "D", "person": "E", "regular": "F", "regular_g": "G"}
-REGULAR_REWARDS = ("regular", "regular_g")
+          "regular": "person_delay_B1_h", "regular_g": "person_delay_B1_h",
+          "regular_g2": "person_delay_B1_h"}
+LETTER = {"vehicle": "D", "person": "E", "regular": "F", "regular_g": "G", "regular_g2": "G2"}
+REGULAR_REWARDS = ("regular", "regular_g", "regular_g2")
+MASKED_REWARDS = ("regular_g", "regular_g2")      # mask + all9 validation by default
 VAL_COLS = ["bus_delay_B1", "veh_delay_B1", "person_delay_B1_h", "bunch_last_total",
             "cv_last_mean", "car_delay_total", "person_delay_h", "bus_jdelay", "cross_delay",
             "rl_shield_overrides", "rl_violations", "never_inserted", "teleports"]
 
 
-def make_env(reward, rank, w=1.0, obs="v1", w_early=0.0, c_switch=0.0):
+def make_env(reward, rank, w=1.0, obs="v1", w_early=0.0, c_switch=0.0, w_delay=1.0,
+             w_headway=0.0):
     def _init():
-        return BusPriorityEnv(reward=reward, w=w, obs=obs, w_early=w_early, c_switch=c_switch)
+        return BusPriorityEnv(reward=reward, w=w, obs=obs, w_early=w_early, c_switch=c_switch,
+                              w_delay=w_delay, w_headway=w_headway)
     return _init
 
 
-def run_name(reward, w, obs, train_seed, steps, w_early=None, c_switch=None, mask=None):
+def run_name(reward, w, obs, train_seed, steps, w_early=None, c_switch=None, mask=None,
+             w_headway=None, w_delay=1.0):
     """runs/ folder name, e.g. ppo_F_w1_v2_s0_200k (w only for F and G),
     ppo_G_w5_e1_c0.5_v2_s0_200k (G; '_nomask' if trained without the mask)."""
+    if reward == "regular_g2":
+        w_part = (f"_h{w_headway:g}_d{w_delay:g}_c{c_switch:g}" + ("" if mask else "_nomask"))
+        return f"ppo_G2{w_part}_{obs}_s{train_seed}_{steps // 1000}k"
     w_part = f"_w{w:g}" if reward in REGULAR_REWARDS else ""
     if reward == "regular_g":
         w_part += f"_e{w_early:g}_c{c_switch:g}" + ("" if mask else "_nomask")
@@ -179,6 +196,29 @@ def better_regular(m, best, c_ref):
                             < (best[REGULAR_KEY], best[REGULAR_GUARD]))
 
 
+BUNCH_DELAY_TOL = 1.05      # best_bunch: person delay may be up to 5 % above C_all's
+
+
+def bunch_score(m):
+    """Mean of last-stop bunching at B1 and at all 9 junctions (validation means)."""
+    return (m["bunch_last_total"] + m["all9_bunch_last_total"]) / 2
+
+
+def better_bunch(m, best, c_ref):
+    """Agent G2's best_bunch checkpoint (bunching first): qualifies with 0 safety
+    violations (B1, all9), all9 never_inserted <= C_all's + 1 and person delay at B1 and
+    at all 9 <= BUNCH_DELAY_TOL x C_all's; then lowest bunch_score, ties: lower all9
+    person delay."""
+    ok = (m["rl_violations"] == 0 and m["all9_rl_violations"] == 0
+          and m["all9_never_inserted"] <= c_ref["never_inserted"] + 1
+          and m["person_delay_B1_h"] <= BUNCH_DELAY_TOL * c_ref["person_delay_B1_h"]
+          and m["all9_person_delay_h"] <= BUNCH_DELAY_TOL * c_ref["person_delay_h"])
+    if not ok:
+        return False
+    return best is None or ((bunch_score(m), m["all9_person_delay_h"])
+                            < (bunch_score(best), best["all9_person_delay_h"]))
+
+
 def make_callback(out, reward, every, val_duration, obs="v1", c_ref=None, val_all9=False,
                   val_workers=None):
     """c_ref: C_all's validation means (reference_c), needed for rewards F and G.
@@ -186,6 +226,7 @@ def make_callback(out, reward, every, val_duration, obs="v1", c_ref=None, val_al
     saved checkpoint in that many processes (and at all 9 junctions if val_all9)."""
     from stable_baselines3.common.callbacks import BaseCallback
     regular = reward in REGULAR_REWARDS
+    bunch = reward == "regular_g2" and val_all9
     assert not regular or c_ref is not None
     assert not val_all9 or (c_ref is not None and val_workers)
 
@@ -196,6 +237,7 @@ def make_callback(out, reward, every, val_duration, obs="v1", c_ref=None, val_al
             self.best = None
             self.best_regular = None
             self.best_stable = None
+            self.best_bunch = None
             self.summary_path = os.path.join(out, "validation_summary.csv")
             self.summary = _load(self.summary_path)
             self._restore()
@@ -206,13 +248,16 @@ def make_callback(out, reward, every, val_duration, obs="v1", c_ref=None, val_al
             key = SELECT[reward]
             for r in self.summary:
                 m = {k: v for k, v in r.items()
-                     if k not in ("best", "best_regular", "best_stable", "val_wall_s")}
+                     if k not in ("best", "best_regular", "best_stable", "best_bunch",
+                                  "val_wall_s")}
                 if self.best is None or m[key] < self.best[key]:
                     self.best = {"steps": int(m["steps"]), key: m[key], **m}
                 if regular and better_regular(m, self.best_regular, c_ref):
                     self.best_regular = {"steps": int(m["steps"]), REGULAR_KEY: m[REGULAR_KEY], **m}
                 if val_all9 and better_stable(m, self.best_stable, c_ref):
                     self.best_stable = {"steps": int(m["steps"]), STABLE_KEY: m[STABLE_KEY], **m}
+                if bunch and better_bunch(m, self.best_bunch, c_ref):
+                    self.best_bunch = {"steps": int(m["steps"]), "bunch_score": bunch_score(m), **m}
 
         def _evaluate(self):
             steps = int(self.num_timesteps)
@@ -239,7 +284,11 @@ def make_callback(out, reward, every, val_duration, obs="v1", c_ref=None, val_al
             if is_best_stable:
                 self.best_stable = {"steps": steps, STABLE_KEY: m[STABLE_KEY], **m}
                 model.save(os.path.join(out, "best_stable.zip"))
-            if is_best or is_best_regular or is_best_stable:
+            is_best_bunch = bunch and better_bunch(m, self.best_bunch, c_ref)
+            if is_best_bunch:
+                self.best_bunch = {"steps": steps, "bunch_score": bunch_score(m), **m}
+                model.save(os.path.join(out, "best_bunch.zip"))
+            if is_best or is_best_regular or is_best_stable or is_best_bunch:
                 self._write_best()
             for k, v in m.items():
                 self.logger.record(f"val/{k}", v)
@@ -251,6 +300,9 @@ def make_callback(out, reward, every, val_duration, obs="v1", c_ref=None, val_al
             if val_all9:
                 self.logger.record("val/is_best_stable", float(is_best_stable))
                 extra["best_stable"] = is_best_stable
+            if bunch:
+                self.logger.record("val/is_best_bunch", float(is_best_bunch))
+                extra["best_bunch"] = is_best_bunch
             self.logger.dump(steps)
             self.summary.append({"steps": steps, "best": is_best, **extra,
                                  "val_wall_s": round(time.time() - tic, 1), **m})
@@ -271,6 +323,10 @@ def make_callback(out, reward, every, val_duration, obs="v1", c_ref=None, val_al
                         f"overrides B1 {m['rl_shield_overrides']:.0f} / all9 "
                         f"{m['all9_rl_shield_overrides']:.0f}; best_stable "
                         + (f"@ {bs['steps']}" if bs else "none yet"))
+            if bunch:
+                bb = self.best_bunch
+                msg += (f"; bunch score {bunch_score(m):.1f} (C_all {c_ref['bunch_last_total']:.1f})"
+                        f", best_bunch " + (f"@ {bb['steps']}" if bb else "none yet"))
             print(msg, flush=True)
             self.next_eval = steps + every
 
@@ -290,6 +346,13 @@ def make_callback(out, reward, every, val_duration, obs="v1", c_ref=None, val_al
                                              "person_delay_h) among checkpoints with 0 violations "
                                              "(B1, all9), all9 never_inserted <= C_all's + 1, "
                                              "all9 person_delay_h <= C_all's")
+            if bunch:
+                best.update(best_bunch=self.best_bunch,
+                            best_bunch_rule="lowest mean of B1 and all9 bunch_last_total (ties: "
+                                            "all9 person_delay_h) among checkpoints with 0 "
+                                            "violations, all9 never_inserted <= C_all's + 1, "
+                                            f"person delay at B1 and all9 <= {BUNCH_DELAY_TOL} x "
+                                            "C_all's")
             with open(os.path.join(out, "best.json"), "w") as f:
                 json.dump(best, f, indent=1)
 
@@ -332,7 +395,8 @@ def validate_checkpoint(out, a, val_workers):
         raise SystemExit(f"{ckpt} not found")
     with open(os.path.join(out, "config.json")) as f:
         cfg = json.load(f)
-    for k in ("reward", "w", "w_early", "c_switch", "obs", "mask", "val_all9", "val_duration"):
+    for k in ("reward", "w", "w_early", "c_switch", "w_headway", "w_delay", "obs", "mask",
+              "val_all9", "val_duration"):
         if cfg.get(k) != getattr(a, k):
             raise SystemExit(f"--{k.replace('_', '-')} {getattr(a, k)} differs from the run's "
                              f"config.json ({cfg.get(k)}); use the training command's options")
@@ -355,11 +419,13 @@ def validate_checkpoint(out, a, val_workers):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--reward", default="vehicle",
-                    choices=["vehicle", "person", "regular", "regular_g"],
-                    help="vehicle = D, person = E, regular = F, regular_g = G")
+                    choices=["vehicle", "person", "regular", "regular_g", "regular_g2"],
+                    help="vehicle = D, person = E, regular = F, regular_g = G, regular_g2 = G2")
     ap.add_argument("--w", type=float, default=1.0, help="lateness weight of rewards F and G")
     ap.add_argument("--w-early", type=float, default=None, help="G: early-bus penalty weight")
-    ap.add_argument("--c-switch", type=float, default=None, help="G: switch cost weight")
+    ap.add_argument("--c-switch", type=float, default=None, help="G, G2: switch cost weight")
+    ap.add_argument("--w-headway", type=float, default=None, help="G2: headway penalty weight")
+    ap.add_argument("--w-delay", type=float, default=1.0, help="G2: weight of reward E")
     ap.add_argument("--mask", action=argparse.BooleanOptionalAction, default=None,
                     help="MaskablePPO with the shield's action mask (default: on for G only)")
     ap.add_argument("--val-all9", action=argparse.BooleanOptionalAction, default=None,
@@ -380,13 +446,20 @@ def main():
                     help="no training: validate runs/<name>/ckpt_STEPS.zip of an existing run "
                          "(same options as its training) and update its best_* checkpoints")
     a = ap.parse_args()
-    g = a.reward == "regular_g"
-    if a.reward not in REGULAR_REWARDS and a.w != 1.0:
+    g = a.reward in MASKED_REWARDS
+    g2 = a.reward == "regular_g2"
+    if a.reward not in ("regular", "regular_g") and a.w != 1.0:
         ap.error("--w only applies to --reward regular / regular_g")
-    if g and (a.w_early is None or a.c_switch is None):
+    if a.reward == "regular_g" and (a.w_early is None or a.c_switch is None):
         ap.error("--reward regular_g needs --w-early and --c-switch")
-    if not g and (a.w_early is not None or a.c_switch is not None):
-        ap.error("--w-early / --c-switch only apply to --reward regular_g")
+    if g2 and (a.w_headway is None or a.c_switch is None):
+        ap.error("--reward regular_g2 needs --w-headway and --c-switch")
+    if a.reward != "regular_g" and a.w_early is not None:
+        ap.error("--w-early only applies to --reward regular_g")
+    if not g and a.c_switch is not None:
+        ap.error("--c-switch only applies to --reward regular_g / regular_g2")
+    if not g2 and (a.w_headway is not None or a.w_delay != 1.0):
+        ap.error("--w-headway / --w-delay only apply to --reward regular_g2")
     a.mask = g if a.mask is None else a.mask
     a.val_all9 = g if a.val_all9 is None else a.val_all9
     if a.val_all9 and a.reward not in REGULAR_REWARDS:
@@ -399,7 +472,7 @@ def main():
     torch.set_num_threads(2)
 
     name = a.name or run_name(a.reward, a.w, a.obs, a.train_seed, a.steps, a.w_early,
-                              a.c_switch, a.mask)
+                              a.c_switch, a.mask, a.w_headway, a.w_delay)
     out = os.path.join(HERE, "runs", name)
     if a.validate_ckpt:
         return validate_checkpoint(out, a, val_workers)
@@ -419,7 +492,8 @@ def main():
 
     c_ref = reference_c(out, a.val_duration, val_workers)
     vec = VecMonitor(SubprocVecEnv([make_env(a.reward, i, a.w, a.obs, a.w_early or 0.0,
-                                             a.c_switch or 0.0) for i in range(a.n_envs)],
+                                             a.c_switch or 0.0, a.w_delay, a.w_headway or 0.0)
+                                    for i in range(a.n_envs)],
                                    start_method="spawn"),
                      os.path.join(out, "monitor.csv"), info_keywords=EPISODE_KEYS)
     if a.mask:
