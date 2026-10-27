@@ -147,6 +147,10 @@ def _val_job(job):
         try:
             row, _ = ev.run_one(job["name"], job["seed"], model_path=job["model"],
                                 duration=job["duration"], scope=job["scope"], tag=tag)
+            if row["backend"] != "libsumo":
+                # Bus_Demo.import_traci falls back to traci when libsumo cannot be loaded
+                # (seen under memory pressure); such a row is not valid, so retry
+                raise RuntimeError(f"backend {row['backend']} instead of libsumo")
             return job, row
         except Exception as e:                      # noqa: BLE001
             if attempt == 2:
