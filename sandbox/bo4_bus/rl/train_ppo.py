@@ -257,6 +257,7 @@ def make_callback(out, reward, every, val_duration, obs="v1", c_ref=None, val_al
             self.best_regular = None
             self.best_stable = None
             self.best_bunch = None
+            self.resumed = False          # set by --resume: start checkpoint already validated
             self.summary_path = os.path.join(out, "validation_summary.csv")
             self.summary = _load(self.summary_path)
             self._restore()
@@ -376,7 +377,8 @@ def make_callback(out, reward, every, val_duration, obs="v1", c_ref=None, val_al
                 json.dump(best, f, indent=1)
 
         def _on_training_start(self):
-            self._evaluate()                                  # untrained policy
+            if not self.resumed:
+                self._evaluate()                              # untrained policy
 
         def _on_step(self):
             if self.num_timesteps >= self.next_eval:
@@ -403,6 +405,25 @@ def reference_c(out, val_duration, workers=None):
         m = validate(out, "C_all", 0, None, val_duration)
     print("[val] C at B1 reference: " + ", ".join(f"{k} {v:.3f}" for k, v in m.items()), flush=True)
     return m
+
+
+def latest_validated_ckpt(out):
+    """Steps of the newest ckpt_<steps>.zip that has a row in validation_summary.csv."""
+    done = {int(r["steps"]) for r in _load(os.path.join(out, "validation_summary.csv"))}
+    have = [s for s in done if os.path.exists(os.path.join(out, f"ckpt_{s}.zip"))]
+    return max(have) if have else None
+
+
+def check_config(out, a):
+    """The options that define a run must equal its config.json (resume / validate)."""
+    with open(os.path.join(out, "config.json")) as f:
+        cfg = json.load(f)
+    for k in ("reward", "w", "w_early", "c_switch", "w_headway", "w_delay", "obs", "mask",
+              "val_all9", "val_duration", "train_seed", "steps", "n_envs", "n_steps",
+              "eval_every"):
+        if k in cfg and cfg.get(k) != getattr(a, k):
+            raise SystemExit(f"--{k.replace('_', '-')} {getattr(a, k)} differs from the run's "
+                             f"config.json ({cfg.get(k)}); use the training command's options")
 
 
 def validate_checkpoint(out, a, val_workers):
@@ -462,6 +483,9 @@ def main():
     ap.add_argument("--train-seed", "--seed", dest="train_seed", type=int, default=0,
                     help="seed of PPO / torch and of the envs' SUMO-seed draws (not a SUMO seed)")
     ap.add_argument("--name", default=None)
+    ap.add_argument("--resume", action="store_true",
+                    help="continue an interrupted run of the same options from its latest "
+                         "validated ckpt_<steps>.zip up to --steps")
     ap.add_argument("--validate-ckpt", type=int, default=None, metavar="STEPS",
                     help="no training: validate runs/<name>/ckpt_STEPS.zip of an existing run "
                          "(same options as its training) and update its best_* checkpoints")
@@ -496,7 +520,14 @@ def main():
     out = os.path.join(HERE, "runs", name)
     if a.validate_ckpt:
         return validate_checkpoint(out, a, val_workers)
-    if os.path.exists(os.path.join(out, "validation_summary.csv")):
+    resume_from = latest_validated_ckpt(out) if a.resume else None
+    if a.resume and resume_from is None:
+        raise SystemExit(f"--resume: no validated checkpoint in {out}")
+    if a.resume:
+        check_config(out, a)
+        if resume_from >= a.steps:
+            raise SystemExit(f"--resume: {out} already reached {resume_from} steps (--steps {a.steps})")
+    elif os.path.exists(os.path.join(out, "validation_summary.csv")):
         raise SystemExit(f"{out} already holds a trained run; training again would overwrite "
                          f"its checkpoints while reusing its old validation rows. Use another "
                          f"--name / --train-seed, or --validate-ckpt to finish that run.")
@@ -507,6 +538,10 @@ def main():
            "obs_size": 43 if a.reward == "regular_h" else int(ob.bounds(a.obs)[0].size),
            "select": SELECT[a.reward], "train_sumo_seeds": list(TRAIN_SEEDS),
            "val_seeds": ev.VAL_SEEDS}
+    if a.resume:
+        with open(os.path.join(out, "config.json")) as f:
+            cfg = json.load(f)                        # keep the original options
+        cfg["resumed_from"] = cfg.get("resumed_from", []) + [resume_from]
     with open(os.path.join(out, "config.json"), "w") as f:
         json.dump(cfg, f, indent=1)
 
@@ -520,15 +555,26 @@ def main():
         from sb3_contrib import MaskablePPO as Algo
     else:
         Algo = PPO
-    model = Algo("MlpPolicy", vec, n_steps=a.n_steps, batch_size=64, n_epochs=10,
-                learning_rate=3e-4, gamma=0.99, gae_lambda=0.95, ent_coef=0.01,
-                seed=a.train_seed, verbose=0, device="cpu",
-                tensorboard_log=os.path.join(out, "tb"))
+    cb = make_callback(out, a.reward, a.eval_every, a.val_duration, a.obs, c_ref,
+                       a.val_all9, val_workers)
+    if a.resume:
+        # weights + optimizer state from the checkpoint; the envs restart on new episodes
+        # (env RNGs re-seeded from train_seed + resume step), so the continuation is
+        # reproducible but not identical to an uninterrupted run
+        model = Algo.load(os.path.join(out, f"ckpt_{resume_from}.zip"), env=vec, device="cpu",
+                          tensorboard_log=os.path.join(out, "tb"))
+        model.set_random_seed(a.train_seed + resume_from)
+        cb.next_eval = resume_from + a.eval_every
+        cb.resumed = True
+        print(f"resuming {out} from ckpt_{resume_from}.zip", flush=True)
+    else:
+        model = Algo("MlpPolicy", vec, n_steps=a.n_steps, batch_size=64, n_epochs=10,
+                     learning_rate=3e-4, gamma=0.99, gae_lambda=0.95, ent_coef=0.01,
+                     seed=a.train_seed, verbose=0, device="cpu",
+                     tensorboard_log=os.path.join(out, "tb"))
     tic = time.time()
-    model.learn(total_timesteps=a.steps, callback=make_callback(out, a.reward, a.eval_every,
-                                                                a.val_duration, a.obs, c_ref,
-                                                                a.val_all9, val_workers),
-                tb_log_name="ppo")
+    model.learn(total_timesteps=a.steps - (resume_from or 0), callback=cb, tb_log_name="ppo",
+                reset_num_timesteps=not a.resume)
     model.save(os.path.join(out, "final_model.zip"))
     vec.close()
     print(f"trained {model.num_timesteps} steps in {(time.time() - tic) / 60:.1f} min; "
