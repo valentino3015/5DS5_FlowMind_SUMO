@@ -132,9 +132,15 @@ def rl_policy(policy, holder, obs_version="v1", scope="b1"):
     def make(mode, net, params, fixed_cls):
         ctrls = orig(mode, net, params, fixed_cls)
         holder["ctrls"] = {}
+        if obs_version == "h":                     # agent H: residual on C (h_agent.py)
+            from h_agent import HController
+            appr, occ = rule_tsp.junction_geometry(net), {}
         for tls in junctions:
-            ctrls[tls] = holder["ctrls"][tls] = RLController(policy, net, obs_version=obs_version,
-                                                             tls=tls)
+            if obs_version == "h":
+                c = HController(tls, appr[tls], params, occ, net, policy=policy)
+            else:
+                c = RLController(policy, net, obs_version=obs_version, tls=tls)
+            ctrls[tls] = holder["ctrls"][tls] = c
         return ctrls
 
     rule_tsp.make_controllers = make
@@ -257,6 +263,8 @@ def run_one(name, seed, policy=None, model_path=None, duration=7200.0, tag=None,
     row["obs_version"] = next(iter(ctrls.values())).obs_version if ctrls else ""
     row["scope"] = scope if ctrls else "C"
     for j, c in ctrls.items():
+        for k, n in getattr(c, "counts", {}).items():              # agent H decisions
+            row[f"h_{k}_{j}"] = n
         row[f"rl_switches_{j}"] = c.switches
         row[f"rl_shield_{j}"] = len(c.signal.shield_log)
         row[f"rl_violations_{j}"] = len(c.signal.violations)

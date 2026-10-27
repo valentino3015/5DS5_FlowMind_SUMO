@@ -29,6 +29,12 @@ person delay at B1 and at all 9 <= 1.05 x C_all's.
                                    --obs v2 --train-seed 0
 Run folder: runs/ppo_G2_h<w_headway>_d<w_delay>_c<c_switch>_<obs>_s<seed>_<steps/1000>k.
 
+Agent H (--reward regular_h): residual on rule C (h_agent.py, HEnv): at B1, while a bus is
+within 150 m, every 5 s choose follow C / serve the bus / hold the bus; G2's reward
+(--w-headway, --w-delay, --c-switch), mask, all9 validation and best_bunch as G2.
+    python bo4_bus/rl/train_ppo.py --reward regular_h --w-headway 4 --c-switch 0.5 --train-seed 0
+Run folder: runs/ppo_H_h<w_headway>_d<w_delay>_c<c_switch>_s<seed>_<steps/1000>k.
+
 Run folder (unless --name): runs/ppo_<D|E|F>[_w<w>]_<obs>_s<train seed>_<steps/1000>k,
 e.g. runs/ppo_F_w1_v2_s0_200k; config.json holds every option. (The older runs
 ppo_D_200k / ppo_E_200k are v1, train seed 0.)
@@ -75,10 +81,12 @@ from c_experiments import _load, _save  # noqa: E402
 
 SELECT = {"vehicle": "veh_delay_B1", "person": "person_delay_B1_h",
           "regular": "person_delay_B1_h", "regular_g": "person_delay_B1_h",
-          "regular_g2": "person_delay_B1_h"}
-LETTER = {"vehicle": "D", "person": "E", "regular": "F", "regular_g": "G", "regular_g2": "G2"}
-REGULAR_REWARDS = ("regular", "regular_g", "regular_g2")
-MASKED_REWARDS = ("regular_g", "regular_g2")      # mask + all9 validation by default
+          "regular_g2": "person_delay_B1_h", "regular_h": "person_delay_B1_h"}
+LETTER = {"vehicle": "D", "person": "E", "regular": "F", "regular_g": "G", "regular_g2": "G2",
+          "regular_h": "H"}
+REGULAR_REWARDS = ("regular", "regular_g", "regular_g2", "regular_h")
+MASKED_REWARDS = ("regular_g", "regular_g2", "regular_h")   # mask + all9 validation by default
+HEADWAY_REWARDS = ("regular_g2", "regular_h")                # G2's reward, best_bunch
 VAL_COLS = ["bus_delay_B1", "veh_delay_B1", "person_delay_B1_h", "bunch_last_total",
             "cv_last_mean", "car_delay_total", "person_delay_h", "bus_jdelay", "cross_delay",
             "rl_shield_overrides", "rl_violations", "never_inserted", "teleports"]
@@ -87,6 +95,9 @@ VAL_COLS = ["bus_delay_B1", "veh_delay_B1", "person_delay_B1_h", "bunch_last_tot
 def make_env(reward, rank, w=1.0, obs="v1", w_early=0.0, c_switch=0.0, w_delay=1.0,
              w_headway=0.0):
     def _init():
+        if reward == "regular_h":
+            from h_agent import HEnv
+            return HEnv(w_delay=w_delay, w_headway=w_headway, c_switch=c_switch)
         return BusPriorityEnv(reward=reward, w=w, obs=obs, w_early=w_early, c_switch=c_switch,
                               w_delay=w_delay, w_headway=w_headway)
     return _init
@@ -99,6 +110,9 @@ def run_name(reward, w, obs, train_seed, steps, w_early=None, c_switch=None, mas
     if reward == "regular_g2":
         w_part = (f"_h{w_headway:g}_d{w_delay:g}_c{c_switch:g}" + ("" if mask else "_nomask"))
         return f"ppo_G2{w_part}_{obs}_s{train_seed}_{steps // 1000}k"
+    if reward == "regular_h":
+        w_part = (f"_h{w_headway:g}_d{w_delay:g}_c{c_switch:g}" + ("" if mask else "_nomask"))
+        return f"ppo_H{w_part}_s{train_seed}_{steps // 1000}k"
     w_part = f"_w{w:g}" if reward in REGULAR_REWARDS else ""
     if reward == "regular_g":
         w_part += f"_e{w_early:g}_c{c_switch:g}" + ("" if mask else "_nomask")
@@ -136,7 +150,12 @@ def _val_job(job):
             return job, row
         except Exception as e:                      # noqa: BLE001
             if attempt == 2:
-                raise
+                # plain-text error: libsumo exceptions may hold objects that cannot be
+                # sent back from the worker process (and would hide the real error)
+                import traceback
+                raise RuntimeError(f"validation run {job['name']} {job['steps']} "
+                                   f"{job['scope']} seed {job['seed']} failed twice:\n"
+                                   + traceback.format_exc()) from None
             print(f"[val] {job['name']} {job['steps']} {job['scope']} seed {job['seed']}: "
                   f"{type(e).__name__}: {e}; retrying once", flush=True)
 
@@ -226,7 +245,7 @@ def make_callback(out, reward, every, val_duration, obs="v1", c_ref=None, val_al
     saved checkpoint in that many processes (and at all 9 junctions if val_all9)."""
     from stable_baselines3.common.callbacks import BaseCallback
     regular = reward in REGULAR_REWARDS
-    bunch = reward == "regular_g2" and val_all9
+    bunch = reward in HEADWAY_REWARDS and val_all9
     assert not regular or c_ref is not None
     assert not val_all9 or (c_ref is not None and val_workers)
 
@@ -419,7 +438,8 @@ def validate_checkpoint(out, a, val_workers):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--reward", default="vehicle",
-                    choices=["vehicle", "person", "regular", "regular_g", "regular_g2"],
+                    choices=["vehicle", "person", "regular", "regular_g", "regular_g2",
+                             "regular_h"],
                     help="vehicle = D, person = E, regular = F, regular_g = G, regular_g2 = G2")
     ap.add_argument("--w", type=float, default=1.0, help="lateness weight of rewards F and G")
     ap.add_argument("--w-early", type=float, default=None, help="G: early-bus penalty weight")
@@ -447,19 +467,19 @@ def main():
                          "(same options as its training) and update its best_* checkpoints")
     a = ap.parse_args()
     g = a.reward in MASKED_REWARDS
-    g2 = a.reward == "regular_g2"
+    g2 = a.reward in HEADWAY_REWARDS
     if a.reward not in ("regular", "regular_g") and a.w != 1.0:
         ap.error("--w only applies to --reward regular / regular_g")
     if a.reward == "regular_g" and (a.w_early is None or a.c_switch is None):
         ap.error("--reward regular_g needs --w-early and --c-switch")
     if g2 and (a.w_headway is None or a.c_switch is None):
-        ap.error("--reward regular_g2 needs --w-headway and --c-switch")
+        ap.error("--reward regular_g2 / regular_h needs --w-headway and --c-switch")
     if a.reward != "regular_g" and a.w_early is not None:
         ap.error("--w-early only applies to --reward regular_g")
     if not g and a.c_switch is not None:
         ap.error("--c-switch only applies to --reward regular_g / regular_g2")
     if not g2 and (a.w_headway is not None or a.w_delay != 1.0):
-        ap.error("--w-headway / --w-delay only apply to --reward regular_g2")
+        ap.error("--w-headway / --w-delay only apply to --reward regular_g2 / regular_h")
     a.mask = g if a.mask is None else a.mask
     a.val_all9 = g if a.val_all9 is None else a.val_all9
     if a.val_all9 and a.reward not in REGULAR_REWARDS:
@@ -484,7 +504,7 @@ def main():
     cfg = {**vars(a), "name": name, "agent": LETTER[a.reward],
            "w": a.w if a.reward in REGULAR_REWARDS else None,
            "algo": "MaskablePPO" if a.mask else "PPO",
-           "obs_size": int(ob.bounds(a.obs)[0].size),
+           "obs_size": 43 if a.reward == "regular_h" else int(ob.bounds(a.obs)[0].size),
            "select": SELECT[a.reward], "train_sumo_seeds": list(TRAIN_SEEDS),
            "val_seeds": ev.VAL_SEEDS}
     with open(os.path.join(out, "config.json"), "w") as f:

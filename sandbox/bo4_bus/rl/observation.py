@@ -58,7 +58,7 @@ def bounds(version="v1"):
 
 def version_of_size(n):
     """Observation version from a vector length (e.g. a trained model's input size)."""
-    return {OBS_SIZE: "v1", OBS_SIZE_V2: "v2"}[n]
+    return {OBS_SIZE: "v1", OBS_SIZE_V2: "v2", OBS_SIZE_V2 + 7: "h"}[n]   # h: agent H (h_agent.py)
 
 
 def straight_out(approach):
