@@ -36,7 +36,7 @@ from flowmind.agents.emergency import EmergencyAgent
 from flowmind.agents.flow import FlowAgent
 from flowmind.agents.incident import IncidentAgent
 from flowmind.agents.pedestrian import PedestrianAgent
-from flowmind.control import shield
+from flowmind.control.shield import SafetyShield
 from flowmind.control.coordinator import Coordinator
 from flowmind.control.orchestrator import Decision, Orchestrator
 from flowmind.env import SumoCorridorEnv
@@ -183,6 +183,7 @@ def main():
     # Corridor order for the coordinator (falls back to the junction list of the scenario)
     order = [t for t in config.get("corridor", {}).get("order", []) if t in env.tls_ids] or list(env.tls_ids)
     coordinator = Coordinator(config["coordinator"], order)
+    safety = SafetyShield(config["signals"], config.get("shield", {}))
     overlay = config.get("overlay", {})
 
     step_count = 0
@@ -202,7 +203,7 @@ def main():
             for tls, st in states.items():
                 logger.log_state(st, events.get(tls, []))  # only written with --save-states
                 if args.controller == "orchestrated":
-                    allowed = shield.allowed(st, config)
+                    allowed = safety.allowed_phases(st)
                     decision = orchestrators[tls].decide(st, events.get(tls, []), allowed)
                     actions[tls] = decision.final
                     color = overlay.get("colors", {}).get(decision.agent, overlay.get("default_color", [128, 128, 128, 255]))

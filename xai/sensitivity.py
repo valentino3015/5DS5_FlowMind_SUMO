@@ -19,7 +19,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from flowmind.contracts import Crossing, Event, JunctionState, LaneState, SpecialVehicle
-from flowmind.control import shield
+from flowmind.control.shield import SafetyShield
 
 
 def state_from_dict(d: dict) -> JunctionState:
@@ -91,7 +91,8 @@ def analyze(state: JunctionState, events: list[Event], make_orchestrator, config
     def decide(s: JunctionState, ev: list[Event]):
         orchestrator = make_orchestrator(config, {})
         orchestrator.since = -1e9  # fresh: no min_hold history
-        return orchestrator.decide(s, ev, shield.allowed(s, config))
+        allowed = SafetyShield(config["signals"], config.get("shield", {})).allowed_phases(s)
+        return orchestrator.decide(s, ev, allowed)
 
     base = decide(state, events)
     variants = perturbations(state, events, extra_cars)

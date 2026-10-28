@@ -23,7 +23,16 @@ import time as clock
 from dataclasses import dataclass
 
 from flowmind.contracts import Event, JunctionState
-from flowmind.control import shield
+
+
+def shield_check(state: JunctionState, action: int, allowed: list[bool]) -> tuple[int, str]:
+    """(safe action, note) for the allowed list from SafetyShield.allowed_phases.
+    Same replacement rule as SafetyShield.check: keep the current phase, else the first
+    allowed one. The note is "" when the action was fine."""
+    if 0 <= action < len(allowed) and allowed[action]:
+        return action, ""
+    safe = state.phase if allowed[state.phase] else allowed.index(True)
+    return safe, f"phase {action} blocked by the safety shield, used phase {safe}"
 
 
 @dataclass
@@ -85,7 +94,7 @@ class Orchestrator:
             phase, _, end, why = self.override
             if self.current != "operator":
                 self.current, self.since = "operator", state.time
-            final, note = shield.check(state, phase, allowed)
+            final, note = shield_check(state, phase, allowed)
             return self._finish(started, state, allowed, Decision(
                 tls_id=state.tls_id, time=state.time, agent="operator", urgency=1.0,
                 reason=f"{why} (until t={end:.0f} s)", proposed=phase, final=final,
@@ -120,7 +129,7 @@ class Orchestrator:
         # 4. The chosen agent acts, the shield checks.
         agent = self.agents.get(winner, self.fallback)
         proposed = agent.act(state, events, allowed)
-        final, note = shield.check(state, proposed, allowed)
+        final, note = shield_check(state, proposed, allowed)
         return self._finish(started, state, allowed, Decision(
             tls_id=state.tls_id,
             time=state.time,
