@@ -142,3 +142,12 @@ def test_no_false_alarm_on_normal_traffic():
     base = make_example_state()
     for i in range(20):
         assert agent.wants_control(replace(base, time=1200.0 + 5 * i), []) is None
+
+def test_event_claim_reason_stays_short():
+    # The reason must not copy the event: the coordinator used to pass it on, and it grew every step.
+    from flowmind.contracts import Event
+    agent = IncidentAgent(CONFIG["incident"])
+    e = Event(kind="incident", target_tls="J1", expires_at=2000.0,
+              data={"cause": "spillback", "from_tls": "J2", "occupancy": 0.41, "reason": "x" * 500})
+    claim = agent.wants_control(make_example_state(), [e])
+    assert claim.reason == "spillback warning from J2, 41% full"

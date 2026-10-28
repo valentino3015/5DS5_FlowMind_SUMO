@@ -41,6 +41,17 @@ def test_incident_warns_neighbours():
     assert events["J2"] == [] and events["J1"][0].data["from_tls"] == "J2"
 
 
+def test_incident_warning_is_not_sent_back():
+    # J2 blocked -> J1 and J3 warned. When J1's incident agent then takes control because of
+    # that warning, J2 must not be warned back (it used to loop J1 <-> J2 forever).
+    c = Coordinator(PARAMS, ORDER)
+    c.update(10.0, [], [SimpleNamespace(agent="incident", tls_id="J2", reason="lane blocked")])
+    events = c.update(15.0, [], [SimpleNamespace(agent="incident", tls_id="J2", reason="lane blocked"),
+                                 SimpleNamespace(agent="incident", tls_id="J1", reason="warned")])
+    assert events["J2"] == []
+    assert [e.data["from_tls"] for e in events["J1"]] == ["J2"]
+    assert "reason" not in events["J1"][0].data
+
 # --- spillback warning (core idea 5) ---
 from dataclasses import replace  # noqa: E402
 

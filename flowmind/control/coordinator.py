@@ -9,7 +9,9 @@ Every step it rebuilds the list of warnings (Event objects, see contracts.py):
   lane the ambulance will arrive on, so the junction can give it green BEFORE
   the ambulance is even on its street ("green corridor").
 - incident: when the incident agent controls a junction, its neighbours on the
-  corridor get Event("incident") so they stop feeding the blocked area.
+  corridor get Event("incident") so they stop feeding the blocked area. Only one
+  hop: a junction that was itself warned about an incident does not pass the
+  warning on, otherwise two neighbours warn each other forever.
 - spillback: when the road between two neighbouring junctions A -> B is filling
   up (occupancy above coordinator.spillback_occupancy), A gets
   Event("incident", data={"cause": "spillback", ...}) so it stops sending more
@@ -29,6 +31,7 @@ class Coordinator:
         """params: coordinator section of config.yaml; order: junctions along the corridor."""
         self.params = params
         self.order = order
+        self.warned: set[str] = set()   # junctions warned about an incident last step
 
     def update(self, time: float, approaches: list, decisions: list,
                states: dict | None = None) -> dict[str, list[Event]]:
@@ -50,15 +53,15 @@ class Coordinator:
 
         # Incidents: warn the neighbours of a junction where the incident agent is in control.
         for d in decisions:
-            if d.agent != "incident" or d.tls_id not in self.order:
-                continue
+            if d.agent != "incident" or d.tls_id not in self.order or d.tls_id in self.warned:
+                continue   # a warned junction only relays: no warning back (no loop)
             i = self.order.index(d.tls_id)
             for neighbour in self.order[max(i - 1, 0):i] + self.order[i + 1:i + 2]:
                 events[neighbour].append(Event(
                     kind="incident",
                     target_tls=neighbour,
                     expires_at=time + self.params["incident_ttl"],
-                    data={"cause": "incident", "from_tls": d.tls_id, "reason": d.reason},
+                    data={"cause": "incident", "from_tls": d.tls_id},
                 ))
 
         # Spillback: warn the junction that feeds a link which is filling up.
@@ -75,6 +78,8 @@ class Coordinator:
                     data={"cause": "spillback", "from_tls": b, "occupancy": round(occupancy, 2),
                           "reason": f"road {a}->{b} is {occupancy:.0%} full"},
                 ))
+        self.warned = {t for t, evs in events.items()
+                       if any(e.kind == "incident" and e.data.get("cause") == "incident" for e in evs)}
         return events
 
     def neighbour_pairs(self) -> list[tuple[str, str]]:

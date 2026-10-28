@@ -153,7 +153,11 @@ class IncidentAgent(Specialist):
 
         for e in events:
             if e.kind == "incident" and e.expires_at > state.time:
-                return Claim(urgency, f"incident reported by the coordinator: {e.data}")
+                # Short reason: copying the whole event (which held the neighbour's reason)
+                # made the text grow at every step.
+                cause, src = e.data.get("cause", "incident"), e.data.get("from_tls", "?")
+                occ = f", {e.data['occupancy']:.0%} full" if "occupancy" in e.data else ""
+                return Claim(urgency, f"{cause} warning from {src}{occ}")
 
         active = self._active_blocks(state.time)
         if not active:
