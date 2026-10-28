@@ -97,7 +97,7 @@ incident:
   urgency: 0.85            # claim urgency
   hold_green: 20           # rule response keeps a safe green at least this long (s): each switch costs 5 s
   # --- RL response (Notion: anomaly detector + PPO for the response) ---
-  use_ppo: false           # true = act() uses the trained PPO; false = rule-based baseline
+  use_ppo: true            # true = act() uses the trained PPO; false = rule-based baseline
   model_path: runs/models/incident_ppo.zip
   max_phases: 4            # observation slots; the corridor junctions have 3 or 4 green phases
   norm_queue: 20           # vehicles, scales queue features to ~0..1

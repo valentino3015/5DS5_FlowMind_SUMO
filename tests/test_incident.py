@@ -8,6 +8,8 @@ from flowmind.agents.incident import IncidentAgent
 from flowmind.contracts import make_example_state
 
 CONFIG = yaml.safe_load((Path(__file__).parent.parent / "config.yaml").read_text())
+# The rule tests must not load the trained model, even when config.yaml turns PPO on.
+RULES = {**CONFIG["incident"], "use_ppo": False}
 
 
 def lane_sequence(queues, vehicles, occupancy=0.72, dt=5.0, lane_ids=("north_in_0",)):
@@ -34,7 +36,7 @@ def blocked_sequence(steps=20, lane_ids=("north_in_0",)):
 
 def blocked_agent(lane_ids=("north_in_0",), model=None):
     """An agent that has detected lane_ids as blocked, and the last state it saw."""
-    agent = IncidentAgent(CONFIG["incident"], model=model)
+    agent = IncidentAgent(RULES, model=model)
     states = blocked_sequence(lane_ids=lane_ids)
     for state in states:
         agent.wants_control(state, [])
@@ -53,7 +55,7 @@ class FakeModel:
 
 
 def first_claim(states):
-    agent = IncidentAgent(CONFIG["incident"])
+    agent = IncidentAgent(RULES)
     claim = None
     for state in states:
         claim = agent.wants_control(state, []) or claim
@@ -61,7 +63,7 @@ def first_claim(states):
 
 
 def test_detects_blocked_lane():
-    agent = IncidentAgent(CONFIG["incident"])
+    agent = IncidentAgent(RULES)
     claim = None
     for state in blocked_sequence():
         claim = agent.wants_control(state, []) or claim
@@ -88,7 +90,7 @@ def test_no_false_alarm_on_full_lane_that_drains():
 
 
 def test_lets_go_to_recheck_then_releases_when_lane_moves():
-    agent = IncidentAgent(CONFIG["incident"])
+    agent = IncidentAgent(RULES)
     states = blocked_sequence()
     for state in states:
         agent.wants_control(state, [])
@@ -138,7 +140,7 @@ def test_observation_has_a_fixed_size():
 
 
 def test_no_false_alarm_on_normal_traffic():
-    agent = IncidentAgent(CONFIG["incident"])
+    agent = IncidentAgent(RULES)
     base = make_example_state()
     for i in range(20):
         assert agent.wants_control(replace(base, time=1200.0 + 5 * i), []) is None
@@ -146,8 +148,13 @@ def test_no_false_alarm_on_normal_traffic():
 def test_event_claim_reason_stays_short():
     # The reason must not copy the event: the coordinator used to pass it on, and it grew every step.
     from flowmind.contracts import Event
-    agent = IncidentAgent(CONFIG["incident"])
+    agent = IncidentAgent(RULES)
     e = Event(kind="incident", target_tls="J1", expires_at=2000.0,
               data={"cause": "spillback", "from_tls": "J2", "occupancy": 0.41, "reason": "x" * 500})
     claim = agent.wants_control(make_example_state(), [e])
     assert claim.reason == "spillback warning from J2, 41% full"
+
+def test_missing_model_falls_back_to_the_rule():
+    # use_ppo on but no model file (e.g. a teammate without runs/models): the rule decides.
+    agent = IncidentAgent({**CONFIG["incident"], "use_ppo": True, "model_path": "runs/models/does_not_exist.zip"})
+    assert agent.model is None
