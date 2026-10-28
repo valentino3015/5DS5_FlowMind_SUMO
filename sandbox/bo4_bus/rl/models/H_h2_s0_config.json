@@ -1,0 +1,38 @@
+{
+ "reward": "regular_h",
+ "w": 1.0,
+ "w_early": null,
+ "c_switch": 0.5,
+ "w_headway": 2.0,
+ "w_delay": 1.0,
+ "mask": true,
+ "val_all9": true,
+ "val_workers": 4,
+ "obs": "v1",
+ "steps": 200000,
+ "n_envs": 4,
+ "n_steps": 512,
+ "eval_every": 20000,
+ "val_duration": 3600.0,
+ "train_seed": 0,
+ "name": "ppo_H_h2_d1_c0.5_s0_200k",
+ "validate_ckpt": null,
+ "agent": "H",
+ "algo": "MaskablePPO",
+ "obs_size": 43,
+ "select": "person_delay_B1_h",
+ "train_sumo_seeds": [
+  0,
+  900
+ ],
+ "val_seeds": [
+  900,
+  901,
+  902,
+  903,
+  904
+ ],
+ "resumed_from": [
+  80000
+ ]
+}

@@ -26,3 +26,10 @@ python sandbox/Multi_Demo.py --scenario grid4x4 --rewards diff-waiting-time queu
 ```
 
 Outputs (CSV files and plots) go to `sandbox/outputs/`, which is not on GitHub.
+
+## bo4_bus/ (Firas, BO4 prototype)
+
+Standalone prototype of BO4 (bus reliability and bunching) on its own 3x3 grid
+with libsumo: fixed-time vs B (help every bus) vs C (help only late buses),
+tuning, stress test and the 20-seed evaluation. See `bo4_bus/README.md`.
+Controller C is ported to the platform as `flowmind/agents/bus.py`.

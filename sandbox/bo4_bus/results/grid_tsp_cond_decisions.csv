@@ -1,0 +1,594 @@
+t,tls,bus,line,action,code,seconds,lateness,reason,seed
+41.0,A1,L1_EB_00,L1_EB,refuse,not_late,,,refuse L1_EB_00: no previous bus on record,10000
+214.0,A1,L1_WB_00,L1_WB,refuse,not_late,,,refuse L1_WB_00: no previous bus on record,10000
+241.0,A1,L1_EB_01,L1_EB,refuse,not_late,,-19.0,refuse L1_EB_01: 19 s early,10000
+271.0,A1,L1_WB_01,L1_WB,refuse,not_late,,-146.0,refuse L1_WB_01: 146 s early,10000
+347.0,A1,L1_EB_02,L1_EB,refuse,not_late,,-91.0,refuse L1_EB_02: 91 s early,10000
+492.0,A1,L1_WB_02,L1_WB,recall,recall,-20.0,4.0,"cut green to 10 s (min 10 s) for L1_WB_02, 4 s late",10000
+649.0,A1,L1_EB_03,L1_EB,recall,recall,-1.0,79.0,"cut green to 29 s (min 10 s) for L1_EB_03, 79 s late",10000
+816.0,A1,L1_EB_04,L1_EB,refuse,not_late,,-31.0,refuse L1_EB_04: 31 s early,10000
+869.0,A1,L1_WB_03,L1_WB,recall,recall,-5.0,181.0,"cut green to 25 s (min 10 s) for L1_WB_03, 181 s late",10000
+915.0,A1,L1_WB_04,L1_WB,refuse,not_late,,-151.0,refuse L1_WB_04: 151 s early,10000
+962.0,A1,L1_EB_05,L1_EB,refuse,not_late,,-48.0,refuse L1_EB_05: 48 s early,10000
+1104.0,A1,L1_WB_05,L1_WB,refuse,not_late,,-30.0,refuse L1_WB_05: 30 s early,10000
+1232.0,A1,L1_EB_06,L1_EB,recall,recall,-12.0,74.0,"cut green to 18 s (min 10 s) for L1_EB_06, 74 s late",10000
+1264.0,A1,L1_WB_06,L1_WB,refuse,budget,,-37.0,"refuse L1_WB_06: needs +24 s, only 15 s extension left",10000
+1269.0,A1,L1_WB_06,L1_WB,refuse,not_late,,-32.0,refuse L1_WB_06: 32 s early,10000
+1302.0,A1,L1_WB_06,L1_WB,recall,recall,-5.0,1.0,"cut green to 25 s (min 10 s) for L1_WB_06, 1 s late",10000
+1348.0,A1,L1_EB_07,L1_EB,refuse,not_late,,-82.0,refuse L1_EB_07: 82 s early,10000
+1474.0,A1,L1_WB_07,L1_WB,refuse,not_late,,-15.0,refuse L1_WB_07: 15 s early,10000
+1475.0,A1,L1_EB_08,L1_EB,refuse,not_late,,-92.0,refuse L1_EB_08: 92 s early,10000
+1490.0,A1,L1_WB_07,L1_WB,extend,extend,1.0,1.0,"extend 1 s for L1_WB_07, 1 s late",10000
+1670.0,A1,L1_EB_09,L1_EB,refuse,not_late,,-2.0,refuse L1_EB_09: 2 s early,10000
+1673.0,A1,L1_EB_09,L1_EB,recall,recall,-5.0,1.0,"cut green to 25 s (min 10 s) for L1_EB_09, 1 s late",10000
+1690.0,A1,L1_WB_08,L1_WB,extend,extend,9.0,19.0,"extend 9 s for L1_WB_08, 19 s late",10000
+1872.0,A1,L1_EB_10,L1_EB,refuse,budget,,0.0,"refuse L1_EB_10: needs +26 s, only 15 s extension left",10000
+1878.0,A1,L1_EB_10,L1_EB,recall,recall,-20.0,6.0,"cut green to 10 s (min 10 s) for L1_EB_10, 6 s late",10000
+1926.0,A1,L1_WB_09,L1_WB,refuse,budget,,40.0,"refuse L1_WB_09: needs +31 s, only 15 s extension left",10000
+1933.0,A1,L1_WB_09,L1_WB,recall,recall,-20.0,47.0,"cut green to 10 s (min 10 s) for L1_WB_09, 47 s late",10000
+1992.0,A1,L1_EB_11,L1_EB,refuse,not_late,,-86.0,refuse L1_EB_11: 86 s early,10000
+2084.0,A1,L1_WB_10,L1_WB,refuse,not_late,,-49.0,refuse L1_WB_10: 49 s early,10000
+2142.0,A1,L1_WB_11,L1_WB,refuse,not_late,,-150.0,refuse L1_WB_11: 150 s early,10000
+2352.0,A1,L1_WB_12,L1_WB,refuse,budget,,-8.0,"refuse L1_WB_12: needs +27 s, only 15 s extension left",10000
+2363.0,A1,L1_WB_12,L1_WB,recall,recall,-20.0,3.0,"cut green to 10 s (min 10 s) for L1_WB_12, 3 s late",10000
+2486.0,A1,L1_EB_13,L1_EB,refuse,budget,,36.0,"refuse L1_EB_13: needs +25 s, only 15 s extension left",10000
+2493.0,A1,L1_EB_13,L1_EB,recall,recall,-20.0,43.0,"cut green to 10 s (min 10 s) for L1_EB_13, 43 s late",10000
+2520.0,A1,L1_EB_14,L1_EB,refuse,not_late,,-175.0,refuse L1_EB_14: 175 s early,10000
+2626.0,A1,L1_WB_13,L1_WB,recall,recall,-20.0,67.0,"cut green to 10 s (min 10 s) for L1_WB_13, 67 s late",10000
+2773.0,A1,L1_WB_14,L1_WB,refuse,not_late,,-51.0,refuse L1_WB_14: 51 s early,10000
+2822.0,A1,L1_WB_15,L1_WB,refuse,budget,,-158.0,"refuse L1_WB_15: needs +32 s, only 15 s extension left",10000
+2828.0,A1,L1_WB_15,L1_WB,refuse,not_late,,-152.0,refuse L1_WB_15: 152 s early,10000
+2852.0,A1,L1_EB_16,L1_EB,recall,recall,-5.0,135.0,"cut green to 25 s (min 10 s) for L1_EB_16, 135 s late",10000
+3026.0,A1,L1_WB_16,L1_WB,refuse,budget,,-16.0,"refuse L1_WB_16: needs +16 s, only 15 s extension left",10000
+3029.0,A1,L1_WB_16,L1_WB,refuse,not_late,,-13.0,refuse L1_WB_16: 13 s early,10000
+3048.0,A1,L1_EB_17,L1_EB,refuse,not_late,,-10.0,refuse L1_EB_17: 10 s early,10000
+3059.0,A1,L1_EB_17,L1_EB,recall,recall,-18.0,1.0,"cut green to 12 s (min 10 s) for L1_EB_17, 1 s late",10000
+3226.0,A1,L1_EB_18,L1_EB,refuse,not_late,,-23.0,refuse L1_EB_18: 23 s early,10000
+3330.0,A1,L1_WB_18,L1_WB,recall,recall,-20.0,108.0,"cut green to 10 s (min 10 s) for L1_WB_18, 108 s late",10000
+3356.0,A1,L1_WB_17,L1_WB,refuse,not_late,,-173.0,refuse L1_WB_17: 173 s early,10000
+3549.0,A1,L1_EB_19,L1_EB,recall,recall,-15.0,130.0,"cut green to 15 s (min 10 s) for L1_EB_19, 130 s late",10000
+3558.0,A1,L1_WB_19,L1_WB,extend,extend,1.0,5.0,"extend 1 s for L1_WB_19, 5 s late",10000
+3597.0,A1,L1_EB_20,L1_EB,refuse,not_late,,-149.0,refuse L1_EB_20: 149 s early,10000
+3758.0,A1,L1_WB_20,L1_WB,recall,recall,-17.0,4.0,"cut green to 13 s (min 10 s) for L1_WB_20, 4 s late",10000
+3977.0,A1,L1_EB_22,L1_EB,refuse,not_late,,-57.0,refuse L1_EB_22: 57 s early,10000
+4023.0,A1,L1_WB_21,L1_WB,refuse,budget,,68.0,"refuse L1_WB_21: needs +32 s, only 15 s extension left",10000
+4029.0,A1,L1_WB_21,L1_WB,recall,recall,-20.0,74.0,"cut green to 10 s (min 10 s) for L1_WB_21, 74 s late",10000
+4159.0,A1,L1_EB_23,L1_EB,refuse,not_late,,-24.0,refuse L1_EB_23: 24 s early,10000
+4234.0,A1,L1_WB_22,L1_WB,recall,recall,-20.0,10.0,"cut green to 10 s (min 10 s) for L1_WB_22, 10 s late",10000
+4279.0,A1,L1_WB_23,L1_WB,refuse,budget,,-150.0,"refuse L1_WB_23: needs +28 s, only 15 s extension left",10000
+4289.0,A1,L1_WB_23,L1_WB,refuse,not_late,,-140.0,refuse L1_WB_23: 140 s early,10000
+4485.0,A1,L1_EB_25,L1_EB,refuse,not_late,,-116.0,refuse L1_EB_25: 116 s early,10000
+4533.0,A1,L1_WB_24,L1_WB,recall,recall,-10.0,24.0,"cut green to 20 s (min 10 s) for L1_WB_24, 24 s late",10000
+4590.0,A1,L1_WB_25,L1_WB,refuse,not_late,,-141.0,refuse L1_WB_25: 141 s early,10000
+4733.0,A1,L1_EB_26,L1_EB,recall,recall,-20.0,55.0,"cut green to 10 s (min 10 s) for L1_EB_26, 55 s late",10000
+4898.0,A1,L1_WB_26,L1_WB,extend,extend,2.0,93.0,"extend 2 s for L1_WB_26, 93 s late",10000
+4952.0,A1,L1_EB_27,L1_EB,recall,recall,-14.0,22.0,"cut green to 16 s (min 10 s) for L1_EB_27, 22 s late",10000
+5155.0,A1,L1_EB_28,L1_EB,recall,recall,-20.0,2.0,"cut green to 10 s (min 10 s) for L1_EB_28, 2 s late",10000
+5181.0,A1,L1_WB_28,L1_WB,extend,extend,13.0,85.0,"extend 13 s for L1_WB_28, 85 s late",10000
+5186.0,A1,L1_WB_27,L1_WB,refuse,budget,,90.0,"refuse L1_WB_27: needs +8 s, only 2 s extension left",10000
+5192.0,A1,L1_WB_27,L1_WB,refuse,not_late,,-180.0,refuse L1_WB_27: 180 s early,10000
+5336.0,A1,L1_EB_29,L1_EB,refuse,not_late,,-17.0,refuse L1_EB_29: 17 s early,10000
+5483.0,A1,L1_WB_29,L1_WB,extend,extend,5.0,99.0,"extend 5 s for L1_WB_29, 99 s late",10000
+5727.0,A1,L1_EB_31,L1_EB,refuse,not_late,,-23.0,refuse L1_EB_31: 23 s early,10000
+5746.0,A1,L1_EB_32,L1_EB,refuse,not_late,,-174.0,refuse L1_EB_32: 174 s early,10000
+5751.0,A1,L1_WB_31,L1_WB,refuse,not_late,,-78.0,refuse L1_WB_31: 78 s early,10000
+5903.0,A1,L1_WB_32,L1_WB,refuse,not_late,,-68.0,refuse L1_WB_32: 68 s early,10000
+6017.0,A1,L1_EB_33,L1_EB,extend,extend,3.0,47.0,"extend 3 s for L1_EB_33, 47 s late",10000
+6133.0,A1,L1_WB_33,L1_WB,recall,recall,-20.0,18.0,"cut green to 10 s (min 10 s) for L1_WB_33, 18 s late",10000
+6227.0,A1,L1_EB_34,L1_EB,extend,extend,3.0,13.0,"extend 3 s for L1_EB_34, 13 s late",10000
+6317.0,A1,L1_EB_35,L1_EB,refuse,not_late,,-107.0,refuse L1_EB_35: 107 s early,10000
+6397.0,A1,L1_WB_34,L1_WB,refuse,budget,,63.0,"refuse L1_WB_34: needs +24 s, only 15 s extension left",10000
+6402.0,A1,L1_WB_34,L1_WB,extend,extend,15.0,68.0,"extend 15 s for L1_WB_34, 68 s late",10000
+6478.0,A1,L1_WB_35,L1_WB,refuse,not_late,,-115.0,refuse L1_WB_35: 115 s early,10000
+6479.0,A1,L1_WB_35,L1_WB,refuse,budget,,-114.0,"refuse L1_WB_35: needs +16 s, only 15 s extension left",10000
+6651.0,A1,L1_EB_36,L1_EB,recall,recall,-20.0,99.0,"cut green to 10 s (min 10 s) for L1_EB_36, 99 s late",10000
+6781.0,A1,L1_WB_36,L1_WB,refuse,queue,,106.0,refuse L1_WB_36: queue 20 veh on losing approaches > 15,10000
+6783.0,A1,L1_EB_37,L1_EB,refuse,not_late,,-67.0,refuse L1_EB_37: 67 s early,10000
+6784.0,A1,L1_WB_36,L1_WB,recall,recall,-20.0,109.0,"cut green to 10 s (min 10 s) for L1_WB_36, 109 s late",10000
+6819.0,A1,L1_WB_37,L1_WB,refuse,budget,,-161.0,"refuse L1_WB_37: needs +21 s, only 15 s extension left",10000
+6825.0,A1,L1_WB_37,L1_WB,refuse,not_late,,-155.0,refuse L1_WB_37: 155 s early,10000
+6845.0,A1,L1_EB_38,L1_EB,refuse,not_late,,-135.0,refuse L1_EB_38: 135 s early,10000
+7029.0,A1,L1_WB_38,L1_WB,refuse,not_late,,-23.0,refuse L1_WB_38: 23 s early,10000
+7144.0,A1,L1_WB_39,L1_WB,refuse,not_late,,-82.0,refuse L1_WB_39: 82 s early,10000
+7195.0,A1,L1_EB_39,L1_EB,refuse,budget,,137.0,"refuse L1_EB_39: needs +16 s, only 15 s extension left",10000
+7201.0,A1,L1_EB_39,L1_EB,refuse,queue,,143.0,refuse L1_EB_39: queue 17 veh on losing approaches > 15,10000
+7213.0,A1,L1_EB_39,L1_EB,recall,recall,-20.0,155.0,"cut green to 10 s (min 10 s) for L1_EB_39, 155 s late",10000
+7347.0,A1,L1_WB_40,L1_WB,refuse,not_late,,-19.0,refuse L1_WB_40: 19 s early,10000
+7348.0,A1,L1_EB_40,L1_EB,refuse,not_late,,-58.0,refuse L1_EB_40: 58 s early,10000
+7471.0,A1,L1_EB_41,L1_EB,refuse,not_late,,-95.0,refuse L1_EB_41: 95 s early,10000
+7619.0,A1,L1_WB_41,L1_WB,refuse,budget,,62.0,"refuse L1_WB_41: needs +16 s, only 15 s extension left",10000
+7622.0,A1,L1_WB_41,L1_WB,extend,extend,13.0,65.0,"extend 13 s for L1_WB_41, 65 s late",10000
+7624.0,A1,L1_EB_42,L1_EB,refuse,not_late,,-83.0,refuse L1_EB_42: 83 s early,10000
+7626.0,A1,L1_EB_42,L1_EB,refuse,budget,,-81.0,"refuse L1_EB_42: needs +3 s, only 2 s extension left",10000
+7771.0,A1,L1_WB_42,L1_WB,refuse,not_late,,-44.0,refuse L1_WB_42: 44 s early,10000
+46.0,B0,L2_NB_00,L2_NB,refuse,not_late,,,refuse L2_NB_00: no previous bus on record,10000
+174.0,B0,L2_NB_01,L2_NB,refuse,not_late,,-67.0,refuse L2_NB_01: 67 s early,10000
+244.0,B0,L2_SB_00,L2_SB,refuse,not_late,,,refuse L2_SB_00: no previous bus on record,10000
+456.0,B0,L2_NB_02,L2_NB,recall,recall,-25.0,76.0,"cut green to 10 s (min 10 s) for L2_NB_02, 76 s late",10000
+541.0,B0,L2_SB_01,L2_SB,extend,extend,2.0,86.0,"extend 2 s for L2_SB_01, 86 s late",10000
+572.0,B0,L2_NB_03,L2_NB,refuse,budget,,-81.0,"refuse L2_NB_03: needs +26 s, only 13 s extension left",10000
+578.0,B0,L2_NB_03,L2_NB,refuse,not_late,,-75.0,refuse L2_NB_03: 75 s early,10000
+731.0,B0,L2_SB_03,L2_SB,refuse,not_late,,-9.0,refuse L2_SB_03: 9 s early,10000
+741.0,B0,L2_SB_03,L2_SB,recall,recall,-21.0,1.0,"cut green to 14 s (min 10 s) for L2_SB_03, 1 s late",10000
+904.0,B0,L2_NB_04,L2_NB,extend,extend,4.0,102.0,"extend 4 s for L2_NB_04, 102 s late",10000
+958.0,B0,L2_SB_04,L2_SB,recall,recall,-14.0,28.0,"cut green to 21 s (min 10 s) for L2_SB_04, 28 s late",10000
+968.0,B0,L2_NB_05,L2_NB,refuse,not_late,,-133.0,refuse L2_NB_05: 133 s early,10000
+1179.0,B0,L2_NB_06,L2_NB,recall,recall,-4.0,14.0,"cut green to 31 s (min 10 s) for L2_NB_06, 14 s late",10000
+1229.0,B0,L2_SB_05,L2_SB,recall,recall,-25.0,71.0,"cut green to 10 s (min 10 s) for L2_SB_05, 71 s late",10000
+1376.0,B0,L2_NB_07,L2_NB,refuse,not_late,,-2.0,refuse L2_NB_07: 2 s early,10000
+1400.0,B0,L2_SB_07,L2_SB,refuse,budget,,-179.0,"refuse L2_SB_07: needs +18 s, only 15 s extension left",10000
+1405.0,B0,L2_SB_07,L2_SB,refuse,not_late,,-174.0,refuse L2_SB_07: 174 s early,10000
+1420.0,B0,L2_NB_08,L2_NB,refuse,not_late,,-161.0,refuse L2_NB_08: 161 s early,10000
+1654.0,B0,L2_NB_09,L2_NB,recall,recall,-25.0,9.0,"cut green to 10 s (min 10 s) for L2_NB_09, 9 s late",10000
+1785.0,B0,L2_SB_08,L2_SB,recall,recall,-19.0,144.0,"cut green to 16 s (min 10 s) for L2_SB_08, 144 s late",10000
+1826.0,B0,L2_SB_09,L2_SB,refuse,not_late,,-155.0,refuse L2_SB_09: 155 s early,10000
+1871.0,B0,L2_NB_10,L2_NB,extend,extend,1.0,20.0,"extend 1 s for L2_NB_10, 20 s late",10000
+1971.0,B0,L2_SB_10,L2_SB,refuse,budget,,-82.0,"refuse L2_SB_10: needs +31 s, only 15 s extension left",10000
+1978.0,B0,L2_SB_10,L2_SB,refuse,not_late,,-75.0,refuse L2_SB_10: 75 s early,10000
+1998.0,B0,L2_NB_11,L2_NB,refuse,not_late,,-68.0,refuse L2_NB_11: 68 s early,10000
+2112.0,B0,L2_SB_11,L2_SB,refuse,budget,,-93.0,"refuse L2_SB_11: needs +22 s, only 15 s extension left",10000
+2117.0,B0,L2_SB_11,L2_SB,refuse,not_late,,-88.0,refuse L2_SB_11: 88 s early,10000
+2272.0,B0,L2_NB_12,L2_NB,refuse,budget,,60.0,"refuse L2_NB_12: needs +26 s, only 15 s extension left",10000
+2278.0,B0,L2_NB_12,L2_NB,recall,recall,-25.0,66.0,"cut green to 10 s (min 10 s) for L2_NB_12, 66 s late",10000
+2377.0,B0,L2_NB_13,L2_NB,refuse,not_late,,-100.0,refuse L2_NB_13: 100 s early,10000
+2411.0,B0,L2_SB_12,L2_SB,recall,recall,-25.0,63.0,"cut green to 10 s (min 10 s) for L2_SB_12, 63 s late",10000
+2537.0,B0,L2_SB_13,L2_SB,refuse,not_late,,-71.0,refuse L2_SB_13: 71 s early,10000
+2654.0,B0,L2_NB_14,L2_NB,extend,extend,8.0,80.0,"extend 8 s for L2_NB_14, 80 s late",10000
+2679.0,B0,L2_NB_15,L2_NB,refuse,budget,,-171.0,"refuse L2_NB_15: needs +24 s, only 6 s extension left",10000
+2687.0,B0,L2_NB_15,L2_NB,refuse,not_late,,-163.0,refuse L2_NB_15: 163 s early,10000
+2752.0,B0,L2_SB_14,L2_SB,refuse,budget,,-6.0,"refuse L2_SB_14: needs +28 s, only 15 s extension left",10000
+2762.0,B0,L2_SB_14,L2_SB,recall,recall,-25.0,4.0,"cut green to 10 s (min 10 s) for L2_SB_14, 4 s late",10000
+2887.0,B0,L2_SB_15,L2_SB,refuse,not_late,,-71.0,refuse L2_SB_15: 71 s early,10000
+3077.0,B0,L2_SB_16,L2_SB,refuse,not_late,,-34.0,refuse L2_SB_16: 34 s early,10000
+3104.0,B0,L2_NB_17,L2_NB,refuse,budget,,-13.0,"refuse L2_NB_17: needs +24 s, only 15 s extension left",10000
+3112.0,B0,L2_NB_17,L2_NB,refuse,not_late,,-5.0,refuse L2_NB_17: 5 s early,10000
+3118.0,B0,L2_NB_17,L2_NB,recall,recall,-25.0,1.0,"cut green to 10 s (min 10 s) for L2_NB_17, 1 s late",10000
+3314.0,B0,L2_SB_17,L2_SB,recall,recall,-25.0,39.0,"cut green to 10 s (min 10 s) for L2_SB_17, 39 s late",10000
+3448.0,B0,L2_SB_18,L2_SB,refuse,not_late,,-62.0,refuse L2_SB_18: 62 s early,10000
+3581.0,B0,L2_NB_19,L2_NB,refuse,budget,,66.0,"refuse L2_NB_19: needs +26 s, only 15 s extension left",10000
+3587.0,B0,L2_SB_19,L2_SB,refuse,not_late,,-80.0,refuse L2_SB_19: 80 s early,10000
+3587.0,B0,L2_NB_19,L2_NB,recall,recall,-25.0,72.0,"cut green to 10 s (min 10 s) for L2_NB_19, 72 s late",10000
+3706.0,B0,L2_SB_20,L2_SB,refuse,budget,,-83.0,"refuse L2_SB_20: needs +32 s, only 15 s extension left",10000
+3712.0,B0,L2_SB_20,L2_SB,refuse,not_late,,-77.0,refuse L2_SB_20: 77 s early,10000
+3719.0,B0,L2_NB_20,L2_NB,refuse,not_late,,-67.0,refuse L2_NB_20: 67 s early,10000
+3792.0,B0,L2_NB_21,L2_NB,refuse,not_late,,-150.0,refuse L2_NB_21: 150 s early,10000
+3968.0,B0,L2_NB_22,L2_NB,refuse,not_late,,-46.0,refuse L2_NB_22: 46 s early,10000
+4030.0,B0,L2_SB_21,L2_SB,recall,recall,-16.0,93.0,"cut green to 19 s (min 10 s) for L2_SB_21, 93 s late",10000
+4090.0,B0,L2_SB_22,L2_SB,refuse,not_late,,-136.0,refuse L2_SB_22: 136 s early,10000
+4125.0,B0,L2_NB_23,L2_NB,refuse,not_late,,-42.0,refuse L2_NB_23: 42 s early,10000
+4395.0,B0,L2_SB_23,L2_SB,recall,recall,-10.0,92.0,"cut green to 25 s (min 10 s) for L2_SB_23, 92 s late",10000
+4455.0,B0,L2_SB_24,L2_SB,refuse,not_late,,-137.0,refuse L2_SB_24: 137 s early,10000
+4537.0,B0,L2_NB_25,L2_NB,refuse,not_late,,-54.0,refuse L2_NB_25: 54 s early,10000
+4736.0,B0,L2_SB_25,L2_SB,recall,recall,-25.0,61.0,"cut green to 10 s (min 10 s) for L2_SB_25, 61 s late",10000
+4808.0,B0,L2_SB_26,L2_SB,refuse,not_late,,-126.0,refuse L2_SB_26: 126 s early,10000
+4861.0,B0,L2_NB_26,L2_NB,recall,recall,-25.0,121.0,"cut green to 10 s (min 10 s) for L2_NB_26, 121 s late",10000
+4989.0,B0,L2_NB_27,L2_NB,refuse,not_late,,-71.0,refuse L2_NB_27: 71 s early,10000
+5048.0,B0,L2_NB_28,L2_NB,refuse,budget,,-167.0,"refuse L2_NB_28: needs +19 s, only 15 s extension left",10000
+5055.0,B0,L2_NB_28,L2_NB,refuse,not_late,,-160.0,refuse L2_NB_28: 160 s early,10000
+5180.0,B0,L2_SB_27,L2_SB,extend,extend,7.0,161.0,"extend 7 s for L2_SB_27, 161 s late",10000
+5309.0,B0,L2_SB_28,L2_SB,refuse,not_late,,-69.0,refuse L2_SB_28: 69 s early,10000
+5314.0,B0,L2_NB_29,L2_NB,recall,recall,-14.0,32.0,"cut green to 21 s (min 10 s) for L2_NB_29, 32 s late",10000
+5374.0,B0,L2_NB_30,L2_NB,refuse,not_late,,-140.0,refuse L2_NB_30: 140 s early,10000
+5379.0,B0,L2_SB_29,L2_SB,refuse,not_late,,-129.0,refuse L2_SB_29: 129 s early,10000
+5601.0,B0,L2_SB_30,L2_SB,recall,recall,-13.0,2.0,"cut green to 22 s (min 10 s) for L2_SB_30, 2 s late",10000
+5724.0,B0,L2_NB_31,L2_NB,recall,recall,-25.0,142.0,"cut green to 10 s (min 10 s) for L2_NB_31, 142 s late",10000
+5748.0,B0,L2_SB_31,L2_SB,refuse,budget,,-49.0,"refuse L2_SB_31: needs +19 s, only 15 s extension left",10000
+5752.0,B0,L2_SB_31,L2_SB,refuse,not_late,,-45.0,refuse L2_SB_31: 45 s early,10000
+5794.0,B0,L2_NB_32,L2_NB,refuse,not_late,,-126.0,refuse L2_NB_32: 126 s early,10000
+5919.0,B0,L2_NB_33,L2_NB,refuse,not_late,,-74.0,refuse L2_NB_33: 74 s early,10000
+5970.0,B0,L2_SB_32,L2_SB,refuse,budget,,-18.0,"refuse L2_SB_32: needs +16 s, only 15 s extension left",10000
+5974.0,B0,L2_SB_32,L2_SB,refuse,not_late,,-14.0,refuse L2_SB_32: 14 s early,10000
+6032.0,B0,L2_SB_33,L2_SB,refuse,not_late,,-135.0,refuse L2_SB_33: 135 s early,10000
+6211.0,B0,L2_NB_34,L2_NB,refuse,budget,,65.0,"refuse L2_NB_34: needs +26 s, only 15 s extension left",10000
+6217.0,B0,L2_NB_34,L2_NB,recall,recall,-25.0,71.0,"cut green to 10 s (min 10 s) for L2_NB_34, 71 s late",10000
+6492.0,B0,L2_NB_36,L2_NB,refuse,not_late,,-14.0,refuse L2_NB_36: 14 s early,10000
+6581.0,B0,L2_SB_35,L2_SB,refuse,not_late,,-69.0,refuse L2_SB_35: 69 s early,10000
+6632.0,B0,L2_SB_36,L2_SB,refuse,budget,,-167.0,"refuse L2_SB_36: needs +28 s, only 15 s extension left",10000
+6642.0,B0,L2_SB_36,L2_SB,refuse,not_late,,-157.0,refuse L2_SB_36: 157 s early,10000
+6817.0,B0,L2_NB_37,L2_NB,recall,recall,-9.0,98.0,"cut green to 26 s (min 10 s) for L2_NB_37, 98 s late",10000
+6850.0,B0,L2_SB_37,L2_SB,refuse,budget,,-16.0,"refuse L2_SB_37: needs +30 s, only 15 s extension left",10000
+6858.0,B0,L2_SB_37,L2_SB,refuse,not_late,,-8.0,refuse L2_SB_37: 8 s early,10000
+7108.0,B0,L2_NB_39,L2_NB,recall,recall,-9.0,89.0,"cut green to 26 s (min 10 s) for L2_NB_39, 89 s late",10000
+7124.0,B0,L2_SB_38,L2_SB,extend,extend,13.0,42.0,"extend 13 s for L2_SB_38, 42 s late",10000
+7313.0,B0,L2_SB_39,L2_SB,refuse,not_late,,-8.0,refuse L2_SB_39: 8 s early,10000
+7322.0,B0,L2_SB_39,L2_SB,recall,recall,-25.0,1.0,"cut green to 10 s (min 10 s) for L2_SB_39, 1 s late",10000
+7355.0,B0,L2_NB_40,L2_NB,refuse,budget,,51.0,"refuse L2_NB_40: needs +24 s, only 15 s extension left",10000
+7363.0,B0,L2_NB_40,L2_NB,recall,recall,-25.0,59.0,"cut green to 10 s (min 10 s) for L2_NB_40, 59 s late",10000
+7422.0,B0,L2_NB_41,L2_NB,refuse,not_late,,-140.0,refuse L2_NB_41: 140 s early,10000
+7521.0,B0,L2_SB_40,L2_SB,recall,recall,-1.0,13.0,"cut green to 34 s (min 10 s) for L2_SB_40, 13 s late",10000
+7638.0,B0,L2_SB_41,L2_SB,refuse,not_late,,-87.0,refuse L2_SB_41: 87 s early,10000
+7706.0,B0,L2_NB_42,L2_NB,refuse,budget,,65.0,"refuse L2_NB_42: needs +26 s, only 15 s extension left",10000
+7712.0,B0,L2_NB_42,L2_NB,recall,recall,-25.0,71.0,"cut green to 10 s (min 10 s) for L2_NB_42, 71 s late",10000
+7793.0,B0,L2_SB_42,L2_SB,refuse,not_late,,-74.0,refuse L2_SB_42: 74 s early,10000
+106.0,B1,L2_NB_00,L2_NB,refuse,not_late,,,refuse L2_NB_00: no previous bus on record,10000
+117.0,B1,L1_EB_00,L1_EB,refuse,not_late,,,refuse L1_EB_00: no previous bus on record,10000
+132.0,B1,L1_WB_00,L1_WB,refuse,not_late,,,refuse L1_WB_00: no previous bus on record,10000
+168.0,B1,L2_SB_00,L2_SB,refuse,not_late,,,refuse L2_SB_00: no previous bus on record,10000
+217.0,B1,L1_WB_01,L1_WB,refuse,not_late,,-121.0,refuse L1_WB_01: 121 s early,10000
+251.0,B1,L2_NB_01,L2_NB,refuse,not_late,,-51.0,refuse L2_NB_01: 51 s early,10000
+429.0,B1,L1_WB_02,L1_WB,recall,recall,-16.0,15.0,"cut green to 14 s (min 10 s) for L1_WB_02, 15 s late",10000
+435.0,B1,L2_SB_01,L2_SB,refuse,not_late,,-175.0,refuse L2_SB_01: 175 s early,10000
+465.0,B1,L2_SB_02,L2_SB,refuse,not_late,,-145.0,refuse L2_SB_02: 145 s early,10000
+530.0,B1,L2_NB_02,L2_NB,recall,recall,-14.0,68.0,"cut green to 21 s (min 10 s) for L2_NB_02, 68 s late",10000
+648.0,B1,L2_SB_03,L2_SB,refuse,not_late,,-29.0,refuse L2_SB_03: 29 s early,10000
+663.0,B1,L2_NB_03,L2_NB,refuse,not_late,,-64.0,refuse L2_NB_03: 64 s early,10000
+678.0,B1,L2_SB_03,L2_SB,recall,recall,-2.0,1.0,"cut green to 33 s (min 10 s) for L2_SB_03, 1 s late",10000
+843.0,B1,L1_WB_04,L1_WB,refuse,not_late,,-144.0,refuse L1_WB_04: 144 s early,10000
+855.0,B1,L2_SB_04,L2_SB,refuse,budget,,-10.0,"refuse L2_SB_04: needs +24 s, only 15 s extension left",10000
+861.0,B1,L2_SB_04,L2_SB,refuse,not_late,,-4.0,refuse L2_SB_04: 4 s early,10000
+984.0,B1,L2_NB_04,L2_NB,extend,extend,1.0,106.0,"extend 1 s for L2_NB_04, 106 s late",10000
+1012.0,B1,L2_NB_05,L2_NB,refuse,budget,,-166.0,"refuse L2_NB_05: needs +30 s, only 14 s extension left",10000
+1020.0,B1,L2_NB_05,L2_NB,refuse,not_late,,-158.0,refuse L2_NB_05: 158 s early,10000
+1063.0,B1,L1_WB_05,L1_WB,recall,recall,-20.0,2.0,"cut green to 10 s (min 10 s) for L1_WB_05, 2 s late",10000
+1150.0,B1,L2_SB_05,L2_SB,recall,recall,-25.0,60.0,"cut green to 10 s (min 10 s) for L2_SB_05, 60 s late",10000
+1208.0,B1,L1_WB_06,L1_WB,refuse,not_late,,-51.0,refuse L1_WB_06: 51 s early,10000
+1256.0,B1,L2_NB_06,L2_NB,refuse,budget,,15.0,"refuse L2_NB_06: needs +19 s, only 15 s extension left",10000
+1261.0,B1,L2_NB_06,L2_NB,extend,extend,15.0,20.0,"extend 15 s for L2_NB_06, 20 s late",10000
+1282.0,B1,L2_SB_07,L2_SB,refuse,budget,,-63.0,"refuse L2_SB_07: needs +27 s, only 0 s extension left",10000
+1290.0,B1,L2_SB_06,L2_SB,refuse,not_late,,-55.0,refuse L2_SB_06: 55 s early,10000
+1290.0,B1,L2_SB_07,L2_SB,refuse,not_late,,-55.0,refuse L2_SB_07: 55 s early,10000
+1307.0,B1,L1_EB_06,L1_EB,extend,extend,15.0,91.0,"extend 15 s for L1_EB_06, 91 s late",10000
+1309.0,B1,L1_EB_06,L1_EB,refuse,budget,,93.0,"refuse L1_EB_06: needs +1 s, only 0 s extension left",10000
+1402.0,B1,L1_WB_07,L1_WB,refuse,budget,,-3.0,"refuse L1_WB_07: needs +20 s, only 15 s extension left",10000
+1407.0,B1,L1_WB_07,L1_WB,extend,extend,14.0,2.0,"extend 14 s for L1_WB_07, 2 s late",10000
+1422.0,B1,L1_EB_07,L1_EB,refuse,budget,,-81.0,"refuse L1_EB_07: needs +26 s, only 1 s extension left",10000
+1434.0,B1,L1_EB_07,L1_EB,refuse,not_late,,-69.0,refuse L1_EB_07: 69 s early,10000
+1451.0,B1,L2_NB_07,L2_NB,refuse,budget,,-3.0,"refuse L2_NB_07: needs +20 s, only 1 s extension left",10000
+1469.0,B1,L2_NB_07,L2_NB,refuse,not_late,,-175.0,refuse L2_NB_07: 175 s early,10000
+1494.0,B1,L2_NB_08,L2_NB,refuse,not_late,,-150.0,refuse L2_NB_08: 150 s early,10000
+1523.0,B1,L1_EB_08,L1_EB,refuse,not_late,,-131.0,refuse L1_EB_08: 131 s early,10000
+1635.0,B1,L1_WB_08,L1_WB,extend,extend,14.0,36.0,"extend 14 s for L1_WB_08, 36 s late",10000
+1698.0,B1,L2_SB_08,L2_SB,refuse,budget,,166.0,"refuse L2_SB_08: needs +27 s, only 0 s extension left",10000
+1709.0,B1,L2_NB_09,L2_NB,refuse,queue,,5.0,refuse L2_NB_09: queue 20 veh on losing approaches > 15,10000
+1709.0,B1,L2_SB_08,L2_SB,refuse,queue,,177.0,refuse L2_SB_08: queue 20 veh on losing approaches > 15,10000
+1711.0,B1,L2_SB_08,L2_SB,recall,recall,-25.0,179.0,"cut green to 10 s (min 10 s) for L2_SB_08, 179 s late",10000
+1739.0,B1,L1_EB_09,L1_EB,recall,recall,-14.0,11.0,"cut green to 16 s (min 10 s) for L1_EB_09, 11 s late",10000
+1745.0,B1,L2_SB_09,L2_SB,refuse,not_late,,-160.0,refuse L2_SB_09: 160 s early,10000
+1854.0,B1,L1_WB_09,L1_WB,refuse,budget,,22.0,"refuse L1_WB_09: needs +32 s, only 15 s extension left",10000
+1860.0,B1,L1_WB_09,L1_WB,recall,recall,-20.0,28.0,"cut green to 10 s (min 10 s) for L1_WB_09, 28 s late",10000
+1886.0,B1,L2_SB_10,L2_SB,refuse,not_late,,-86.0,refuse L2_SB_10: 86 s early,10000
+1916.0,B1,L2_NB_10,L2_NB,extend,extend,4.0,8.0,"extend 4 s for L2_NB_10, 8 s late",10000
+2002.0,B1,L1_WB_10,L1_WB,refuse,not_late,,-57.0,refuse L1_WB_10: 57 s early,10000
+2013.0,B1,L2_SB_11,L2_SB,refuse,budget,,-96.0,"refuse L2_SB_11: needs +21 s, only 15 s extension left",10000
+2018.0,B1,L2_SB_11,L2_SB,refuse,not_late,,-91.0,refuse L2_SB_11: 91 s early,10000
+2070.0,B1,L1_EB_11,L1_EB,refuse,not_late,,-78.0,refuse L1_EB_11: 78 s early,10000
+2080.0,B1,L2_NB_11,L2_NB,refuse,not_late,,-33.0,refuse L2_NB_11: 33 s early,10000
+2080.0,B1,L1_WB_11,L1_WB,refuse,not_late,,-145.0,refuse L1_WB_11: 145 s early,10000
+2284.0,B1,L1_WB_12,L1_WB,refuse,budget,,-5.0,"refuse L1_WB_12: needs +27 s, only 15 s extension left",10000
+2295.0,B1,L1_WB_12,L1_WB,recall,recall,-20.0,6.0,"cut green to 10 s (min 10 s) for L1_WB_12, 6 s late",10000
+2328.0,B1,L2_SB_12,L2_SB,recall,recall,-16.0,77.0,"cut green to 19 s (min 10 s) for L2_SB_12, 77 s late",10000
+2336.0,B1,L2_NB_12,L2_NB,extend,extend,5.0,60.0,"extend 5 s for L2_NB_12, 60 s late",10000
+2430.0,B1,L2_NB_13,L2_NB,refuse,budget,,-102.0,"refuse L2_NB_13: needs +18 s, only 15 s extension left",10000
+2433.0,B1,L2_NB_13,L2_NB,refuse,not_late,,-99.0,refuse L2_NB_13: 99 s early,10000
+2468.0,B1,L2_SB_13,L2_SB,refuse,not_late,,-58.0,refuse L2_SB_13: 58 s early,10000
+2558.0,B1,L1_WB_13,L1_WB,refuse,budget,,68.0,"refuse L1_WB_13: needs +31 s, only 15 s extension left",10000
+2565.0,B1,L1_WB_13,L1_WB,recall,recall,-20.0,75.0,"cut green to 10 s (min 10 s) for L1_WB_13, 75 s late",10000
+2585.0,B1,L1_EB_14,L1_EB,refuse,not_late,,-170.0,refuse L1_EB_14: 170 s early,10000
+2683.0,B1,L1_WB_14,L1_WB,refuse,budget,,-78.0,"refuse L1_WB_14: needs +26 s, only 15 s extension left",10000
+2695.0,B1,L1_WB_14,L1_WB,refuse,not_late,,-66.0,refuse L1_WB_14: 66 s early,10000
+2734.0,B1,L2_NB_14,L2_NB,recall,recall,-25.0,63.0,"cut green to 10 s (min 10 s) for L2_NB_14, 63 s late",10000
+2756.0,B1,L1_WB_15,L1_WB,refuse,not_late,,-154.0,refuse L1_WB_15: 154 s early,10000
+2766.0,B1,L2_NB_15,L2_NB,refuse,budget,,-165.0,"refuse L2_NB_15: needs +24 s, only 15 s extension left",10000
+2773.0,B1,L2_NB_15,L2_NB,refuse,not_late,,-158.0,refuse L2_NB_15: 158 s early,10000
+2828.0,B1,L2_SB_15,L2_SB,refuse,not_late,,-61.0,refuse L2_SB_15: 61 s early,10000
+2905.0,B1,L1_EB_16,L1_EB,recall,recall,-19.0,124.0,"cut green to 11 s (min 10 s) for L1_EB_16, 124 s late",10000
+2923.0,B1,L1_EB_15,L1_EB,refuse,not_late,,-176.0,refuse L1_EB_15: 176 s early,10000
+2966.0,B1,L1_WB_16,L1_WB,refuse,not_late,,-3.0,refuse L1_WB_16: 3 s early,10000
+2970.0,B1,L1_WB_16,L1_WB,recall,recall,-10.0,1.0,"cut green to 20 s (min 10 s) for L1_WB_16, 1 s late",10000
+2988.0,B1,L2_NB_16,L2_NB,refuse,not_late,,-13.0,refuse L2_NB_16: 13 s early,10000
+3002.0,B1,L2_NB_16,L2_NB,recall,recall,-8.0,1.0,"cut green to 27 s (min 10 s) for L2_NB_16, 1 s late",10000
+3008.0,B1,L2_SB_16,L2_SB,refuse,not_late,,-18.0,refuse L2_SB_16: 18 s early,10000
+3106.0,B1,L1_EB_17,L1_EB,refuse,not_late,,-14.0,refuse L1_EB_17: 14 s early,10000
+3174.0,B1,L2_NB_17,L2_NB,refuse,budget,,-18.0,"refuse L2_NB_17: needs +19 s, only 15 s extension left",10000
+3178.0,B1,L2_NB_17,L2_NB,refuse,not_late,,-14.0,refuse L2_NB_17: 14 s early,10000
+3245.0,B1,L2_SB_17,L2_SB,extend,extend,15.0,41.0,"extend 15 s for L2_SB_17, 41 s late",10000
+3246.0,B1,L2_SB_17,L2_SB,refuse,budget,,42.0,"refuse L2_SB_17: needs +1 s, only 0 s extension left",10000
+3276.0,B1,L1_WB_17,L1_WB,recall,recall,-1.0,113.0,"cut green to 44 s (min 10 s) for L1_WB_17, 113 s late",10000
+3285.0,B1,L1_WB_18,L1_WB,extend,extend,1.0,122.0,"extend 1 s for L1_WB_18, 122 s late",10000
+3358.0,B1,L2_SB_18,L2_SB,refuse,not_late,,-84.0,refuse L2_SB_18: 84 s early,10000
+3378.0,B1,L2_NB_18,L2_NB,refuse,not_late,,-35.0,refuse L2_NB_18: 35 s early,10000
+3493.0,B1,L2_SB_19,L2_SB,refuse,budget,,-85.0,"refuse L2_SB_19: needs +23 s, only 15 s extension left",10000
+3498.0,B1,L2_SB_19,L2_SB,refuse,not_late,,-80.0,refuse L2_SB_19: 80 s early,10000
+3612.0,B1,L1_EB_19,L1_EB,refuse,budget,,134.0,"refuse L1_EB_19: needs +27 s, only 15 s extension left",10000
+3623.0,B1,L1_EB_19,L1_EB,recall,recall,-20.0,145.0,"cut green to 10 s (min 10 s) for L1_EB_19, 145 s late",10000
+3631.0,B1,L2_SB_20,L2_SB,refuse,budget,,-98.0,"refuse L2_SB_20: needs +31 s, only 15 s extension left",10000
+3638.0,B1,L2_SB_20,L2_SB,refuse,not_late,,-91.0,refuse L2_SB_20: 91 s early,10000
+3662.0,B1,L2_NB_19,L2_NB,recall,recall,-10.0,75.0,"cut green to 25 s (min 10 s) for L2_NB_19, 75 s late",10000
+3675.0,B1,L1_EB_20,L1_EB,refuse,not_late,,-144.0,refuse L1_EB_20: 144 s early,10000
+3690.0,B1,L1_WB_20,L1_WB,refuse,not_late,,-12.0,refuse L1_WB_20: 12 s early,10000
+3799.0,B1,L2_NB_20,L2_NB,refuse,not_late,,-59.0,refuse L2_NB_20: 59 s early,10000
+3862.0,B1,L2_NB_21,L2_NB,refuse,not_late,,-152.0,refuse L2_NB_21: 152 s early,10000
+3896.0,B1,L1_EB_21,L1_EB,refuse,not_late,,0.0,refuse L1_EB_21: 0 s late,10000
+3897.0,B1,L1_EB_21,L1_EB,recall,recall,-20.0,1.0,"cut green to 10 s (min 10 s) for L1_EB_21, 1 s late",10000
+3939.0,B1,L1_WB_21,L1_WB,refuse,budget,,50.0,"refuse L1_WB_21: needs +29 s, only 15 s extension left",10000
+3948.0,B1,L1_WB_21,L1_WB,recall,recall,-20.0,59.0,"cut green to 10 s (min 10 s) for L1_WB_21, 59 s late",10000
+3957.0,B1,L2_SB_21,L2_SB,refuse,budget,,102.0,"refuse L2_SB_21: needs +32 s, only 15 s extension left",10000
+3963.0,B1,L2_SB_21,L2_SB,recall,recall,-25.0,108.0,"cut green to 10 s (min 10 s) for L2_SB_21, 108 s late",10000
+4013.0,B1,L2_SB_22,L2_SB,refuse,not_late,,-149.0,refuse L2_SB_22: 149 s early,10000
+4028.0,B1,L2_NB_22,L2_NB,refuse,not_late,,-101.0,refuse L2_NB_22: 101 s early,10000
+4035.0,B1,L1_EB_22,L1_EB,refuse,budget,,-57.0,"refuse L1_EB_22: needs +20 s, only 15 s extension left",10000
+4040.0,B1,L1_EB_22,L1_EB,refuse,not_late,,-52.0,refuse L1_EB_22: 52 s early,10000
+4166.0,B1,L1_WB_22,L1_WB,extend,extend,1.0,19.0,"extend 1 s for L1_WB_22, 19 s late",10000
+4170.0,B1,L2_NB_23,L2_NB,refuse,not_late,,-73.0,refuse L2_NB_23: 73 s early,10000
+4212.0,B1,L1_WB_23,L1_WB,refuse,not_late,,-151.0,refuse L1_WB_23: 151 s early,10000
+4250.0,B1,L1_EB_23,L1_EB,refuse,not_late,,-19.0,refuse L1_EB_23: 19 s early,10000
+4331.0,B1,L2_SB_23,L2_SB,recall,recall,-18.0,97.0,"cut green to 17 s (min 10 s) for L2_SB_23, 97 s late",10000
+4373.0,B1,L2_SB_24,L2_SB,refuse,not_late,,-155.0,refuse L2_SB_24: 155 s early,10000
+4450.0,B1,L1_WB_24,L1_WB,extend,extend,1.0,23.0,"extend 1 s for L1_WB_24, 23 s late",10000
+4453.0,B1,L2_NB_24,L2_NB,recall,recall,-26.0,64.0,"cut green to 10 s (min 10 s) for L2_NB_24, 64 s late",10000
+4454.0,B1,L1_WB_24,L1_WB,refuse,budget,,27.0,"refuse L1_WB_24: needs +19 s, only 14 s extension left",10000
+4462.0,B1,L1_WB_24,L1_WB,recall,recall,-20.0,35.0,"cut green to 10 s (min 10 s) for L1_WB_24, 35 s late",10000
+4463.0,B1,L2_NB_24,L2_NB,extend,extend,1.0,74.0,"extend 1 s for L2_NB_24, 74 s late",10000
+4466.0,B1,L1_WB_24,L1_WB,refuse,not_late,,-178.0,refuse L1_WB_24: 178 s early,10000
+4471.0,B1,L1_EB_24,L1_EB,recall,recall,-1.0,24.0,"cut green to 10 s (min 10 s) for L1_EB_24, 24 s late",10000
+4523.0,B1,L1_WB_25,L1_WB,refuse,not_late,,-145.0,refuse L1_WB_25: 145 s early,10000
+4533.0,B1,L1_EB_25,L1_EB,refuse,not_late,,-134.0,refuse L1_EB_25: 134 s early,10000
+4597.0,B1,L2_NB_25,L2_NB,refuse,not_late,,-53.0,refuse L2_NB_25: 53 s early,10000
+4677.0,B1,L2_SB_25,L2_SB,extend,extend,13.0,74.0,"extend 13 s for L2_SB_25, 74 s late",10000
+4748.0,B1,L2_SB_26,L2_SB,refuse,not_late,,-126.0,refuse L2_SB_26: 126 s early,10000
+4800.0,B1,L1_EB_26,L1_EB,extend,extend,8.0,64.0,"extend 8 s for L1_EB_26, 64 s late",10000
+4824.0,B1,L1_WB_26,L1_WB,refuse,budget,,91.0,"refuse L1_WB_26: needs +23 s, only 6 s extension left",10000
+4839.0,B1,L1_WB_26,L1_WB,recall,recall,-20.0,106.0,"cut green to 10 s (min 10 s) for L1_WB_26, 106 s late",10000
+4929.0,B1,L2_NB_26,L2_NB,recall,recall,-25.0,136.0,"cut green to 10 s (min 10 s) for L2_NB_26, 136 s late",10000
+5012.0,B1,L1_EB_27,L1_EB,refuse,budget,,15.0,"refuse L1_EB_27: needs +31 s, only 15 s extension left",10000
+5019.0,B1,L1_EB_27,L1_EB,recall,recall,-20.0,22.0,"cut green to 10 s (min 10 s) for L1_EB_27, 22 s late",10000
+5083.0,B1,L2_NB_27,L2_NB,refuse,not_late,,-45.0,refuse L2_NB_27: 45 s early,10000
+5099.0,B1,L1_WB_27,L1_WB,recall,recall,-4.0,61.0,"cut green to 26 s (min 10 s) for L1_WB_27, 61 s late",10000
+5108.0,B1,L2_SB_27,L2_SB,recall,recall,-25.0,159.0,"cut green to 10 s (min 10 s) for L2_SB_27, 159 s late",10000
+5109.0,B1,L1_WB_27,L1_WB,extend,extend,9.0,71.0,"extend 9 s for L1_WB_27, 71 s late",10000
+5111.0,B1,L1_WB_27,L1_WB,refuse,budget,,73.0,"refuse L1_WB_27: needs +8 s, only 6 s extension left",10000
+5136.0,B1,L2_NB_28,L2_NB,refuse,not_late,,-144.0,refuse L2_NB_28: 144 s early,10000
+5221.0,B1,L1_EB_28,L1_EB,refuse,not_late,,0.0,refuse L1_EB_28: 0 s late,10000
+5222.0,B1,L1_EB_28,L1_EB,extend,extend,8.0,1.0,"extend 8 s for L1_EB_28, 1 s late",10000
+5247.0,B1,L2_SB_28,L2_SB,refuse,not_late,,-58.0,refuse L2_SB_28: 58 s early,10000
+5308.0,B1,L2_SB_29,L2_SB,refuse,not_late,,-145.0,refuse L2_SB_29: 145 s early,10000
+5380.0,B1,L2_NB_29,L2_NB,recall,recall,-23.0,14.0,"cut green to 12 s (min 10 s) for L2_NB_29, 14 s late",10000
+5386.0,B1,L1_WB_29,L1_WB,refuse,not_late,,-179.0,refuse L1_WB_29: 179 s early,10000
+5389.0,B1,L1_EB_29,L1_EB,refuse,not_late,,-28.0,refuse L1_EB_29: 28 s early,10000
+5438.0,B1,L2_NB_30,L2_NB,refuse,not_late,,-139.0,refuse L2_NB_30: 139 s early,10000
+5519.0,B1,L1_WB_30,L1_WB,refuse,budget,,-83.0,"refuse L1_WB_30: needs +21 s, only 15 s extension left",10000
+5524.0,B1,L1_WB_30,L1_WB,refuse,not_late,,-78.0,refuse L1_WB_30: 78 s early,10000
+5553.0,B1,L2_SB_30,L2_SB,refuse,budget,,25.0,"refuse L2_SB_30: needs +20 s, only 15 s extension left",10000
+5557.0,B1,L2_SB_30,L2_SB,extend,extend,13.0,29.0,"extend 13 s for L2_SB_30, 29 s late",10000
+5613.0,B1,L1_EB_30,L1_EB,refuse,budget,,11.0,"refuse L1_EB_30: needs +27 s, only 15 s extension left",10000
+5624.0,B1,L1_EB_30,L1_EB,recall,recall,-20.0,22.0,"cut green to 10 s (min 10 s) for L1_EB_30, 22 s late",10000
+5691.0,B1,L2_SB_31,L2_SB,refuse,not_late,,-58.0,refuse L2_SB_31: 58 s early,10000
+5694.0,B1,L1_WB_31,L1_WB,refuse,not_late,,-74.0,refuse L1_WB_31: 74 s early,10000
+5794.0,B1,L2_NB_31,L2_NB,recall,recall,-25.0,139.0,"cut green to 10 s (min 10 s) for L2_NB_31, 139 s late",10000
+5822.0,B1,L1_EB_32,L1_EB,recall,recall,-11.0,2.0,"cut green to 19 s (min 10 s) for L1_EB_32, 2 s late",10000
+5839.0,B1,L2_NB_32,L2_NB,refuse,not_late,,-152.0,refuse L2_NB_32: 152 s early,10000
+5841.0,B1,L1_WB_32,L1_WB,refuse,not_late,,-57.0,refuse L1_WB_32: 57 s early,10000
+5903.0,B1,L2_SB_32,L2_SB,recall,recall,-25.0,15.0,"cut green to 10 s (min 10 s) for L2_SB_32, 15 s late",10000
+5967.0,B1,L2_SB_33,L2_SB,refuse,not_late,,-134.0,refuse L2_SB_33: 134 s early,10000
+6013.0,B1,L2_NB_33,L2_NB,refuse,budget,,-42.0,"refuse L2_NB_33: needs +23 s, only 15 s extension left",10000
+6018.0,B1,L2_NB_33,L2_NB,refuse,not_late,,-37.0,refuse L2_NB_33: 37 s early,10000
+6054.0,B1,L1_WB_33,L1_WB,refuse,budget,,16.0,"refuse L1_WB_33: needs +24 s, only 15 s extension left",10000
+6056.0,B1,L2_NB_33,L2_NB,recall,recall,-6.0,1.0,"cut green to 29 s (min 10 s) for L2_NB_33, 1 s late",10000
+6062.0,B1,L1_WB_33,L1_WB,recall,recall,-20.0,24.0,"cut green to 10 s (min 10 s) for L1_WB_33, 24 s late",10000
+6086.0,B1,L1_EB_33,L1_EB,extend,extend,7.0,63.0,"extend 7 s for L1_EB_33, 63 s late",10000
+6287.0,B1,L1_EB_34,L1_EB,recall,recall,-16.0,4.0,"cut green to 14 s (min 10 s) for L1_EB_34, 4 s late",10000
+6293.0,B1,L2_NB_34,L2_NB,recall,recall,-25.0,51.0,"cut green to 10 s (min 10 s) for L2_NB_34, 51 s late",10000
+6294.0,B1,L1_WB_34,L1_WB,refuse,budget,,37.0,"refuse L1_WB_34: needs +23 s, only 15 s extension left",10000
+6294.0,B1,L1_EB_34,L1_EB,extend,extend,6.0,11.0,"extend 6 s for L1_EB_34, 11 s late",10000
+6301.0,B1,L1_EB_34,L1_EB,refuse,budget,,-179.0,"refuse L1_EB_34: needs +3 s, only 2 s extension left",10000
+6308.0,B1,L1_WB_34,L1_WB,refuse,not_late,,-178.0,refuse L1_WB_34: 178 s early,10000
+6353.0,B1,L2_NB_35,L2_NB,refuse,not_late,,-140.0,refuse L2_NB_35: 140 s early,10000
+6384.0,B1,L2_SB_34,L2_SB,extend,extend,4.0,202.0,"extend 4 s for L2_SB_34, 202 s late",10000
+6429.0,B1,L1_EB_35,L1_EB,refuse,not_late,,-54.0,refuse L1_EB_35: 54 s early,10000
+6477.0,B1,L2_SB_35,L2_SB,refuse,budget,,-103.0,"refuse L2_SB_35: needs +18 s, only 15 s extension left",10000
+6481.0,B1,L2_SB_35,L2_SB,refuse,not_late,,-99.0,refuse L2_SB_35: 99 s early,10000
+6562.0,B1,L2_SB_36,L2_SB,refuse,budget,,-156.0,"refuse L2_SB_36: needs +28 s, only 15 s extension left",10000
+6572.0,B1,L2_SB_36,L2_SB,refuse,not_late,,-146.0,refuse L2_SB_36: 146 s early,10000
+6583.0,B1,L2_NB_36,L2_NB,recall,recall,-23.0,16.0,"cut green to 12 s (min 10 s) for L2_NB_36, 16 s late",10000
+6711.0,B1,L1_EB_36,L1_EB,extend,extend,10.0,86.0,"extend 10 s for L1_EB_36, 86 s late",10000
+6768.0,B1,L1_WB_37,L1_WB,refuse,not_late,,-139.0,refuse L1_WB_37: 139 s early,10000
+6778.0,B1,L2_SB_37,L2_SB,refuse,budget,,5.0,"refuse L2_SB_37: needs +31 s, only 4 s extension left",10000
+6785.0,B1,L2_SB_37,L2_SB,refuse,queue,,12.0,refuse L2_SB_37: queue 18 veh on losing approaches > 15,10000
+6787.0,B1,L2_SB_37,L2_SB,recall,recall,-25.0,14.0,"cut green to 10 s (min 10 s) for L2_SB_37, 14 s late",10000
+6868.0,B1,L2_NB_38,L2_NB,recall,recall,-1.0,88.0,"cut green to 34 s (min 10 s) for L2_NB_38, 88 s late",10000
+6874.0,B1,L2_NB_37,L2_NB,extend,extend,3.0,94.0,"extend 3 s for L2_NB_37, 94 s late",10000
+6971.0,B1,L1_WB_38,L1_WB,recall,recall,-10.0,2.0,"cut green to 20 s (min 10 s) for L1_WB_38, 2 s late",10000
+7053.0,B1,L2_SB_38,L2_SB,recall,recall,-25.0,72.0,"cut green to 10 s (min 10 s) for L2_SB_38, 72 s late",10000
+7067.0,B1,L1_WB_39,L1_WB,refuse,not_late,,-102.0,refuse L1_WB_39: 102 s early,10000
+7177.0,B1,L2_NB_39,L2_NB,recall,recall,-25.0,107.0,"cut green to 10 s (min 10 s) for L2_NB_39, 107 s late",10000
+7239.0,B1,L2_SB_39,L2_SB,refuse,not_late,,-11.0,refuse L2_SB_39: 11 s early,10000
+7251.0,B1,L2_SB_39,L2_SB,recall,recall,-10.0,1.0,"cut green to 25 s (min 10 s) for L2_SB_39, 1 s late",10000
+7277.0,B1,L1_WB_40,L1_WB,refuse,not_late,,-14.0,refuse L1_WB_40: 14 s early,10000
+7285.0,B1,L1_EB_39,L1_EB,recall,recall,-1.0,177.0,"cut green to 29 s (min 10 s) for L1_EB_39, 177 s late",10000
+7425.0,B1,L1_EB_40,L1_EB,refuse,not_late,,-63.0,refuse L1_EB_40: 63 s early,10000
+7449.0,B1,L2_NB_40,L2_NB,recall,recall,-25.0,73.0,"cut green to 10 s (min 10 s) for L2_NB_40, 73 s late",10000
+7461.0,B1,L2_SB_40,L2_SB,extend,extend,8.0,14.0,"extend 8 s for L2_SB_40, 14 s late",10000
+7499.0,B1,L2_NB_41,L2_NB,refuse,not_late,,-147.0,refuse L2_NB_41: 147 s early,10000
+7528.0,B1,L1_WB_41,L1_WB,refuse,budget,,48.0,"refuse L1_WB_41: needs +27 s, only 15 s extension left",10000
+7539.0,B1,L1_WB_41,L1_WB,recall,recall,-20.0,59.0,"cut green to 10 s (min 10 s) for L1_WB_41, 59 s late",10000
+7547.0,B1,L2_SB_41,L2_SB,refuse,budget,,-111.0,"refuse L2_SB_41: needs +31 s, only 15 s extension left",10000
+7554.0,B1,L2_SB_41,L2_SB,refuse,not_late,,-104.0,refuse L2_SB_41: 104 s early,10000
+7567.0,B1,L1_EB_41,L1_EB,refuse,not_late,,-57.0,refuse L1_EB_41: 57 s early,10000
+7670.0,B1,L1_EB_42,L1_EB,refuse,not_late,,-93.0,refuse L1_EB_42: 93 s early,10000
+7713.0,B1,L1_WB_42,L1_WB,refuse,not_late,,-22.0,refuse L1_WB_42: 22 s early,10000
+7723.0,B1,L2_SB_42,L2_SB,refuse,not_late,,-63.0,refuse L2_SB_42: 63 s early,10000
+7785.0,B1,L2_NB_42,L2_NB,recall,recall,-25.0,62.0,"cut green to 10 s (min 10 s) for L2_NB_42, 62 s late",10000
+66.0,B2,L2_SB_00,L2_SB,refuse,budget,,,"refuse L2_SB_00: needs +22 s, only 15 s extension left",10000
+76.0,B2,L2_SB_00,L2_SB,refuse,not_late,,,refuse L2_SB_00: no previous bus on record,10000
+155.0,B2,L2_NB_00,L2_NB,refuse,not_late,,,refuse L2_NB_00: no previous bus on record,10000
+322.0,B2,L2_NB_01,L2_NB,refuse,not_late,,-56.0,refuse L2_NB_01: 56 s early,10000
+397.0,B2,L2_SB_02,L2_SB,refuse,not_late,,-140.0,refuse L2_SB_02: 140 s early,10000
+581.0,B2,L2_NB_02,L2_NB,refuse,budget,,47.0,"refuse L2_NB_02: needs +18 s, only 15 s extension left",10000
+586.0,B2,L2_SB_03,L2_SB,refuse,budget,,-24.0,"refuse L2_SB_03: needs +17 s, only 15 s extension left",10000
+586.0,B2,L2_NB_02,L2_NB,extend,extend,12.0,52.0,"extend 12 s for L2_NB_02, 52 s late",10000
+593.0,B2,L2_SB_03,L2_SB,refuse,not_late,,-17.0,refuse L2_SB_03: 17 s early,10000
+738.0,B2,L2_NB_03,L2_NB,refuse,not_late,,-40.0,refuse L2_NB_03: 40 s early,10000
+763.0,B2,L2_SB_04,L2_SB,refuse,not_late,,-19.0,refuse L2_SB_04: 19 s early,10000
+1055.0,B2,L2_NB_04,L2_NB,refuse,budget,,121.0,"refuse L2_NB_04: needs +30 s, only 15 s extension left",10000
+1056.0,B2,L2_SB_05,L2_SB,refuse,budget,,69.0,"refuse L2_SB_05: needs +25 s, only 15 s extension left",10000
+1063.0,B2,L2_NB_04,L2_NB,recall,recall,-25.0,129.0,"cut green to 10 s (min 10 s) for L2_NB_04, 129 s late",10000
+1098.0,B2,L2_NB_05,L2_NB,refuse,budget,,-161.0,"refuse L2_NB_05: needs +23 s, only 15 s extension left",10000
+1105.0,B2,L2_NB_05,L2_NB,refuse,not_late,,-154.0,refuse L2_NB_05: 154 s early,10000
+1236.0,B2,L2_SB_07,L2_SB,refuse,not_late,,-23.0,refuse L2_SB_07: 23 s early,10000
+1323.0,B2,L2_NB_06,L2_NB,refuse,budget,,-10.0,"refuse L2_NB_06: needs +23 s, only 15 s extension left",10000
+1328.0,B2,L2_NB_06,L2_NB,refuse,not_late,,-5.0,refuse L2_NB_06: 5 s early,10000
+1338.0,B2,L2_NB_06,L2_NB,recall,recall,-25.0,5.0,"cut green to 10 s (min 10 s) for L2_NB_06, 5 s late",10000
+1564.0,B2,L2_NB_07,L2_NB,recall,recall,-8.0,30.0,"cut green to 27 s (min 10 s) for L2_NB_07, 30 s late",10000
+1599.0,B2,L2_SB_08,L2_SB,refuse,budget,,165.0,"refuse L2_SB_08: needs +26 s, only 15 s extension left",10000
+1605.0,B2,L2_SB_08,L2_SB,recall,recall,-25.0,171.0,"cut green to 10 s (min 10 s) for L2_SB_08, 171 s late",10000
+1770.0,B2,L2_NB_09,L2_NB,extend,extend,3.0,9.0,"extend 3 s for L2_NB_09, 9 s late",10000
+1792.0,B2,L2_SB_10,L2_SB,refuse,budget,,-96.0,"refuse L2_SB_10: needs +15 s, only 11 s extension left",10000
+1800.0,B2,L2_SB_10,L2_SB,refuse,not_late,,-88.0,refuse L2_SB_10: 88 s early,10000
+1968.0,B2,L2_SB_11,L2_SB,refuse,not_late,,-62.0,refuse L2_SB_11: 62 s early,10000
+1970.0,B2,L2_NB_10,L2_NB,recall,recall,-23.0,2.0,"cut green to 12 s (min 10 s) for L2_NB_10, 2 s late",10000
+2135.0,B2,L2_NB_11,L2_NB,refuse,not_late,,-32.0,refuse L2_NB_11: 32 s early,10000
+2405.0,B2,L2_NB_12,L2_NB,recall,recall,-15.0,72.0,"cut green to 20 s (min 10 s) for L2_NB_12, 72 s late",10000
+2417.0,B2,L2_SB_13,L2_SB,refuse,not_late,,-52.0,refuse L2_SB_13: 52 s early,10000
+2531.0,B2,L2_NB_13,L2_NB,refuse,not_late,,-71.0,refuse L2_NB_13: 71 s early,10000
+2580.0,B2,L2_SB_14,L2_SB,refuse,budget,,-34.0,"refuse L2_SB_14: needs +16 s, only 15 s extension left",10000
+2588.0,B2,L2_SB_14,L2_SB,refuse,not_late,,-26.0,refuse L2_SB_14: 26 s early,10000
+2768.0,B2,L2_SB_15,L2_SB,refuse,not_late,,-52.0,refuse L2_SB_15: 52 s early,10000
+2802.0,B2,L2_NB_14,L2_NB,refuse,budget,,51.0,"refuse L2_NB_14: needs +19 s, only 15 s extension left",10000
+2807.0,B2,L2_NB_14,L2_NB,extend,extend,15.0,56.0,"extend 15 s for L2_NB_14, 56 s late",10000
+2860.0,B2,L2_NB_15,L2_NB,refuse,not_late,,-140.0,refuse L2_NB_15: 140 s early,10000
+2927.0,B2,L2_SB_16,L2_SB,refuse,not_late,,-50.0,refuse L2_SB_16: 50 s early,10000
+3054.0,B2,L2_NB_16,L2_NB,refuse,budget,,-9.0,"refuse L2_NB_16: needs +31 s, only 15 s extension left",10000
+3061.0,B2,L2_NB_16,L2_NB,refuse,not_late,,-2.0,refuse L2_NB_16: 2 s early,10000
+3064.0,B2,L2_NB_16,L2_NB,recall,recall,-25.0,1.0,"cut green to 10 s (min 10 s) for L2_NB_16, 1 s late",10000
+3189.0,B2,L2_SB_17,L2_SB,recall,recall,-25.0,47.0,"cut green to 10 s (min 10 s) for L2_SB_17, 47 s late",10000
+3297.0,B2,L2_NB_17,L2_NB,refuse,budget,,31.0,"refuse L2_NB_17: needs +24 s, only 15 s extension left",10000
+3303.0,B2,L2_SB_18,L2_SB,refuse,budget,,-83.0,"refuse L2_SB_18: needs +24 s, only 15 s extension left",10000
+3303.0,B2,L2_NB_17,L2_NB,extend,extend,15.0,37.0,"extend 15 s for L2_NB_17, 37 s late",10000
+3412.0,B2,L2_SB_19,L2_SB,refuse,not_late,,-87.0,refuse L2_SB_19: 87 s early,10000
+3447.0,B2,L2_NB_18,L2_NB,refuse,not_late,,-47.0,refuse L2_NB_18: 47 s early,10000
+3584.0,B2,L2_SB_20,L2_SB,refuse,not_late,,-42.0,refuse L2_SB_20: 42 s early,10000
+3732.0,B2,L2_NB_19,L2_NB,recall,recall,-3.0,88.0,"cut green to 32 s (min 10 s) for L2_NB_19, 88 s late",10000
+3868.0,B2,L2_NB_20,L2_NB,refuse,not_late,,-64.0,refuse L2_NB_20: 64 s early,10000
+3893.0,B2,L2_SB_21,L2_SB,extend,extend,1.0,112.0,"extend 1 s for L2_SB_21, 112 s late",10000
+3955.0,B2,L2_SB_22,L2_SB,refuse,not_late,,-132.0,refuse L2_SB_22: 132 s early,10000
+3990.0,B2,L2_NB_21,L2_NB,refuse,budget,,-91.0,"refuse L2_NB_21: needs +29 s, only 15 s extension left",10000
+3999.0,B2,L2_NB_21,L2_NB,refuse,not_late,,-82.0,refuse L2_NB_21: 82 s early,10000
+4097.0,B2,L2_NB_22,L2_NB,refuse,not_late,,-123.0,refuse L2_NB_22: 123 s early,10000
+4256.0,B2,L2_SB_23,L2_SB,recall,recall,-2.0,101.0,"cut green to 33 s (min 10 s) for L2_SB_23, 101 s late",10000
+4297.0,B2,L2_SB_24,L2_SB,refuse,not_late,,-158.0,refuse L2_SB_24: 158 s early,10000
+4506.0,B2,L2_NB_24,L2_NB,refuse,budget,,47.0,"refuse L2_NB_24: needs +22 s, only 15 s extension left",10000
+4511.0,B2,L2_NB_24,L2_NB,extend,extend,13.0,52.0,"extend 13 s for L2_NB_24, 52 s late",10000
+4621.0,B2,L2_SB_25,L2_SB,recall,recall,-23.0,100.0,"cut green to 12 s (min 10 s) for L2_SB_25, 100 s late",10000
+4646.0,B2,L2_NB_25,L2_NB,refuse,budget,,-56.0,"refuse L2_NB_25: needs +22 s, only 15 s extension left",10000
+4651.0,B2,L2_NB_25,L2_NB,refuse,not_late,,-51.0,refuse L2_NB_25: 51 s early,10000
+4991.0,B2,L2_NB_26,L2_NB,recall,recall,-5.0,109.0,"cut green to 30 s (min 10 s) for L2_NB_26, 109 s late",10000
+5032.0,B2,L2_SB_27,L2_SB,recall,recall,-25.0,135.0,"cut green to 10 s (min 10 s) for L2_SB_27, 135 s late",10000
+5138.0,B2,L2_NB_27,L2_NB,refuse,budget,,-55.0,"refuse L2_NB_27: needs +19 s, only 15 s extension left",10000
+5142.0,B2,L2_NB_27,L2_NB,refuse,not_late,,-51.0,refuse L2_NB_27: 51 s early,10000
+5150.0,B2,L2_SB_28,L2_SB,refuse,budget,,-82.0,"refuse L2_SB_28: needs +25 s, only 15 s extension left",10000
+5157.0,B2,L2_SB_28,L2_SB,refuse,not_late,,-75.0,refuse L2_SB_28: 75 s early,10000
+5226.0,B2,L2_NB_28,L2_NB,refuse,budget,,-152.0,"refuse L2_NB_28: needs +32 s, only 15 s extension left",10000
+5232.0,B2,L2_NB_28,L2_NB,refuse,not_late,,-146.0,refuse L2_NB_28: 146 s early,10000
+5249.0,B2,L2_SB_29,L2_SB,refuse,not_late,,-132.0,refuse L2_SB_29: 132 s early,10000
+5429.0,B2,L2_NB_29,L2_NB,refuse,not_late,,-27.0,refuse L2_NB_29: 27 s early,10000
+5507.0,B2,L2_NB_30,L2_NB,refuse,not_late,,-119.0,refuse L2_NB_30: 119 s early,10000
+5610.0,B2,L2_SB_31,L2_SB,refuse,not_late,,-83.0,refuse L2_SB_31: 83 s early,10000
+5850.0,B2,L2_NB_31,L2_NB,recall,recall,-16.0,146.0,"cut green to 19 s (min 10 s) for L2_NB_31, 146 s late",10000
+5911.0,B2,L2_NB_32,L2_NB,refuse,not_late,,-136.0,refuse L2_NB_32: 136 s early,10000
+6121.0,B2,L2_NB_33,L2_NB,refuse,not_late,,0.0,refuse L2_NB_33: 0 s late,10000
+6122.0,B2,L2_NB_33,L2_NB,recall,recall,-25.0,1.0,"cut green to 10 s (min 10 s) for L2_NB_33, 1 s late",10000
+6286.0,B2,L2_SB_34,L2_SB,extend,extend,2.0,164.0,"extend 2 s for L2_SB_34, 164 s late",10000
+6382.0,B2,L2_SB_35,L2_SB,refuse,budget,,-101.0,"refuse L2_SB_35: needs +19 s, only 15 s extension left",10000
+6389.0,B2,L2_SB_35,L2_SB,refuse,not_late,,-94.0,refuse L2_SB_35: 94 s early,10000
+6424.0,B2,L2_NB_35,L2_NB,refuse,not_late,,-128.0,refuse L2_NB_35: 128 s early,10000
+6517.0,B2,L2_SB_36,L2_SB,refuse,not_late,,-99.0,refuse L2_SB_36: 99 s early,10000
+6645.0,B2,L2_NB_36,L2_NB,recall,recall,-9.0,22.0,"cut green to 26 s (min 10 s) for L2_NB_36, 22 s late",10000
+6718.0,B2,L2_SB_37,L2_SB,recall,recall,-2.0,4.0,"cut green to 33 s (min 10 s) for L2_SB_37, 4 s late",10000
+6919.0,B2,L2_NB_37,L2_NB,recall,recall,-24.0,67.0,"cut green to 11 s (min 10 s) for L2_NB_37, 67 s late",10000
+6960.0,B2,L2_NB_38,L2_NB,refuse,not_late,,-154.0,refuse L2_NB_38: 154 s early,10000
+7188.0,B2,L2_SB_39,L2_SB,refuse,not_late,,-5.0,refuse L2_SB_39: 5 s early,10000
+7194.0,B2,L2_SB_39,L2_SB,recall,recall,-25.0,1.0,"cut green to 10 s (min 10 s) for L2_SB_39, 1 s late",10000
+7253.0,B2,L2_NB_39,L2_NB,recall,recall,-16.0,72.0,"cut green to 19 s (min 10 s) for L2_NB_39, 72 s late",10000
+7356.0,B2,L2_SB_40,L2_SB,refuse,budget,,-29.0,"refuse L2_SB_40: needs +19 s, only 15 s extension left",10000
+7370.0,B2,L2_SB_40,L2_SB,refuse,not_late,,-179.0,refuse L2_SB_40: 179 s early,10000
+7497.0,B2,L2_SB_41,L2_SB,refuse,not_late,,-97.0,refuse L2_SB_41: 97 s early,10000
+7509.0,B2,L2_NB_40,L2_NB,refuse,budget,,59.0,"refuse L2_NB_40: needs +28 s, only 15 s extension left",10000
+7519.0,B2,L2_NB_40,L2_NB,recall,recall,-25.0,69.0,"cut green to 10 s (min 10 s) for L2_NB_40, 69 s late",10000
+7577.0,B2,L2_NB_41,L2_NB,refuse,not_late,,-141.0,refuse L2_NB_41: 141 s early,10000
+7629.0,B2,L2_SB_42,L2_SB,refuse,budget,,-64.0,"refuse L2_SB_42: needs +17 s, only 15 s extension left",10000
+7636.0,B2,L2_SB_42,L2_SB,refuse,not_late,,-57.0,refuse L2_SB_42: 57 s early,10000
+165.0,C1,L1_WB_01,L1_WB,refuse,not_late,,-104.0,refuse L1_WB_01: 104 s early,10000
+200.0,C1,L1_EB_00,L1_EB,refuse,not_late,,,refuse L1_EB_00: no previous bus on record,10000
+365.0,C1,L1_EB_01,L1_EB,refuse,not_late,,-55.0,refuse L1_EB_01: 55 s early,10000
+483.0,C1,L1_EB_02,L1_EB,refuse,budget,,-81.0,"refuse L1_EB_02: needs +30 s, only 15 s extension left",10000
+491.0,C1,L1_EB_02,L1_EB,refuse,not_late,,-73.0,refuse L1_EB_02: 73 s early,10000
+704.0,C1,L1_WB_03,L1_WB,refuse,budget,,128.0,"refuse L1_WB_03: needs +20 s, only 15 s extension left",10000
+716.0,C1,L1_WB_03,L1_WB,recall,recall,-20.0,140.0,"cut green to 10 s (min 10 s) for L1_WB_03, 140 s late",10000
+771.0,C1,L1_WB_04,L1_WB,refuse,not_late,,-145.0,refuse L1_WB_04: 145 s early,10000
+795.0,C1,L1_EB_03,L1_EB,recall,recall,-5.0,85.0,"cut green to 25 s (min 10 s) for L1_EB_03, 85 s late",10000
+923.0,C1,L1_EB_04,L1_EB,refuse,not_late,,-68.0,refuse L1_EB_04: 68 s early,10000
+1001.0,C1,L1_WB_05,L1_WB,recall,recall,-19.0,13.0,"cut green to 11 s (min 10 s) for L1_WB_05, 13 s late",10000
+1070.0,C1,L1_EB_05,L1_EB,refuse,not_late,,-66.0,refuse L1_EB_05: 66 s early,10000
+1122.0,C1,L1_WB_06,L1_WB,refuse,not_late,,-76.0,refuse L1_WB_06: 76 s early,10000
+1347.0,C1,L1_WB_07,L1_WB,recall,recall,-20.0,6.0,"cut green to 10 s (min 10 s) for L1_WB_07, 6 s late",10000
+1379.0,C1,L1_EB_06,L1_EB,extend,extend,15.0,104.0,"extend 15 s for L1_EB_06, 104 s late",10000
+1572.0,C1,L1_WB_08,L1_WB,recall,recall,-20.0,27.0,"cut green to 10 s (min 10 s) for L1_WB_08, 27 s late",10000
+1756.0,C1,L1_WB_09,L1_WB,refuse,budget,,-14.0,"refuse L1_WB_09: needs +16 s, only 15 s extension left",10000
+1763.0,C1,L1_WB_09,L1_WB,refuse,not_late,,-7.0,refuse L1_WB_09: 7 s early,10000
+1930.0,C1,L1_WB_10,L1_WB,refuse,not_late,,-58.0,refuse L1_WB_10: 58 s early,10000
+2004.0,C1,L1_EB_10,L1_EB,recall,recall,-20.0,7.0,"cut green to 10 s (min 10 s) for L1_EB_10, 7 s late",10000
+2031.0,C1,L1_WB_11,L1_WB,refuse,not_late,,-120.0,refuse L1_WB_11: 120 s early,10000
+2145.0,C1,L1_EB_11,L1_EB,refuse,not_late,,-56.0,refuse L1_EB_11: 56 s early,10000
+2212.0,C1,L1_WB_12,L1_WB,refuse,not_late,,-16.0,refuse L1_WB_12: 16 s early,10000
+2229.0,C1,L1_WB_12,L1_WB,recall,recall,-2.0,1.0,"cut green to 28 s (min 10 s) for L1_WB_12, 1 s late",10000
+2358.0,C1,L1_EB_12,L1_EB,recall,recall,-20.0,3.0,"cut green to 10 s (min 10 s) for L1_EB_12, 3 s late",10000
+2489.0,C1,L1_WB_13,L1_WB,recall,recall,-20.0,65.0,"cut green to 10 s (min 10 s) for L1_WB_13, 65 s late",10000
+2618.0,C1,L1_WB_14,L1_WB,refuse,not_late,,-67.0,refuse L1_WB_14: 67 s early,10000
+2623.0,C1,L1_EB_13,L1_EB,recall,recall,-16.0,69.0,"cut green to 14 s (min 10 s) for L1_EB_13, 69 s late",10000
+2683.0,C1,L1_WB_15,L1_WB,refuse,not_late,,-140.0,refuse L1_WB_15: 140 s early,10000
+2894.0,C1,L1_WB_16,L1_WB,recall,recall,-20.0,3.0,"cut green to 10 s (min 10 s) for L1_WB_16, 3 s late",10000
+2967.0,C1,L1_EB_15,L1_EB,recall,recall,-11.0,140.0,"cut green to 19 s (min 10 s) for L1_EB_15, 140 s late",10000
+3164.0,C1,L1_EB_17,L1_EB,refuse,not_late,,-2.0,refuse L1_EB_17: 2 s early,10000
+3167.0,C1,L1_EB_17,L1_EB,recall,recall,-20.0,1.0,"cut green to 10 s (min 10 s) for L1_EB_17, 1 s late",10000
+3218.0,C1,L1_WB_18,L1_WB,recall,recall,-20.0,122.0,"cut green to 10 s (min 10 s) for L1_WB_18, 122 s late",10000
+3333.0,C1,L1_EB_18,L1_EB,refuse,budget,,-29.0,"refuse L1_EB_18: needs +23 s, only 15 s extension left",10000
+3338.0,C1,L1_EB_18,L1_EB,refuse,not_late,,-24.0,refuse L1_EB_18: 24 s early,10000
+3439.0,C1,L1_WB_19,L1_WB,recall,recall,-13.0,12.0,"cut green to 17 s (min 10 s) for L1_WB_19, 12 s late",10000
+3639.0,C1,L1_WB_20,L1_WB,refuse,not_late,,0.0,refuse L1_WB_20: 0 s late,10000
+3640.0,C1,L1_WB_20,L1_WB,recall,recall,-20.0,1.0,"cut green to 10 s (min 10 s) for L1_WB_20, 1 s late",10000
+3694.0,C1,L1_EB_19,L1_EB,recall,recall,-20.0,126.0,"cut green to 10 s (min 10 s) for L1_EB_19, 126 s late",10000
+3756.0,C1,L1_EB_20,L1_EB,refuse,not_late,,-135.0,refuse L1_EB_20: 135 s early,10000
+3874.0,C1,L1_WB_21,L1_WB,extend,extend,11.0,38.0,"extend 11 s for L1_WB_21, 38 s late",10000
+3950.0,C1,L1_EB_21,L1_EB,refuse,not_late,,-17.0,refuse L1_EB_21: 17 s early,10000
+4110.0,C1,L1_WB_22,L1_WB,extend,extend,9.0,39.0,"extend 9 s for L1_WB_22, 39 s late",10000
+4137.0,C1,L1_EB_22,L1_EB,refuse,budget,,-10.0,"refuse L1_EB_22: needs +32 s, only 5 s extension left",10000
+4143.0,C1,L1_EB_22,L1_EB,refuse,not_late,,-4.0,refuse L1_EB_22: 4 s early,10000
+4148.0,C1,L1_EB_22,L1_EB,recall,recall,-20.0,1.0,"cut green to 10 s (min 10 s) for L1_EB_22, 1 s late",10000
+4168.0,C1,L1_WB_23,L1_WB,refuse,not_late,,-139.0,refuse L1_WB_23: 139 s early,10000
+4297.0,C1,L1_EB_23,L1_EB,refuse,not_late,,-42.0,refuse L1_EB_23: 42 s early,10000
+4475.0,C1,L1_WB_25,L1_WB,refuse,not_late,,-110.0,refuse L1_WB_25: 110 s early,10000
+4770.0,C1,L1_WB_26,L1_WB,extend,extend,4.0,98.0,"extend 4 s for L1_WB_26, 98 s late",10000
+4860.0,C1,L1_EB_26,L1_EB,refuse,budget,,60.0,"refuse L1_EB_26: needs +19 s, only 15 s extension left",10000
+4865.0,C1,L1_EB_26,L1_EB,extend,extend,13.0,65.0,"extend 13 s for L1_EB_26, 65 s late",10000
+5023.0,C1,L1_WB_27,L1_WB,extend,extend,13.0,57.0,"extend 13 s for L1_WB_27, 57 s late",10000
+5099.0,C1,L1_EB_27,L1_EB,extend,extend,5.0,42.0,"extend 5 s for L1_EB_27, 42 s late",10000
+5270.0,C1,L1_WB_29,L1_WB,refuse,not_late,,-17.0,refuse L1_WB_29: 17 s early,10000
+5273.0,C1,L1_WB_29,L1_WB,refuse,budget,,-14.0,"refuse L1_WB_29: needs +16 s, only 15 s extension left",10000
+5281.0,C1,L1_EB_28,L1_EB,refuse,budget,,-15.0,"refuse L1_EB_28: needs +31 s, only 15 s extension left",10000
+5288.0,C1,L1_EB_28,L1_EB,refuse,not_late,,-8.0,refuse L1_EB_28: 8 s early,10000
+5452.0,C1,L1_WB_30,L1_WB,refuse,not_late,,-55.0,refuse L1_WB_30: 55 s early,10000
+5461.0,C1,L1_EB_29,L1_EB,refuse,not_late,,-46.0,refuse L1_EB_29: 46 s early,10000
+5638.0,C1,L1_WB_31,L1_WB,refuse,not_late,,-22.0,refuse L1_WB_31: 22 s early,10000
+5792.0,C1,L1_WB_32,L1_WB,refuse,not_late,,-43.0,refuse L1_WB_32: 43 s early,10000
+5873.0,C1,L1_EB_31,L1_EB,refuse,budget,,-21.0,"refuse L1_EB_31: needs +21 s, only 15 s extension left",10000
+5875.0,C1,L1_EB_31,L1_EB,refuse,not_late,,-19.0,refuse L1_EB_31: 19 s early,10000
+5890.0,C1,L1_EB_32,L1_EB,refuse,not_late,,-174.0,refuse L1_EB_32: 174 s early,10000
+6155.0,C1,L1_EB_33,L1_EB,extend,extend,5.0,45.0,"extend 5 s for L1_EB_33, 45 s late",10000
+6353.0,C1,L1_EB_34,L1_EB,recall,recall,-20.0,1.0,"cut green to 10 s (min 10 s) for L1_EB_34, 1 s late",10000
+6377.0,C1,L1_WB_35,L1_WB,refuse,not_late,,-52.0,refuse L1_WB_35: 52 s early,10000
+6480.0,C1,L1_EB_35,L1_EB,refuse,not_late,,-70.0,refuse L1_EB_35: 70 s early,10000
+6638.0,C1,L1_WB_36,L1_WB,recall,recall,-15.0,64.0,"cut green to 15 s (min 10 s) for L1_WB_36, 64 s late",10000
+6772.0,C1,L1_EB_36,L1_EB,recall,recall,-16.0,79.0,"cut green to 14 s (min 10 s) for L1_EB_36, 79 s late",10000
+6893.0,C1,L1_WB_38,L1_WB,refuse,not_late,,-20.0,refuse L1_WB_38: 20 s early,10000
+6895.0,C1,L1_EB_37,L1_EB,refuse,not_late,,-73.0,refuse L1_EB_37: 73 s early,10000
+6958.0,C1,L1_EB_38,L1_EB,refuse,budget,,-154.0,"refuse L1_EB_38: needs +28 s, only 15 s extension left",10000
+6968.0,C1,L1_EB_38,L1_EB,refuse,not_late,,-144.0,refuse L1_EB_38: 144 s early,10000
+7022.0,C1,L1_WB_39,L1_WB,refuse,not_late,,-90.0,refuse L1_WB_39: 90 s early,10000
+7193.0,C1,L1_WB_40,L1_WB,refuse,not_late,,-26.0,refuse L1_WB_40: 26 s early,10000
+7463.0,C1,L1_WB_41,L1_WB,extend,extend,1.0,51.0,"extend 1 s for L1_WB_41, 51 s late",10000
+7487.0,C1,L1_EB_40,L1_EB,refuse,budget,,-83.0,"refuse L1_EB_40: needs +30 s, only 13 s extension left",10000
+7495.0,C1,L1_EB_40,L1_EB,refuse,not_late,,-75.0,refuse L1_EB_40: 75 s early,10000
+7616.0,C1,L1_EB_41,L1_EB,refuse,not_late,,-98.0,refuse L1_EB_41: 98 s early,10000
+7656.0,C1,L1_WB_42,L1_WB,refuse,not_late,,-1.0,refuse L1_WB_42: 1 s early,10000
+7658.0,C1,L1_WB_42,L1_WB,recall,recall,-16.0,1.0,"cut green to 14 s (min 10 s) for L1_WB_42, 1 s late",10000
+7748.0,C1,L1_EB_42,L1_EB,refuse,not_late,,-65.0,refuse L1_EB_42: 65 s early,10000

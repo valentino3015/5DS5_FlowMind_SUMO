@@ -1,0 +1,18 @@
+<additional>
+    <busStop id="L1_EB_s0" lane="left1A1_0" startPos="135.00" endPos="165.00" lines="L1"/>
+    <busStop id="L1_EB_s1" lane="A1B1_0" startPos="85.00" endPos="115.00" lines="L1"/>
+    <busStop id="L1_EB_s2" lane="B1C1_0" startPos="85.00" endPos="115.00" lines="L1"/>
+    <busStop id="L1_EB_s3" lane="C1right1_0" startPos="85.00" endPos="115.00" lines="L1"/>
+    <busStop id="L1_WB_s0" lane="right1C1_0" startPos="135.00" endPos="165.00" lines="L1"/>
+    <busStop id="L1_WB_s1" lane="C1B1_0" startPos="85.00" endPos="115.00" lines="L1"/>
+    <busStop id="L1_WB_s2" lane="B1A1_0" startPos="85.00" endPos="115.00" lines="L1"/>
+    <busStop id="L1_WB_s3" lane="A1left1_0" startPos="85.00" endPos="115.00" lines="L1"/>
+    <busStop id="L2_NB_s0" lane="bottom1B0_0" startPos="135.00" endPos="165.00" lines="L2"/>
+    <busStop id="L2_NB_s1" lane="B0B1_0" startPos="85.00" endPos="115.00" lines="L2"/>
+    <busStop id="L2_NB_s2" lane="B1B2_0" startPos="85.00" endPos="115.00" lines="L2"/>
+    <busStop id="L2_NB_s3" lane="B2top1_0" startPos="85.00" endPos="115.00" lines="L2"/>
+    <busStop id="L2_SB_s0" lane="top1B2_0" startPos="135.00" endPos="165.00" lines="L2"/>
+    <busStop id="L2_SB_s1" lane="B2B1_0" startPos="85.00" endPos="115.00" lines="L2"/>
+    <busStop id="L2_SB_s2" lane="B1B0_0" startPos="85.00" endPos="115.00" lines="L2"/>
+    <busStop id="L2_SB_s3" lane="B0bottom1_0" startPos="85.00" endPos="115.00" lines="L2"/>
+</additional>
