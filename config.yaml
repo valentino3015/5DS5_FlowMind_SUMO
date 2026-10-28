@@ -85,8 +85,40 @@ pedestrian:
   large_group_priority: 10   # a large group may request before that window
 
 incident:
-  halt_time: 60              # a lane stopped this long may be blocked (s)
-  min_queue: 5               # halting vehicles needed to suspect an incident
+  halt_time: 60            # a lane stopped this long is an incident (s)
+  min_queue: 5             # halting vehicles needed to suspect an incident
+  min_occupancy: 0.6       # lane considered full above this (a jammed lane reaches ~0.74: SUMO counts car length, not gaps)
+  clear_occupancy: 0.3     # lane considered free again below this (hysteresis)
+  check_window: 20         # seconds of history used to see if vehicles leave the lane
+  min_green_seen: 10       # green the lane must get in the window before we judge it (s)
+  min_departures: 2        # this many vehicles leaving on green = the lane moves again
+  recheck_after: 60        # stop claiming after this long without a new confirmation (s)
+  out_occupancy: 0.95      # an outgoing lane this full blocks the box
+  urgency: 0.85            # claim urgency
+  hold_green: 20           # rule response keeps a safe green at least this long (s): each switch costs 5 s
+  # --- RL response (Notion: anomaly detector + PPO for the response) ---
+  use_ppo: false           # true = act() uses the trained PPO; false = rule-based baseline
+  model_path: runs/models/incident_ppo.zip
+  max_phases: 4            # observation slots; the corridor junctions have 3 or 4 green phases
+  norm_queue: 20           # vehicles, scales queue features to ~0..1
+  norm_wait: 300           # seconds, scales waiting-time features to ~0..1
+  unsafe_penalty: 1.0      # reward penalty when PPO picks a phase it may not use
+  eval_seeds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]   # never used in training (training seeds start at train.seed)
+  train:
+    timesteps: 150000      # PPO decisions to train on
+    n_envs: 12             # SUMO simulations running in parallel
+    seed: 1000             # training seeds start here (evaluation uses others)
+    min_road_length: 50    # only block roads long enough to hold a queue (m)
+    block_start: [30, 120]     # breakdown starts this long after the episode begins (s)
+    block_duration: [600, 900] # breakdown lasts this long (s): most of the episode is in incident
+    after_block: 120       # episode continues this long after the car leaves (s)
+    neighbour_weight: 0.5  # reward also counts cars waiting at the other junctions, at this weight
+    n_steps: 128           # PPO: decisions per simulation before each update
+    batch_size: 256        # PPO: decisions per gradient step
+    learning_rate: 0.0003
+    gamma: 0.95            # PPO: how much future rewards count (short horizon)
+    ent_coef: 0.01         # PPO: keeps exploring early on
+    checkpoint_every: 10000  # save the model every this many decisions
 
 overlay:                     # sumo-gui labels: color of the dot per agent in control (RGBA)
   default_color: [128, 128, 128, 255]
