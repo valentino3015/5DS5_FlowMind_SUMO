@@ -42,7 +42,6 @@ DEFAULTS = {
     "max_queue": 15,           # veh, refuse if a losing approach queue exceeds this
     "max_hold": 20.0,          # s of control per bus at most
     "urgency_scale": 300.0,    # s of lateness that gives urgency 1
-    "passed_distance": 30.0,   # m, a bus last seen this close and now gone has crossed
 }
 
 
@@ -73,8 +72,10 @@ class BusAgent(Specialist):
             self.held[self.served] = self.held.get(self.served, 0.0) + dt
         self.last_time = state.time
         here = {v.vehicle_id: v.distance for v in state.special_vehicles if v.kind == "bus"}
-        for bus_id, dist in self.seen.items():
-            if bus_id not in here and dist <= self.params["passed_distance"]:
+        # A bus that left the approach lanes has crossed. No distance check: at 13.9 m/s a bus
+        # moves ~70 m between two decisions, so it is often last seen far from the stop line.
+        for bus_id in self.seen:
+            if bus_id not in here:
                 self.last_passage[line_of(bus_id)] = state.time   # it crossed the junction
                 self.held.pop(bus_id, None)
         self.seen = here

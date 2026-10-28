@@ -111,3 +111,14 @@ def test_latest_bus_wins():
     a.wants_control(state_at(50, []), [])                     # bus_we crossed at 50
     claim = a.wants_control(state_at(400, [bus("bus_ns.1", 100), bus("bus_we.1", 60, "east_in_0")]), [])
     assert claim is not None and "bus_ns.1" in claim.reason  # 100 s late beats 50 s late
+
+
+def test_fast_bus_passage_is_recorded():
+    # A bus last seen 70 m away (one 5 s step at 13.9 m/s) and then gone has still crossed,
+    # so the bus right behind it is early (bunched), not late.
+    a = BusAgent(PARAMS)
+    a.last_passage["bus_ns"] = -500.0
+    a.wants_control(state_at(95, [bus("bus_ns.0", 70)]), [])
+    a.wants_control(state_at(100, []), [])
+    assert a.last_passage["bus_ns"] == 100.0
+    assert a.wants_control(state_at(110, [bus("bus_ns.1", 100)]), []) is None
