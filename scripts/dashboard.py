@@ -154,6 +154,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path in ("/", "/simulation", "/history"):
             target = ROOT / "dashboard/index.html"
+        elif path == "/chat":
+            target = ROOT / "dashboard/chat.html"
         elif path.startswith("/files/"):
             target = (ROOT / "runs" / path[len("/files/"):]).resolve()
             if not target.is_relative_to((ROOT / "runs").resolve()) or target.suffix not in (".csv", ".json", ".xml", ".png"):
@@ -209,16 +211,17 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(options, dict):
                 raise ValueError("Objet JSON requis")
             if self.path == "/api/chat":
-                with lock:
-                    started_at = job.get("started_at", 0)
-                live = latest_live(started_at)
-                if not live:
-                    self.send_json({"error": "Aucune simulation courante : lancez une simulation et attendez les premières mesures."}, 409)
-                    return
-                run_id = live.get("run_id")
-                if options.get("run_id") != run_id:
-                    self.send_json({"error": "La simulation courante a changé. Actualisez puis posez de nouveau la question."}, 409)
-                    return
+                # Any saved simulation can be explained; build_context checks
+                # that the run exists inside runs/. Without one, use the latest.
+                run_id = options.get("run_id")
+                if not run_id:
+                    with lock:
+                        started_at = job.get("started_at", 0)
+                    live = latest_live(started_at)
+                    if not live:
+                        self.send_json({"error": "Aucune simulation disponible : lancez une simulation et attendez les premières mesures."}, 409)
+                        return
+                    run_id = live.get("run_id")
                 context = build_context(ROOT, run_id)
                 answer = explainer.explain(context, options.get("question"), options.get("history"))
                 self.send_json(answer)

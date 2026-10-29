@@ -1,8 +1,10 @@
 # Agent d’explication des simulations
 
-Le panneau « Comprendre les résultats » de la page Simulation interroge un seul
-agent Gemini. Il explique la simulation affichée, pendant son exécution ou après
-sa fin. Il ne commande pas les feux et ne fait pas partie de l’orchestrateur des
+La page **Assistant** (`http://localhost:8501/chat`, onglet « Assistant ») interroge
+un seul agent Gemini. On y choisit n’importe quelle simulation de l’historique
+(la plus récente par défaut) ; l’assistant explique ses mesures, pendant son
+exécution ou après sa fin. Une nouvelle simulation lancée entre-temps ne change
+pas la simulation discutée. Il ne commande pas les feux et ne fait pas partie de l’orchestrateur des
 agents de circulation.
 
 ## Configuration
@@ -40,7 +42,7 @@ si la configuration Gemini est absente : le chatbot explique alors le problème.
   et attente par trajet, émissions instantanées et totaux, vitesses récentes et
   vitesse finale pondérée par les véhicules-secondes.
 - L’historique est limité à quatre messages, chacun tronqué à 800 caractères
-  par l’interface. Il est effacé lorsque la simulation affichée change. La question
+  par l’interface. Il est effacé lorsqu’on choisit une autre simulation. La question
   courante accepte au plus 2 000 caractères.
 - Le texte des instructions et des données est compté avec Gemini avant la
   génération. Une marge de 64 tokens couvre l’encapsulation ; le budget est de

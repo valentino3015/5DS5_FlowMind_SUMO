@@ -1,6 +1,7 @@
 """Behavioral checks for facts, cost bounds, Gemini failures, and HTTP wiring."""
 import copy
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 import threading
@@ -278,8 +279,13 @@ def test_sdk_failures_never_expose_credentials(code, status):
     assert "secret" not in str(error.value)
 
 
-def test_http_chat_uses_server_facts_and_rejects_wrong_simulation(run, monkeypatch):
-    root, _ = run
+def test_http_chat_explains_any_saved_simulation_and_rejects_unknown_ones(run, monkeypatch):
+    root, directory = run
+    older = root / "runs" / "older"
+    older.mkdir()
+    (older / "metadata.json").write_text((directory / "metadata.json").read_text(encoding="utf-8")
+                                         .replace('"trial"', '"older"'), encoding="utf-8")
+    os.utime(older / "metadata.json", (1, 1))  # saved long before "trial"
     app = load_dashboard()
     monkeypatch.setattr(app, "ROOT", root)
     fake = FakeClient()
@@ -300,12 +306,19 @@ def test_http_chat_uses_server_facts_and_rejects_wrong_simulation(run, monkeypat
         status, answer = post(body)
         assert status == 200 and answer["run_id"] == "trial"
         assert "999999" not in json.dumps(fake.generations[0][1])
-        assert post(body | {"run_id": "previous"})[0] == 409
+        # A simulation from the history, not only the latest one.
+        status, answer = post(body | {"run_id": "older"})
+        assert status == 200 and answer["run_id"] == "older"
+        assert post(body | {"run_id": "missing"})[0] == 400
+        assert post(body | {"run_id": "../trial"})[0] == 400
         assert post([])[0] == 400
         assert post(body | {"question": " "})[0] == 400
         assert post(body, {"X-FlowMind": "dashboard", "Origin": "https://example.com"})[0] == 403
+        # Without run_id, the latest simulation is used; none at all is a conflict.
+        assert post({"question": "Explique"})[1]["run_id"] == "trial"
         monkeypatch.setattr(app, "latest_live", lambda *args: None)
-        assert post(body)[0] == 409
+        assert post({"question": "Explique"})[0] == 409
+        assert post(body)[0] == 200
     finally:
         server.shutdown()
         server.server_close()
