@@ -8,6 +8,8 @@ and executes phase changes with automatic yellow (3s) and all-red (2s) insertion
 from __future__ import annotations
 
 import os
+import hashlib
+from functools import lru_cache
 from pathlib import Path
 import sys
 import xml.etree.ElementTree as ET
@@ -17,11 +19,31 @@ import numpy as np
 import sumolib
 import traci
 
-from flowmind.contracts import Crossing, JunctionState, LaneState, SpecialVehicle
+from flowmind.contracts import Crossing, JunctionState, LaneState, SpecialVehicle, LaneEmissions
 from flowmind.kpis import KPITracker, SimulationKPIs
 
 # Root directory of the repository
 ROOT = Path(__file__).resolve().parent.parent
+
+# The Euler integrator exhibited process-dependent crossing of an internal
+# link in our Windows scenario (vehicle 22, second 79). Ballistic integration
+# passed repeated full-window traces. This is a NEW simulation protocol:
+# recompute both reference and agent results; never reuse old baselines.
+SUMO_REPRO_OPTIONS = ("--random", "false", "--threads", "1",
+                      "--step-length", "1", "--step-method.ballistic", "true")
+
+
+@lru_cache(maxsize=4)
+def _binary_hash(path, modified_ns, size):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def simulation_protocol(gui=False):
+    binary = Path(sumolib.checkBinary("sumo-gui" if gui else "sumo")).resolve()
+    stat = binary.stat()
+    return {"revision": "ballistic_v7", "options": list(SUMO_REPRO_OPTIONS),
+            "binary": str(binary),
+            "binary_sha256": _binary_hash(str(binary), stat.st_mtime_ns, stat.st_size)}
 
 
 def _get_first_depart(route_file: str | Path) -> int:
@@ -112,6 +134,8 @@ class SumoCorridorEnv:
         self._pois: set[str] = set()
 
         self.is_running = False
+        self.metrics_callback = None
+        self.reproducible: bool = bool(sim_cfg.get("reproducible", False))
         self.tls_ids: list[str] = []
         self.green_states: dict[str, list[str]] = {}
         self.phase_lanes: dict[str, tuple[tuple[str, ...], ...]] = {}
@@ -178,6 +202,8 @@ class SumoCorridorEnv:
             cmd[cmd.index("--tripinfo-output") + 1] = str(self.tripinfo_file)
             self.tripinfo_path = self.tripinfo_file
         if self.use_gui:
+            if "gui_delay_ms" in self.config:  # set only by Manoubi's dashboard
+                self.gui_delay = int(self.config["gui_delay_ms"])
             cmd += ["--start", "--quit-on-end", "--delay", str(self.gui_delay), "--window-size", "1400,750"]
             gui_settings = self.net_file.parent / "gui-settings.xml"
             if gui_settings.is_file():
@@ -186,6 +212,18 @@ class SumoCorridorEnv:
         self._pois.clear()
         # --- end added by Adem ---
 
+        # Opt-in (sim.reproducible, off by default): only the emission evaluation scripts use it.
+        if self.reproducible:
+            cmd.extend(SUMO_REPRO_OPTIONS)
+        output_dir = self.config.get("evaluation_output")
+        if output_dir:  # Manoubi's evaluation; the trip file option is already in cmd, replace its path
+            output_dir = Path(output_dir).resolve()
+            output_dir.mkdir(parents=True, exist_ok=True)
+            self.tripinfo_path = output_dir / "tripinfo.xml"
+            cmd[cmd.index("--tripinfo-output") + 1] = str(self.tripinfo_path)
+            cmd += ["--tripinfo-output.write-unfinished", "true",
+                    "--device.emissions.probability", "1",
+                    "--statistic-output", str(output_dir / "statistics.xml")]
         traci.start(cmd)
         self.is_running = True
         self.kpi_tracker.reset()
@@ -196,6 +234,7 @@ class SumoCorridorEnv:
 
         # Step once to populate initial vehicle/lane states
         traci.simulationStep()
+        self._after_step()
 
         states = {tls: self.build_junction_state(tls) for tls in self.tls_ids}
         return states
@@ -203,6 +242,34 @@ class SumoCorridorEnv:
     def reset(self) -> dict[str, JunctionState]:
         """Reset the environment to the beginning."""
         return self.start()
+
+    def _past_horizon(self) -> bool:
+        """Reproducible mode only: never simulate beyond sim.seconds. Always False otherwise."""
+        return self.reproducible and traci.simulation.getTime() >= self.begin_time + self.sim_seconds
+
+    def _after_step(self):
+        """Sample every second (yellow/red included) when metrics_callback is set. No-op otherwise."""
+        if self.metrics_callback:
+            queues = [traci.lane.getLastStepHaltingNumber(lane) for lane in self.cached_network_lanes]
+            vehicles = traci.vehicle.getIDList()
+            self.metrics_callback({
+                "elapsed_s": traci.simulation.getTime() - self.begin_time,
+                "vehicles": len(vehicles),
+                "departed": traci.simulation.getDepartedNumber(),
+                "arrived": traci.simulation.getArrivedNumber(),
+                "pending": len(traci.simulation.getPendingVehicles()),
+                "halting": sum(queues),
+                "queue_mean_lane": sum(queues) / len(queues) if queues else 0,
+                "queue_max_lane": max(queues, default=0),
+                "speed_sum_m_s": sum(traci.vehicle.getSpeed(v) for v in vehicles),
+                "waiting_mean_active_s": sum(traci.vehicle.getWaitingTime(v) for v in vehicles) / len(vehicles) if vehicles else 0,
+                "co2_mg_s": sum(traci.vehicle.getCO2Emission(v) for v in vehicles),
+                "nox_mg_s": sum(traci.vehicle.getNOxEmission(v) for v in vehicles),
+                "pmx_mg_s": sum(traci.vehicle.getPMxEmission(v) for v in vehicles),
+                "fuel_mg_s": sum(traci.vehicle.getFuelConsumption(v) for v in vehicles),
+                "collisions": traci.simulation.getCollidingVehiclesNumber(),
+                "teleports": traci.simulation.getStartingTeleportNumber(),
+            })
 
     def _init_traffic_lights(self):
         """Analyze traffic light logic, discovering green phases and controlled links."""
@@ -347,6 +414,7 @@ class SumoCorridorEnv:
 
     def step(self, actions: dict[str, int]) -> tuple[dict[str, JunctionState], bool, dict]:
         """Execute one decision step (delta_time seconds), inserting yellow/all-red if phases change."""
+        step_start_time = traci.simulation.getTime()
         transitions_needed: dict[str, int] = {}
         suppressed_transitions: list[str] = []   # junctions where spillback blocked a switch
 
@@ -380,7 +448,10 @@ class SumoCorridorEnv:
                 self.in_transition[tls] = True
 
             for _ in range(self.yellow_time):
+                if self._past_horizon():
+                    break
                 traci.simulationStep()
+                self._after_step()
 
             # 2. Apply All-Red Phase for signals.all_red seconds
             for tls in transitions_needed:
@@ -388,7 +459,10 @@ class SumoCorridorEnv:
                 traci.trafficlight.setRedYellowGreenState(tls, red_state)
 
             for _ in range(self.all_red_time):
+                if self._past_horizon():
+                    break
                 traci.simulationStep()
+                self._after_step()
 
             # 2b. DYNAMIC RED CLEARANCE EXTENSION:
             # If vehicles are STILL clearing or caught inside the intersection box,
@@ -398,7 +472,10 @@ class SumoCorridorEnv:
             while clearance_extra < self.max_red_clearance:
                 if not any(self.is_box_occupied(tls) for tls in transitions_needed):
                     break
+                if self._past_horizon():
+                    break
                 traci.simulationStep()
+                self._after_step()
                 clearance_extra += 1
 
             # 3. Apply New Green Phase
@@ -412,16 +489,24 @@ class SumoCorridorEnv:
             elapsed = self.yellow_time + self.all_red_time + clearance_extra
             remainder = max(0, self.delta_time - elapsed)
             for _ in range(remainder):
+                if self._past_horizon():
+                    break
                 traci.simulationStep()
+                self._after_step()
         else:
             # No transitions: keep all lights green for full delta_time
             for _ in range(self.delta_time):
+                if self._past_horizon():
+                    break
                 traci.simulationStep()
+                self._after_step()
 
         # Update time_in_phase for ALL junctions (regardless of transition status)
         for tls in self.tls_ids:
             if tls not in transitions_needed:
                 self.time_in_phase[tls] += float(self.delta_time)
+                if self.reproducible:  # count the real elapsed time (all-red extensions, horizon)
+                    self.time_in_phase[tls] += traci.simulation.getTime() - step_start_time - self.delta_time
                 self.in_transition[tls] = False
 
         # Gather new junction states
@@ -550,6 +635,12 @@ class SumoCorridorEnv:
         curr_phase = self.current_phases[tls_id]
 
         return JunctionState(
+            lane_emissions=tuple(LaneEmissions(
+                lane, max(0.0, traci.lane.getCO2Emission(lane)),
+                max(0.0, traci.lane.getNOxEmission(lane)),
+                max(0.0, traci.lane.getFuelConsumption(lane)),
+                max(0.0, traci.lane.getPMxEmission(lane)),
+            ) for lane in controlled_lanes),
             tls_id=tls_id,
             time=sim_time,
             num_phases=num_phases,

@@ -2,9 +2,16 @@
 .venv/
 __pycache__/
 .pytest_cache/
+.env
+.env.*
+!.env.example
 
 # Simulation results and outputs (never on GitHub)
-runs/
+runs/*
+# Exception: the active emission model, so the dashboard's PPO controller works after a clone
+!runs/models/
+runs/models/*
+!runs/models/emission_ppo/
 outputs/
 sandbox/outputs/
 
@@ -13,3 +20,7 @@ runs/**/*.rou.xml
 
 # Trained models
 *.zip
+!runs/models/emission_ppo/*.zip
+
+# Generated PDF reports (rebuilt locally, not committed)
+output/

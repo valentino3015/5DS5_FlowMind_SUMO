@@ -1,5 +1,73 @@
 # FlowMind: Team Guide
 
+## Installation sur un autre PC
+
+Un seul programme fait le backend et le frontend : `scripts/dashboard.py` lance
+un serveur web local qui sert la page `dashboard/index.html`. Pas de Node.js,
+pas de base de données. SUMO est installé par `pip` (paquet `eclipse-sumo`).
+
+**Prérequis :** Python 3.12 et Git.
+
+1. Récupérer le projet :
+
+   ```bash
+   git clone https://github.com/valentino3015/5DS5_FlowMind_SUMO.git
+   cd 5DS5_FlowMind_SUMO
+   git checkout manoubi
+   ```
+
+2. Créer l’environnement Python et installer les dépendances de `requirements.txt` :
+
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate          # Linux/Mac : source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+3. Vérifier l’installation : les tests doivent tous passer.
+
+   ```bash
+   python -m pytest -q
+   ```
+
+4. Lancer le dashboard (backend + frontend) :
+
+   ```bash
+   python scripts/dashboard.py
+   ```
+
+   Le navigateur s’ouvre sur `http://localhost:8501`. Sous Windows, on peut aussi
+   double-cliquer sur `Lancer-dashboard.cmd`. Autre port : `--port 8502`.
+
+5. Facultatif : chatbot Gemini. Copier le modèle puis renseigner **sa propre**
+   clé dans `GEMINI_API_KEY` (le fichier `.env` n’est jamais envoyé sur GitHub) :
+
+   ```bash
+   copy .env.example .env          # Linux/Mac : cp .env.example .env
+   ```
+
+   Sans `.env`, tout fonctionne sauf le chatbot.
+
+6. Contrôleur « Modèle PPO » : le modèle actif `runs/models/emission_ppo/` est
+   fourni dans Git (seule exception au dossier `runs/`). Rien à copier.
+
+## Modèle RL dédié aux émissions
+
+Entraînement PPO, fine-tuning et comparaison des trois méthodes : [guide français](docs/ENTRAINEMENT_EMISSIONS_FR.md).
+Le modèle fourni (`runs/models/emission_ppo`) imite l’agent à règles : sur 20 cas de test jamais vus, CO₂ −6,5 % et NOx −6,3 % par rapport aux feux fixes de 20 s, PM +0,7 % (détails : [plan d’entraînement](docs/PLAN_ENTRAINEMENT_LONG_FR.md)).
+
+## Dashboard local et évaluation
+
+Double-cliquez sur `Lancer-dashboard.cmd` ou lancez `python scripts/dashboard.py`.
+Le navigateur permet de lancer SUMO, enregistrer les métriques et comparer les
+contrôleurs disponibles. Instructions complètes : [EVALUATION_FR.md](EVALUATION_FR.md).
+
+Pour une campagne sans interface :
+
+```powershell
+python scripts/evaluate.py --seconds 600 --seeds 100 101 --controllers fixed_time max_pressure flow_heuristic
+```
+
 **Validation: Wed 28 Oct. Everything must work by Sat 24 Oct.**
 
 ## 1. The project in one minute
@@ -97,10 +165,12 @@ Steps:
 
 ## 7. Install and run
 
+Detailed steps (French): see « Installation sur un autre PC » at the top.
+
 ```bash
 git clone https://github.com/valentino3015/5DS5_FlowMind_SUMO.git
 cd 5DS5_FlowMind_SUMO
-git checkout dev
+git checkout manoubi
 python -m venv .venv
 .venv\Scripts\activate          # Windows   (Linux/Mac: source .venv/bin/activate)
 pip install -r requirements.txt
@@ -124,5 +194,11 @@ python scripts/run.py --gui     # watch the simulation
 1. Work only in your own file.
 2. Don't change `contracts.py` without telling everyone.
 3. Use Git branches: `yourname/topic` → pull request to `dev`.
-4. Don't upload `runs/` or big files to GitHub.
+4. Don't upload `runs/` or big files to GitHub. Only exception: the active model `runs/models/emission_ppo/`.
 5. After Sat 24: only bug fixes.
+
+## Chatbot d’explication
+
+Le dashboard inclut un agent Gemini qui explique les métriques de la simulation
+affichée. Configuration, limites de tokens et évaluation :
+[guide du chatbot](docs/CHATBOT_FR.md).

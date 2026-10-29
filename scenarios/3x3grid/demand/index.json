@@ -1,0 +1,1130 @@
+{
+  "net": "scenarios/3x3grid/3x3Grid2lanes.net.xml",
+  "net_sha256": "8bd87b3822c3332fcf27f1d953cad0b064c76364fbc85bc867be12f1d9871c35",
+  "seconds": 600,
+  "loads": {
+    "p1.2": [
+      1.2
+    ],
+    "p1.6": [
+      1.6
+    ],
+    "p2.0": [
+      2.0
+    ],
+    "p2.5": [
+      2.5
+    ],
+    "p3.0": [
+      3.0
+    ],
+    "peak": [
+      3.0,
+      1.4,
+      3.0
+    ]
+  },
+  "fringe_factors": [
+    1,
+    5,
+    10
+  ],
+  "check": "FixedTime, SUMO seed 0: no teleport, no collision, departed >= 50",
+  "simulation": {
+    "revision": "ballistic_v7",
+    "options": [
+      "--random",
+      "false",
+      "--threads",
+      "1",
+      "--step-length",
+      "1",
+      "--step-method.ballistic",
+      "true"
+    ],
+    "binary": "C:\\Program Files (x86)\\Eclipse\\Sumo\\bin\\sumo.exe",
+    "binary_sha256": "8cc770aca4257d2cb821d91c0d346256c72c2983708137bc94789c75d00254b4"
+  },
+  "files": [
+    {
+      "role": "train",
+      "index": 0,
+      "load": "p1.2",
+      "period": [
+        1.2
+      ],
+      "fringe_factor": 1,
+      "seed": 1000,
+      "file": "train/train_00_p1.2_f1.rou.xml",
+      "sha256": "f81ff6fa0282887c9bcdb7b143bd52f9d2eb36343f546cb5d4c0cddf08a21f7c",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 500,
+        "arrived": 427
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 1,
+      "load": "p1.6",
+      "period": [
+        1.6
+      ],
+      "fringe_factor": 1,
+      "seed": 1010,
+      "file": "train/train_01_p1.6_f1.rou.xml",
+      "sha256": "819b5d93d104b25ec42902a17785bf27ffd900a8f8438532d6d66e657fbcaf11",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 375,
+        "arrived": 320
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 2,
+      "load": "p2.0",
+      "period": [
+        2.0
+      ],
+      "fringe_factor": 1,
+      "seed": 1020,
+      "file": "train/train_02_p2.0_f1.rou.xml",
+      "sha256": "b892cc474bf5785199e1c18d0269a38661fbde600c8f49da5fe366e34fc6c8b3",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 300,
+        "arrived": 258
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 3,
+      "load": "p2.5",
+      "period": [
+        2.5
+      ],
+      "fringe_factor": 1,
+      "seed": 1030,
+      "file": "train/train_03_p2.5_f1.rou.xml",
+      "sha256": "16dfc3f39e06a60d769865d297d75e304e6d7a7aa739f8ac8faecc3525ab473d",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 240,
+        "arrived": 212
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 4,
+      "load": "p3.0",
+      "period": [
+        3.0
+      ],
+      "fringe_factor": 1,
+      "seed": 1040,
+      "file": "train/train_04_p3.0_f1.rou.xml",
+      "sha256": "807e6866e854e7131c0a36740f070ac2b182ff5fc3b8c00bcdce32572031edf7",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 200,
+        "arrived": 176
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 5,
+      "load": "peak",
+      "period": [
+        3.0,
+        1.4,
+        3.0
+      ],
+      "fringe_factor": 1,
+      "seed": 1050,
+      "file": "train/train_05_peak_f1.rou.xml",
+      "sha256": "596198b8d763efa7d7d757ca0b9d6d19e2cbb60c7f216bb50ea53afd000a679c",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 286,
+        "arrived": 257
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 6,
+      "load": "p1.2",
+      "period": [
+        1.2
+      ],
+      "fringe_factor": 5,
+      "seed": 1060,
+      "file": "train/train_06_p1.2_f5.rou.xml",
+      "sha256": "ece1e0f6575f4b1ba08413091aef94e6e16724cccc3da55833125bf31d848cbd",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 500,
+        "arrived": 412
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 7,
+      "load": "p1.6",
+      "period": [
+        1.6
+      ],
+      "fringe_factor": 5,
+      "seed": 1070,
+      "file": "train/train_07_p1.6_f5.rou.xml",
+      "sha256": "924451ed3cce4c96333bc0a30dfba485a1bd9aa8f70ebbad5f73f425232efaac",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 375,
+        "arrived": 312
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 8,
+      "load": "p2.0",
+      "period": [
+        2.0
+      ],
+      "fringe_factor": 5,
+      "seed": 1080,
+      "file": "train/train_08_p2.0_f5.rou.xml",
+      "sha256": "cc30e02c6b982a17325e40d932d6ce3c7d86a1789d190e185f95494f9ff1fd1d",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 300,
+        "arrived": 249
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 9,
+      "load": "p2.5",
+      "period": [
+        2.5
+      ],
+      "fringe_factor": 5,
+      "seed": 1090,
+      "file": "train/train_09_p2.5_f5.rou.xml",
+      "sha256": "e4f749d6ffc4f5c8d65a9a723b854ea2f2c3c1e915cca640ba3b60d84b4759af",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 240,
+        "arrived": 203
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 10,
+      "load": "p3.0",
+      "period": [
+        3.0
+      ],
+      "fringe_factor": 5,
+      "seed": 1100,
+      "file": "train/train_10_p3.0_f5.rou.xml",
+      "sha256": "46a911b1e3f642571486c84733cd69e32003739c4f5a91367c89d0b835a0d3bb",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 200,
+        "arrived": 173
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 11,
+      "load": "peak",
+      "period": [
+        3.0,
+        1.4,
+        3.0
+      ],
+      "fringe_factor": 5,
+      "seed": 1110,
+      "file": "train/train_11_peak_f5.rou.xml",
+      "sha256": "15c530bfa31b13e0e97ada520c6d28d79ee43f84f2f5b97ccd5e80ea357e9af4",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 286,
+        "arrived": 256
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 12,
+      "load": "p1.2",
+      "period": [
+        1.2
+      ],
+      "fringe_factor": 10,
+      "seed": 1120,
+      "file": "train/train_12_p1.2_f10.rou.xml",
+      "sha256": "b42f6a86307c164e9c6a1759502dfcd7ed5cdf19cb211e44ec5de85367cc393c",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 500,
+        "arrived": 420
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 13,
+      "load": "p1.6",
+      "period": [
+        1.6
+      ],
+      "fringe_factor": 10,
+      "seed": 1130,
+      "file": "train/train_13_p1.6_f10.rou.xml",
+      "sha256": "2f73db6626e7b9571d67ca9b1e91f86c7f7095cdd60ae7ae69cbd2103e42e61b",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 375,
+        "arrived": 311
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 14,
+      "load": "p2.0",
+      "period": [
+        2.0
+      ],
+      "fringe_factor": 10,
+      "seed": 1140,
+      "file": "train/train_14_p2.0_f10.rou.xml",
+      "sha256": "f4e04e6da05b93672b6b69bff83ca045664ee349098eadc8964b4519d4f26c80",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 300,
+        "arrived": 250
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 15,
+      "load": "p2.5",
+      "period": [
+        2.5
+      ],
+      "fringe_factor": 10,
+      "seed": 1150,
+      "file": "train/train_15_p2.5_f10.rou.xml",
+      "sha256": "71017c7fc627d220c0a2c474c0fdce3ac34af46e56128b57d7c8833fe6da4b42",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 240,
+        "arrived": 204
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 16,
+      "load": "p3.0",
+      "period": [
+        3.0
+      ],
+      "fringe_factor": 10,
+      "seed": 1160,
+      "file": "train/train_16_p3.0_f10.rou.xml",
+      "sha256": "be3aa64ea5d4db94785eec4c34dca46e53df1134d58122df6d1fa4f1c8eebd28",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 200,
+        "arrived": 165
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 17,
+      "load": "peak",
+      "period": [
+        3.0,
+        1.4,
+        3.0
+      ],
+      "fringe_factor": 10,
+      "seed": 1170,
+      "file": "train/train_17_peak_f10.rou.xml",
+      "sha256": "5f1fc946b6a11fa49324441fbe2534c47bb6bf9044cc1634477cba15b4d1b8bb",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 286,
+        "arrived": 254
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 18,
+      "load": "p1.2",
+      "period": [
+        1.2
+      ],
+      "fringe_factor": 1,
+      "seed": 1180,
+      "file": "train/train_18_p1.2_f1.rou.xml",
+      "sha256": "380364f170e711f4b0e6666b877c3a3a8e06fe881904437de8adf4ff8a5b5118",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 498,
+        "arrived": 417
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 19,
+      "load": "p1.6",
+      "period": [
+        1.6
+      ],
+      "fringe_factor": 1,
+      "seed": 1190,
+      "file": "train/train_19_p1.6_f1.rou.xml",
+      "sha256": "d8801273b25500d37af3a8412662cc3fc6d01e0bee4d0b4e6d70b2bb9cdd5567",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 375,
+        "arrived": 322
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 20,
+      "load": "p2.0",
+      "period": [
+        2.0
+      ],
+      "fringe_factor": 1,
+      "seed": 1200,
+      "file": "train/train_20_p2.0_f1.rou.xml",
+      "sha256": "19331f7a43955bae9379621742b4d11b95b413feee85909bf61f57c12f2a8942",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 300,
+        "arrived": 252
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 21,
+      "load": "p2.5",
+      "period": [
+        2.5
+      ],
+      "fringe_factor": 1,
+      "seed": 1210,
+      "file": "train/train_21_p2.5_f1.rou.xml",
+      "sha256": "a8ffdf6b0c28e53e30b2ea2fe8dc91c6caefea06d163084169617c6a1d9741b2",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 240,
+        "arrived": 208
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 22,
+      "load": "p3.0",
+      "period": [
+        3.0
+      ],
+      "fringe_factor": 1,
+      "seed": 1220,
+      "file": "train/train_22_p3.0_f1.rou.xml",
+      "sha256": "08f1816c0b1a8fef5a80d87f0fa4e4f6ecc4f8cca98c8c6c9cf72f88dbc43a34",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 200,
+        "arrived": 167
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 23,
+      "load": "peak",
+      "period": [
+        3.0,
+        1.4,
+        3.0
+      ],
+      "fringe_factor": 1,
+      "seed": 1230,
+      "file": "train/train_23_peak_f1.rou.xml",
+      "sha256": "f446f708a2fc591e699ba5fb7e732607a40597a68b1d20df2afe3b5eb0840fe5",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 286,
+        "arrived": 255
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 24,
+      "load": "p1.2",
+      "period": [
+        1.2
+      ],
+      "fringe_factor": 5,
+      "seed": 1240,
+      "file": "train/train_24_p1.2_f5.rou.xml",
+      "sha256": "04f09184adf5ed0fd3b54d25f863c8c09185f80f032a009ed74f30cbbf05c488",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 500,
+        "arrived": 410
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 25,
+      "load": "p1.6",
+      "period": [
+        1.6
+      ],
+      "fringe_factor": 5,
+      "seed": 1250,
+      "file": "train/train_25_p1.6_f5.rou.xml",
+      "sha256": "113ba481c39749b82212437cadbde4bdcc06b134785bf1a4b311515dfaf5078e",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 375,
+        "arrived": 322
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 26,
+      "load": "p2.0",
+      "period": [
+        2.0
+      ],
+      "fringe_factor": 5,
+      "seed": 1260,
+      "file": "train/train_26_p2.0_f5.rou.xml",
+      "sha256": "5b33c22edd412ac3f8dc0eb929c4f124b7c3581a48ed7944b5638639890a67a2",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 300,
+        "arrived": 254
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 27,
+      "load": "p2.5",
+      "period": [
+        2.5
+      ],
+      "fringe_factor": 5,
+      "seed": 1270,
+      "file": "train/train_27_p2.5_f5.rou.xml",
+      "sha256": "5c2d62622dc3c90e9c9a3e2db5b82008a67c1112a701be77a54693daf5e2c56a",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 240,
+        "arrived": 199
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 28,
+      "load": "p3.0",
+      "period": [
+        3.0
+      ],
+      "fringe_factor": 5,
+      "seed": 1280,
+      "file": "train/train_28_p3.0_f5.rou.xml",
+      "sha256": "cd9ea92527c26d2ed806668b2aa24dfe2c5cddb1621c5d6cda20988b6b466ffe",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 200,
+        "arrived": 169
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 29,
+      "load": "peak",
+      "period": [
+        3.0,
+        1.4,
+        3.0
+      ],
+      "fringe_factor": 5,
+      "seed": 1290,
+      "file": "train/train_29_peak_f5.rou.xml",
+      "sha256": "8b6b97a341ed956d29094a7a14b1139286e4af42a84d0861f354862c8ffde767",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 286,
+        "arrived": 257
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 30,
+      "load": "p1.2",
+      "period": [
+        1.2
+      ],
+      "fringe_factor": 10,
+      "seed": 1300,
+      "file": "train/train_30_p1.2_f10.rou.xml",
+      "sha256": "f9a85ac0b267f29d3a7b4e9dec606c4afdfb680f86ea8f37295e493b114b9d02",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 500,
+        "arrived": 420
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 31,
+      "load": "p1.6",
+      "period": [
+        1.6
+      ],
+      "fringe_factor": 10,
+      "seed": 1310,
+      "file": "train/train_31_p1.6_f10.rou.xml",
+      "sha256": "a6bacac0b8ac8c44edcbd8ae70e7259a4a2b589d8e3a81ee84cb2d691ec5e99c",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 375,
+        "arrived": 311
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 32,
+      "load": "p2.0",
+      "period": [
+        2.0
+      ],
+      "fringe_factor": 10,
+      "seed": 1320,
+      "file": "train/train_32_p2.0_f10.rou.xml",
+      "sha256": "6492ac346c8647528a4174c3841bf926718b899c7df25e0de0615cfa07985018",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 300,
+        "arrived": 247
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 33,
+      "load": "p2.5",
+      "period": [
+        2.5
+      ],
+      "fringe_factor": 10,
+      "seed": 1330,
+      "file": "train/train_33_p2.5_f10.rou.xml",
+      "sha256": "865858055d5aa88fae24b77ed37bf54628b9f8f1283e7b6e537588f39804eed6",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 240,
+        "arrived": 205
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 34,
+      "load": "p3.0",
+      "period": [
+        3.0
+      ],
+      "fringe_factor": 10,
+      "seed": 1340,
+      "file": "train/train_34_p3.0_f10.rou.xml",
+      "sha256": "dfb34af8febf2e56ae7d49df8f798f9d0a8ce186670ee8b1b3c3dd3e2ebf166a",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 200,
+        "arrived": 165
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 35,
+      "load": "peak",
+      "period": [
+        3.0,
+        1.4,
+        3.0
+      ],
+      "fringe_factor": 10,
+      "seed": 1350,
+      "file": "train/train_35_peak_f10.rou.xml",
+      "sha256": "ae6c5d97e7784fc5727ecfd2b0a058b4d66920f10cb2c25e9281f1653084bdc8",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 286,
+        "arrived": 251
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 36,
+      "load": "p1.2",
+      "period": [
+        1.2
+      ],
+      "fringe_factor": 1,
+      "seed": 1360,
+      "file": "train/train_36_p1.2_f1.rou.xml",
+      "sha256": "296cac7d0e0184b4327d4f47347ddda782f5ac3c62aacf0945bbcccd0d1c46bb",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 500,
+        "arrived": 423
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 37,
+      "load": "p1.6",
+      "period": [
+        1.6
+      ],
+      "fringe_factor": 1,
+      "seed": 1370,
+      "file": "train/train_37_p1.6_f1.rou.xml",
+      "sha256": "6a188ec23088334386ee1313e7a38535b6fb113386f5d59a5f1d936cc0d888e0",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 375,
+        "arrived": 326
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 38,
+      "load": "p2.0",
+      "period": [
+        2.0
+      ],
+      "fringe_factor": 1,
+      "seed": 1380,
+      "file": "train/train_38_p2.0_f1.rou.xml",
+      "sha256": "669b35cc9f789d39955fc28d314b872406abf2de56d2db452a4e4925dafc061a",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 300,
+        "arrived": 250
+      },
+      "rejected": []
+    },
+    {
+      "role": "train",
+      "index": 39,
+      "load": "p2.5",
+      "period": [
+        2.5
+      ],
+      "fringe_factor": 1,
+      "seed": 1390,
+      "file": "train/train_39_p2.5_f1.rou.xml",
+      "sha256": "f9332dd81c0affdc79f879c64cd0e8be86447bc3e568b01979fcbfb1fc7dad69",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 240,
+        "arrived": 203
+      },
+      "rejected": []
+    },
+    {
+      "role": "validation",
+      "index": 0,
+      "load": "p1.2",
+      "period": [
+        1.2
+      ],
+      "fringe_factor": 1,
+      "seed": 5000,
+      "file": "validation/validation_00_p1.2_f1.rou.xml",
+      "sha256": "61dcd848fd9e55255099f0d7d1ac3aadcfef2b621d2d4d39d33698a4a9902bce",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 499,
+        "arrived": 420
+      },
+      "rejected": []
+    },
+    {
+      "role": "validation",
+      "index": 1,
+      "load": "p1.6",
+      "period": [
+        1.6
+      ],
+      "fringe_factor": 1,
+      "seed": 5010,
+      "file": "validation/validation_01_p1.6_f1.rou.xml",
+      "sha256": "555c3d5058aaf303297d23295681ffad2acc993f77f752bf4294e350215cf212",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 375,
+        "arrived": 315
+      },
+      "rejected": []
+    },
+    {
+      "role": "validation",
+      "index": 2,
+      "load": "p2.0",
+      "period": [
+        2.0
+      ],
+      "fringe_factor": 1,
+      "seed": 5020,
+      "file": "validation/validation_02_p2.0_f1.rou.xml",
+      "sha256": "b743ba75a047bc714e53a7636a513c27886783d5a42c202e81e2bd3293778282",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 300,
+        "arrived": 253
+      },
+      "rejected": []
+    },
+    {
+      "role": "validation",
+      "index": 3,
+      "load": "p2.5",
+      "period": [
+        2.5
+      ],
+      "fringe_factor": 1,
+      "seed": 5030,
+      "file": "validation/validation_03_p2.5_f1.rou.xml",
+      "sha256": "c08f73ddd5bf261d86f3aada22b509e52c7523014a0e7065059fc766fc2a80f8",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 240,
+        "arrived": 202
+      },
+      "rejected": []
+    },
+    {
+      "role": "validation",
+      "index": 4,
+      "load": "p3.0",
+      "period": [
+        3.0
+      ],
+      "fringe_factor": 1,
+      "seed": 5040,
+      "file": "validation/validation_04_p3.0_f1.rou.xml",
+      "sha256": "5bcf3a4a21cbd98d6011d69ce8d83f2032e5eeb0a9c7cf59eb2532b2432a11a2",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 200,
+        "arrived": 171
+      },
+      "rejected": []
+    },
+    {
+      "role": "validation",
+      "index": 5,
+      "load": "peak",
+      "period": [
+        3.0,
+        1.4,
+        3.0
+      ],
+      "fringe_factor": 1,
+      "seed": 5050,
+      "file": "validation/validation_05_peak_f1.rou.xml",
+      "sha256": "5425edc93b063b31537c14738825197b1745ca60bbd7c06825cfae863f79f1c5",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 286,
+        "arrived": 256
+      },
+      "rejected": []
+    },
+    {
+      "role": "test",
+      "index": 0,
+      "load": "p1.2",
+      "period": [
+        1.2
+      ],
+      "fringe_factor": 1,
+      "seed": 9000,
+      "file": "test/test_00_p1.2_f1.rou.xml",
+      "sha256": "4d26fd0c64290ccc29a255c16f1e8e50a18b7f5761196469ef9b06761191a67a",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 499,
+        "arrived": 413
+      },
+      "rejected": []
+    },
+    {
+      "role": "test",
+      "index": 1,
+      "load": "p1.6",
+      "period": [
+        1.6
+      ],
+      "fringe_factor": 1,
+      "seed": 9010,
+      "file": "test/test_01_p1.6_f1.rou.xml",
+      "sha256": "755caf01e651026cce13f908fa30d02170e8aba66c4eac3bc1a04ffda496cda3",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 375,
+        "arrived": 320
+      },
+      "rejected": []
+    },
+    {
+      "role": "test",
+      "index": 2,
+      "load": "p2.0",
+      "period": [
+        2.0
+      ],
+      "fringe_factor": 1,
+      "seed": 9020,
+      "file": "test/test_02_p2.0_f1.rou.xml",
+      "sha256": "b54c7cb060c52a8b63df0d5460a0a92cf7d7396316ebe8b865ef2ad3fa94fd3b",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 300,
+        "arrived": 250
+      },
+      "rejected": []
+    },
+    {
+      "role": "test",
+      "index": 3,
+      "load": "p2.5",
+      "period": [
+        2.5
+      ],
+      "fringe_factor": 1,
+      "seed": 9030,
+      "file": "test/test_03_p2.5_f1.rou.xml",
+      "sha256": "651828042e0a13f1f0ec268316769b56d1b0e2a5c0408ef8e65fb18d43be483c",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 240,
+        "arrived": 206
+      },
+      "rejected": []
+    },
+    {
+      "role": "test",
+      "index": 4,
+      "load": "p3.0",
+      "period": [
+        3.0
+      ],
+      "fringe_factor": 1,
+      "seed": 9040,
+      "file": "test/test_04_p3.0_f1.rou.xml",
+      "sha256": "6093f7e818086a9d422d40006c45af4634dcdfbe57baa6804bf062e09f21aeb9",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 200,
+        "arrived": 172
+      },
+      "rejected": []
+    },
+    {
+      "role": "test",
+      "index": 5,
+      "load": "peak",
+      "period": [
+        3.0,
+        1.4,
+        3.0
+      ],
+      "fringe_factor": 1,
+      "seed": 9050,
+      "file": "test/test_05_peak_f1.rou.xml",
+      "sha256": "d3588abc31769ba4f2e75af25bae9178c2f2b5fe2a010ff1bd4575bf45180b6e",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 286,
+        "arrived": 258
+      },
+      "rejected": []
+    },
+    {
+      "role": "test",
+      "index": 6,
+      "load": "p1.2",
+      "period": [
+        1.2
+      ],
+      "fringe_factor": 5,
+      "seed": 9060,
+      "file": "test/test_06_p1.2_f5.rou.xml",
+      "sha256": "db1f799e8513ae79cd8ad2dbdef622a5efe666706fcb96b4d9ad2790bff9ceb0",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 500,
+        "arrived": 424
+      },
+      "rejected": []
+    },
+    {
+      "role": "test",
+      "index": 7,
+      "load": "p1.6",
+      "period": [
+        1.6
+      ],
+      "fringe_factor": 5,
+      "seed": 9070,
+      "file": "test/test_07_p1.6_f5.rou.xml",
+      "sha256": "24a26bd68e5b84a85388eb9fc46f1e87be27baa9988f4fd71033af193ba8eef2",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 375,
+        "arrived": 310
+      },
+      "rejected": []
+    },
+    {
+      "role": "test",
+      "index": 8,
+      "load": "p2.0",
+      "period": [
+        2.0
+      ],
+      "fringe_factor": 5,
+      "seed": 9080,
+      "file": "test/test_08_p2.0_f5.rou.xml",
+      "sha256": "3730aabb20d9a71b78f9d3e2411c91cf91133f6f604490113354216a19052564",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 300,
+        "arrived": 260
+      },
+      "rejected": []
+    },
+    {
+      "role": "test",
+      "index": 9,
+      "load": "p2.5",
+      "period": [
+        2.5
+      ],
+      "fringe_factor": 5,
+      "seed": 9090,
+      "file": "test/test_09_p2.5_f5.rou.xml",
+      "sha256": "a58c81bbd8d41fc879cd0e701cca02b9274a7d969f7bd623e6f59f87143bc496",
+      "fixed_time": {
+        "teleports": 0,
+        "collisions": 0,
+        "departed": 240,
+        "arrived": 201
+      },
+      "rejected": []
+    }
+  ]
+}

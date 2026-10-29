@@ -13,7 +13,7 @@ numpy<2.4
 # Reinforcement learning (flow agent)
 pettingzoo
 gymnasium
-stable-baselines3
+stable-baselines3==2.5.0
 supersuit
 
 # Data, config, plots, tests
@@ -21,3 +21,8 @@ pandas
 pyyaml
 matplotlib
 pytest
+
+# Read-only simulation explanation chatbot
+google-genai>=1.70,<3
+httpx                # network errors of the Gemini client (also installed by google-genai)
+python-dotenv>=1,<2

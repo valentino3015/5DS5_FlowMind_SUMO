@@ -9,6 +9,7 @@ sim:
   seconds: 3600        # length of one simulation
   gui: false           # true = open sumo-gui
   gui_delay: 100       # ms between steps in sumo-gui (slower = easier to watch)
+  reproducible: false  # emission experiments only: ballistic, --random false, 1 thread (changes the physics)
 
 signals:
   yellow: 3            # inserted automatically by env.py
@@ -152,5 +153,24 @@ xai:                         # explanation layer (xai/, scripts/explain.py), nev
   max_rows: 4                # at most this many log decisions retrieved per question (small model: keep it short)
   perturb_cars: 5            # sensitivity: cars added to a lane in the "more cars" test
 
+rules:
+  max_red: 90
+  co2_weight: 1.0
+  nox_weight: 1.0
+  fuel_weight: 1.0
+  pm_weight: 1.0
+  switch_margin: 0.05
+  blocked_occupancy: 0.8
+  # min_green / max_green are inherited from signals above.
+
 evaluation:
   seeds: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109]
+  fixed_time_green: 20       # emission experiments only (flowmind/evaluation.py emission_protocol); see docs/PLAN_ENTRAINEMENT_LONG_FR.md
+
+# Only the emission PPO controller; the fixed-time reference stays unchanged.
+emission_rl:
+  weights: [1, 1, 1, 2]  # CO2, NOx, fuel, PM
+  safety:
+    min_green: 10
+    max_green: 35
+    max_red: 30

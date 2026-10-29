@@ -39,6 +39,7 @@ from flowmind.agents.pedestrian import PedestrianAgent
 from flowmind.control.shield import SafetyShield
 from flowmind.control.coordinator import Coordinator
 from flowmind.control.orchestrator import Decision, Orchestrator
+from flowmind.agents.rules import RuleBasedAgent
 from flowmind.env import SumoCorridorEnv
 from flowmind.kpis import print_kpi_report
 from flowmind.logger import DecisionLogger, summarize_tripinfo
@@ -99,7 +100,7 @@ def main():
     parser.add_argument(
         "--controller",
         default="fixed_time",
-        choices=["fixed_time", "green_wave", "max_pressure", "flow", "orchestrated"],
+        choices=["fixed_time", "rules", "green_wave", "max_pressure", "flow", "orchestrated"],
         help="Controller to run (default: fixed_time)",
     )
     parser.add_argument(
@@ -164,6 +165,11 @@ def main():
         elif args.controller == "max_pressure":
             movements = env.get_phase_movements(tls)
             agents[tls] = MaxPressure(config.get("max_pressure", {}), movements)
+        elif args.controller == "rules":
+            agents[tls] = RuleBasedAgent(config.get("rules", {}) | {
+                "min_green": config["signals"]["min_green"],
+                "max_green": config["signals"]["max_green"],
+            })
         elif args.controller == "flow":
             flow_cfg = dict(config.get("flow", {}))
             if args.heuristic:
