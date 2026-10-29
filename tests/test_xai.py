@@ -138,3 +138,33 @@ def test_warning_is_replayed_and_can_be_removed():
     result = analyze(s, [warning], run.make_orchestrator, CONFIG)
     assert result["agent"] == "emergency"
     assert any("without the coordinator's warning about amb_9" in c for c in result["changes"])
+
+
+# --- xai/service.py: the entry point shared by scripts/explain.py and the dashboard ---
+def write_log(folder, rows):
+    import csv
+    from flowmind.logger import COLUMNS
+    keys = {"time": "time", "tls_id": "tls_id", "agent": "agent", "urgency": None, "reason": "reason",
+            "proposed": "proposed", "final": "final", "shield_note": "shield_note", "explanation": "explanation",
+            "events": "events", "latency_ms": None, "fixed_time_would": "fixed_time_would", "claims": "claims"}
+    with open(folder / "decisions.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(COLUMNS)
+        for r in rows:
+            w.writerow([r[keys[c]] if keys.get(c) else 0 for c in COLUMNS])
+
+
+def test_service_story_explain_and_template_answer(tmp_path):
+    from xai import service
+    write_log(tmp_path, [row(time=155.0, agent="flow", reason="normal traffic", claims="flow:0.10:normal traffic",
+                             events="", explanation="heuristic"), row()])
+    assert any("emergency took control" in line for line in service.story(tmp_path))
+    assert "emergency was in control" in service.explain_at(tmp_path, "J2", 160, CONFIG)
+    result = service.answer(tmp_path, "why did J2 give green at 160?", CONFIG, use_llm=False)
+    assert result["mode"].startswith("template") and "[J2 t=160]" in result["answer"] and not result["rejected"]
+
+
+def test_service_sensitivity_needs_saved_states(tmp_path):
+    from xai import service
+    write_log(tmp_path, [row()])
+    assert "--save-states" in service.sensitivity(tmp_path, "J2", 160, CONFIG, make_orchestrator=None)

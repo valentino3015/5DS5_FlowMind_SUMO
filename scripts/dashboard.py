@@ -94,6 +94,38 @@ def read_series(run_id, start=0, end=float("inf")):
     return {"run_id": run_id, "sample_count": count, "points": points}
 
 
+def xai_reply(query):
+    """Adem's XAI layer (xai/service.py) on the team decision log of one FlowMind-system run.
+    kind: story | at (tls, time) | ask (q, llm=1 for the optional local LLM) | sensitivity (tls, time)."""
+    import yaml
+    from xai import service
+    run_id = query.get("run_id", [""])[0]
+    run_dir = (ROOT / "runs" / run_id / "team").resolve()
+    if not run_id or run_dir.parent.parent != (ROOT / "runs").resolve():
+        raise ValueError("Invalid run id")
+    if not (run_dir / "decisions.csv").is_file():
+        raise ValueError("The XAI layer explains runs of the full FlowMind system only.")
+    config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+    kind = query.get("kind", ["story"])[0]
+    if kind == "story":
+        return {"lines": service.story(run_dir)}
+    if kind == "ask":
+        question = query.get("q", [""])[0].strip()[:500]
+        if not question:
+            raise ValueError("Type a question first.")
+        return service.answer(run_dir, question, config, use_llm=query.get("llm", ["0"])[0] == "1")
+    tls = query.get("tls", [""])[0].upper()
+    time_s = float(query.get("time", ["nan"])[0])
+    if not tls or not math.isfinite(time_s):
+        raise ValueError("Choose an intersection and a time.")
+    if kind == "at":
+        return {"text": service.explain_at(run_dir, tls, time_s, config)}
+    if kind == "sensitivity":
+        from scripts.run import make_orchestrator
+        return {"text": service.sensitivity(run_dir, tls, time_s, config, make_orchestrator)}
+    raise ValueError("Unknown XAI request")
+
+
 def worker(options):
     try:
         for seed in options["seeds"]:
@@ -146,6 +178,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(read_series(run_id, float(query.get("start", [0])[0]), float(query.get("end", ["inf"])[0])))
             except ValueError as exc:
                 self.send_json({"error": str(exc)}, 400)
+            return
+        if path == "/api/xai":
+            try:
+                self.send_json(xai_reply(parse_qs(urlsplit(self.path).query)))
+            except (ValueError, KeyError) as exc:
+                self.send_json({"error": str(exc)}, 400)
+            except OSError:
+                self.send_json({"error": "This run has no decision log for the XAI layer."}, 404)
             return
         if path == "/api/state":
             rows = load_results()

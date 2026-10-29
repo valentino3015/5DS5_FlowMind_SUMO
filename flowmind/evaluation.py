@@ -238,8 +238,9 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
             order = [t for t in config.get("corridor", {}).get("order", []) if t in env.tls_ids] or list(env.tls_ids)
             coordinator = Coordinator(config["coordinator"], order)
             shield = SafetyShield(config["signals"], config.get("shield", {}))
-            # the team's own log (decisions.csv / summary.csv), readable by scripts/explain.py
-            team_log = DecisionLogger(directory / "team", latency_budget_ms=config["orchestrator"]["max_decision_ms"])
+            # the team's own log (decisions.csv / summary.csv / states.jsonl) for the XAI layer
+            team_log = DecisionLogger(directory / "team", latency_budget_ms=config["orchestrator"]["max_decision_ms"],
+                                      save_states=True)
             colors = config.get("overlay", {}).get("colors", {})
             team_decisions, shield_changes = [], 0
         with (directory / "decisions.csv").open("w", newline="", encoding="utf-8-sig") as f:
@@ -284,6 +285,7 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
                     events = coordinator.update(now, env.emergency_approaches(), team_decisions, states)
                     team_decisions, actions = [], {}
                     for tls, st in states.items():
+                        team_log.log_state(st, events.get(tls, []))
                         d = agents[tls].decide(st, events.get(tls, []), shield.allowed_phases(st))
                         actions[tls] = d.final
                         model_reasons[tls] = f"{d.agent}: {d.explanation}"
