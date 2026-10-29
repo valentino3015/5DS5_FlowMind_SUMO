@@ -36,6 +36,12 @@ flow:
 
 emergency:
   detect_distance: 200       # react when the vehicle is closer than this (m)
+  preempt_eta_s: 20          # max urgency when the vehicle arrives in less than this (s)
+  warning_eta_s: 30          # react to a coordinator warning below this ETA (s)
+  hold_after_pass_s: 5       # keep the same green after the vehicle disappears (s)
+  min_speed_mps: 3           # speed floor used to compute the ETA (m/s)
+  stall_patience_s: 15       # vehicle stopped this long under a phase -> try another phase (s)
+  max_stall_s: 90            # vehicle stopped this long -> give up control until it moves (s)
 
 bus:
   min_delay: 60              # help buses that are at least this late (s)
