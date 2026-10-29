@@ -1,0 +1,6 @@
+{
+  "timesteps": 2048,
+  "completed_episodes": 12,
+  "current_seed": 10,
+  "best_validation_reward": -100.46546741242398
+}

@@ -48,9 +48,8 @@ pas de base de données. SUMO est installé par `pip` (paquet `eclipse-sumo`).
 
    Sans `.env`, tout fonctionne sauf le chatbot.
 
-6. Facultatif : contrôleur « Modèle PPO ». Le dossier `runs/` n’est pas dans Git.
-   Copier `runs/models/emission_ppo/` (manifest.json + best.zip) depuis un PC qui
-   l’a, au même chemin. Sans lui, ce contrôleur est simplement désactivé.
+6. Contrôleur « Modèle PPO » : le modèle actif `runs/models/emission_ppo/` est
+   fourni dans Git (seule exception au dossier `runs/`). Rien à copier.
 
 ## Modèle RL dédié aux émissions
 
@@ -195,7 +194,7 @@ python scripts/run.py --gui     # watch the simulation
 1. Work only in your own file.
 2. Don't change `contracts.py` without telling everyone.
 3. Use Git branches: `yourname/topic` → pull request to `dev`.
-4. Don't upload `runs/` or big files to GitHub.
+4. Don't upload `runs/` or big files to GitHub. Only exception: the active model `runs/models/emission_ppo/`.
 5. After Sat 24: only bug fixes.
 
 ## Chatbot d’explication

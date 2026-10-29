@@ -1,0 +1,230 @@
+{
+  "schema": 1,
+  "scenario": "3x3grid",
+  "topology": [
+    {
+      "id": "0",
+      "phases": 2,
+      "phase_lanes": [
+        [
+          "0Ni_0",
+          "0Ni_1",
+          "0Si_0",
+          "0Si_1"
+        ],
+        [
+          "0Ei_0",
+          "0Ei_1",
+          "0Wi_0",
+          "0Wi_1"
+        ]
+      ]
+    },
+    {
+      "id": "1",
+      "phases": 2,
+      "phase_lanes": [
+        [
+          "1Ni_0",
+          "1Ni_1",
+          "1Si_0",
+          "1Si_1"
+        ],
+        [
+          "1Ei_0",
+          "1Ei_1",
+          "1Wi_0",
+          "1Wi_1"
+        ]
+      ]
+    },
+    {
+      "id": "2",
+      "phases": 2,
+      "phase_lanes": [
+        [
+          "2Ni_0",
+          "2Ni_1",
+          "2Si_0",
+          "2Si_1"
+        ],
+        [
+          "2Ei_0",
+          "2Ei_1",
+          "2Wi_0",
+          "2Wi_1"
+        ]
+      ]
+    },
+    {
+      "id": "3",
+      "phases": 2,
+      "phase_lanes": [
+        [
+          "3Ni_0",
+          "3Ni_1",
+          "3Si_0",
+          "3Si_1"
+        ],
+        [
+          "3Ei_0",
+          "3Ei_1",
+          "3Wi_0",
+          "3Wi_1"
+        ]
+      ]
+    },
+    {
+      "id": "4",
+      "phases": 2,
+      "phase_lanes": [
+        [
+          "4Ni_0",
+          "4Ni_1",
+          "4Si_0",
+          "4Si_1"
+        ],
+        [
+          "4Ei_0",
+          "4Ei_1",
+          "4Wi_0",
+          "4Wi_1"
+        ]
+      ]
+    },
+    {
+      "id": "5",
+      "phases": 2,
+      "phase_lanes": [
+        [
+          "5Ni_0",
+          "5Ni_1",
+          "5Si_0",
+          "5Si_1"
+        ],
+        [
+          "5Ei_0",
+          "5Ei_1",
+          "5Wi_0",
+          "5Wi_1"
+        ]
+      ]
+    },
+    {
+      "id": "6",
+      "phases": 2,
+      "phase_lanes": [
+        [
+          "6Ni_0",
+          "6Ni_1",
+          "6Si_0",
+          "6Si_1"
+        ],
+        [
+          "6Ei_0",
+          "6Ei_1",
+          "6Wi_0",
+          "6Wi_1"
+        ]
+      ]
+    },
+    {
+      "id": "7",
+      "phases": 2,
+      "phase_lanes": [
+        [
+          "7Ni_0",
+          "7Ni_1",
+          "7Si_0",
+          "7Si_1"
+        ],
+        [
+          "7Ei_0",
+          "7Ei_1",
+          "7Wi_0",
+          "7Wi_1"
+        ]
+      ]
+    },
+    {
+      "id": "8",
+      "phases": 2,
+      "phase_lanes": [
+        [
+          "8Ni_0",
+          "8Ni_1",
+          "8Si_0",
+          "8Si_1"
+        ],
+        [
+          "8Ei_0",
+          "8Ei_1",
+          "8Wi_0",
+          "8Wi_1"
+        ]
+      ]
+    }
+  ],
+  "scales_mg_s": [
+    107207.34288523186,
+    37.69036498616893,
+    34755.27086311019,
+    8.116968910528865
+  ],
+  "weights": [
+    1.0,
+    1.0,
+    1.0,
+    2.0
+  ],
+  "safety": {
+    "max_red": 30,
+    "co2_weight": 1.0,
+    "nox_weight": 1.0,
+    "fuel_weight": 1.0,
+    "pm_weight": 1.0,
+    "switch_margin": 0.05,
+    "blocked_occupancy": 0.8,
+    "min_green": 10,
+    "max_green": 35
+  },
+  "train_seeds": [
+    9,
+    10
+  ],
+  "validation_seeds": [
+    1004,
+    1005
+  ],
+  "seconds": 600,
+  "input_hash": "dd6d818fa1ebafb6",
+  "qualification": "smoke_test",
+  "reward": "potential difference: half worst normalized cumulative emission + half weighted mean; fixed training rates, x100",
+  "parent_model": null,
+  "action_mode": "duration",
+  "reward_mode": "balanced",
+  "deterministic_inference": true,
+  "green_durations_s": [
+    20,
+    25,
+    30,
+    35
+  ],
+  "actual_timesteps": 2048,
+  "new_timesteps": 2048,
+  "best_validation_reward": -100.46546741242398,
+  "best_timesteps": 1536,
+  "best_validation_teleports": 0,
+  "best_validation_collisions": 0,
+  "best_validation_comparison": {
+    "co2_ratio": 0.996858345333685,
+    "nox_ratio": 0.9969040244929224,
+    "fuel_ratio": 0.9968583422312324,
+    "pm_ratio": 0.9991757799066618,
+    "arrival_shortfall_ratio": 0.9918781475264145,
+    "departure_shortfall_ratio": 1.0,
+    "worst_ratio": 1.0,
+    "all_emissions_lower": true
+  },
+  "selection": "minimize collisions, teleports, worst paired validation ratio to FixedTime (four emissions and traffic shortfall), then weighted emission cost"
+}
