@@ -24,4 +24,5 @@ pytest
 
 # Read-only simulation explanation chatbot
 google-genai>=1.70,<3
+httpx                # network errors of the Gemini client (also installed by google-genai)
 python-dotenv>=1,<2

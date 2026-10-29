@@ -1,5 +1,57 @@
 # FlowMind: Team Guide
 
+## Installation sur un autre PC
+
+Un seul programme fait le backend et le frontend : `scripts/dashboard.py` lance
+un serveur web local qui sert la page `dashboard/index.html`. Pas de Node.js,
+pas de base de données. SUMO est installé par `pip` (paquet `eclipse-sumo`).
+
+**Prérequis :** Python 3.12 et Git.
+
+1. Récupérer le projet :
+
+   ```bash
+   git clone https://github.com/valentino3015/5DS5_FlowMind_SUMO.git
+   cd 5DS5_FlowMind_SUMO
+   git checkout manoubi
+   ```
+
+2. Créer l’environnement Python et installer les dépendances de `requirements.txt` :
+
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate          # Linux/Mac : source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+3. Vérifier l’installation : les tests doivent tous passer.
+
+   ```bash
+   python -m pytest -q
+   ```
+
+4. Lancer le dashboard (backend + frontend) :
+
+   ```bash
+   python scripts/dashboard.py
+   ```
+
+   Le navigateur s’ouvre sur `http://localhost:8501`. Sous Windows, on peut aussi
+   double-cliquer sur `Lancer-dashboard.cmd`. Autre port : `--port 8502`.
+
+5. Facultatif : chatbot Gemini. Copier le modèle puis renseigner **sa propre**
+   clé dans `GEMINI_API_KEY` (le fichier `.env` n’est jamais envoyé sur GitHub) :
+
+   ```bash
+   copy .env.example .env          # Linux/Mac : cp .env.example .env
+   ```
+
+   Sans `.env`, tout fonctionne sauf le chatbot.
+
+6. Facultatif : contrôleur « Modèle PPO ». Le dossier `runs/` n’est pas dans Git.
+   Copier `runs/models/emission_ppo/` (manifest.json + best.zip) depuis un PC qui
+   l’a, au même chemin. Sans lui, ce contrôleur est simplement désactivé.
+
 ## Modèle RL dédié aux émissions
 
 Entraînement PPO, fine-tuning et comparaison des trois méthodes : [guide français](docs/ENTRAINEMENT_EMISSIONS_FR.md).
@@ -114,10 +166,12 @@ Steps:
 
 ## 7. Install and run
 
+Detailed steps (French): see « Installation sur un autre PC » at the top.
+
 ```bash
 git clone https://github.com/valentino3015/5DS5_FlowMind_SUMO.git
 cd 5DS5_FlowMind_SUMO
-git checkout dev
+git checkout manoubi
 python -m venv .venv
 .venv\Scripts\activate          # Windows   (Linux/Mac: source .venv/bin/activate)
 pip install -r requirements.txt
