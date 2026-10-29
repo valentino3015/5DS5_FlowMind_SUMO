@@ -408,3 +408,45 @@ Conséquences :
   7 % de CO₂ en plus : il n’apporte plus de gain.
 - L’entraînement long (étape D) n’est pas lancé. Un futur modèle RL devra battre
   ce vert de 20 s avec d’autres leviers, par exemple des décalages entre carrefours.
+
+## Modèle de dépannage : imitation de l’agent à règles (29 octobre 2026)
+
+Constat préalable : sur les 6 demandes de validation × 2 seeds, l’agent à règles
+bat les feux fixes de 20 s dans 12 cas sur 12 (CO₂ −7,0 %, NOx −6,7 %, PM +0,6 %).
+
+Méthode (`scripts/imitate_rules.py`) : le réseau PPO propose une phase par
+carrefour (mode `phase`) et apprend par apprentissage supervisé les décisions de
+l’agent à règles, doté des protections du modèle (rouge 30 s, vert 10 à 35 s).
+Il apprend sur les 40 demandes d’entraînement, puis fait 3 tours DAgger : le
+modèle conduit et les règles étiquettent les situations atteintes. Le meilleur
+tour est choisi sur les 6 demandes de validation.
+
+| Tour | Exemples | Précision (validation) | CO₂ par rapport aux feux fixes 20 s |
+|---|---:|---:|---:|
+| 0 | 5 093 | 0,82 | −2,2 % |
+| 1 | 10 473 | 0,82 | −4,0 % |
+| 2 | 15 721 | 0,88 | −5,1 % |
+| **3 (retenu)** | 20 870 | 0,95 | **−7,2 %** |
+
+Test final : 10 demandes de test × seeds 10200 et 10201 (20 cas jamais vus),
+résultats officiels de `tripinfo`, par rapport aux feux fixes de 20 s :
+
+| Méthode | CO₂ | NOx | Carburant | PM | Cas où le CO₂ baisse |
+|---|---:|---:|---:|---:|---:|
+| **Modèle RL (imitation)** | **−6,5 %** | **−6,3 %** | **−6,5 %** | +0,7 % | **20/20** |
+| Agent à règles | −8,0 % | −7,8 % | −8,0 % | +0,7 % | — |
+
+Aucune collision ni téléportation, et un peu plus de véhicules arrivés que
+les feux fixes. Le modèle reste à 1,7 point de l’agent à règles : une copie ne
+dépasse pas l’original. Sur le scénario par défaut du tableau de bord (seed 100,
+600 s), il fait −2,4 % de CO₂ (règles : −4,9 %).
+
+Activation : `runs/models/emission_ppo/` contient ce modèle, avec son manifeste
+(`test_comparison`) et `rounds.json`. L’ancien modèle est sauvegardé localement
+dans `runs/models/emission_ppo_before_imitation_20261029/` (hors Git). Étape
+suivante : entraînement PPO à partir de ce modèle, pour dépasser les règles.
+
+```powershell
+python scripts/imitate_rules.py --output runs/models/emission_imitation
+python scripts/imitate_rules.py --evaluate runs/models/emission_imitation --pool test --seeds 10200 10201
+```

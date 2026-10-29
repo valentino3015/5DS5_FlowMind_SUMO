@@ -1,5 +1,20 @@
 {
   "schema": 1,
+  "simulation": {
+    "revision": "ballistic_v7",
+    "options": [
+      "--random",
+      "false",
+      "--threads",
+      "1",
+      "--step-length",
+      "1",
+      "--step-method.ballistic",
+      "true"
+    ],
+    "binary": "C:\\Program Files (x86)\\Eclipse\\Sumo\\bin\\sumo.exe",
+    "binary_sha256": "8cc770aca4257d2cb821d91c0d346256c72c2983708137bc94789c75d00254b4"
+  },
   "scenario": "3x3grid",
   "topology": [
     {
@@ -166,16 +181,16 @@
     }
   ],
   "scales_mg_s": [
-    107207.34288523186,
-    37.69036498616893,
-    34755.27086311019,
-    8.116968910528865
+    96153.2292061589,
+    33.464766454079,
+    31171.619781511203,
+    7.358170371859367
   ],
   "weights": [
-    1.0,
-    1.0,
-    1.0,
-    2.0
+    1,
+    1,
+    1,
+    2
   ],
   "safety": {
     "max_red": 30,
@@ -189,42 +204,281 @@
     "max_green": 35
   },
   "train_seeds": [
-    9,
-    10
+    0,
+    1,
+    2
   ],
   "validation_seeds": [
-    1004,
-    1005
+    1000,
+    1001
   ],
   "seconds": 600,
   "input_hash": "dd6d818fa1ebafb6",
-  "qualification": "smoke_test",
-  "reward": "potential difference: half worst normalized cumulative emission + half weighted mean; fixed training rates, x100",
-  "parent_model": null,
-  "action_mode": "duration",
-  "reward_mode": "balanced",
+  "action_mode": "phase",
+  "reward_mode": "imitation",
+  "training_method": "imitation",
   "deterministic_inference": true,
-  "green_durations_s": [
-    20,
-    25,
-    30,
-    35
-  ],
-  "actual_timesteps": 2048,
-  "new_timesteps": 2048,
-  "best_validation_reward": -100.46546741242398,
-  "best_timesteps": 1536,
-  "best_validation_teleports": 0,
-  "best_validation_collisions": 0,
-  "best_validation_comparison": {
-    "co2_ratio": 0.996858345333685,
-    "nox_ratio": 0.9969040244929224,
-    "fuel_ratio": 0.9968583422312324,
-    "pm_ratio": 0.9991757799066618,
-    "arrival_shortfall_ratio": 0.9918781475264145,
-    "departure_shortfall_ratio": 1.0,
-    "worst_ratio": 1.0,
-    "all_emissions_lower": true
+  "qualification": "experimental",
+  "reward": "none: behaviour cloning of the rules agent (same safeguards), DAgger rounds",
+  "demands": {
+    "train": [
+      {
+        "file": "scenarios/3x3grid/demand/train/train_00_p1.2_f1.rou.xml",
+        "sha256": "f81ff6fa0282887c9bcdb7b143bd52f9d2eb36343f546cb5d4c0cddf08a21f7c"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_01_p1.6_f1.rou.xml",
+        "sha256": "819b5d93d104b25ec42902a17785bf27ffd900a8f8438532d6d66e657fbcaf11"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_02_p2.0_f1.rou.xml",
+        "sha256": "b892cc474bf5785199e1c18d0269a38661fbde600c8f49da5fe366e34fc6c8b3"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_03_p2.5_f1.rou.xml",
+        "sha256": "16dfc3f39e06a60d769865d297d75e304e6d7a7aa739f8ac8faecc3525ab473d"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_04_p3.0_f1.rou.xml",
+        "sha256": "807e6866e854e7131c0a36740f070ac2b182ff5fc3b8c00bcdce32572031edf7"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_05_peak_f1.rou.xml",
+        "sha256": "596198b8d763efa7d7d757ca0b9d6d19e2cbb60c7f216bb50ea53afd000a679c"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_06_p1.2_f5.rou.xml",
+        "sha256": "ece1e0f6575f4b1ba08413091aef94e6e16724cccc3da55833125bf31d848cbd"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_07_p1.6_f5.rou.xml",
+        "sha256": "924451ed3cce4c96333bc0a30dfba485a1bd9aa8f70ebbad5f73f425232efaac"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_08_p2.0_f5.rou.xml",
+        "sha256": "cc30e02c6b982a17325e40d932d6ce3c7d86a1789d190e185f95494f9ff1fd1d"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_09_p2.5_f5.rou.xml",
+        "sha256": "e4f749d6ffc4f5c8d65a9a723b854ea2f2c3c1e915cca640ba3b60d84b4759af"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_10_p3.0_f5.rou.xml",
+        "sha256": "46a911b1e3f642571486c84733cd69e32003739c4f5a91367c89d0b835a0d3bb"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_11_peak_f5.rou.xml",
+        "sha256": "15c530bfa31b13e0e97ada520c6d28d79ee43f84f2f5b97ccd5e80ea357e9af4"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_12_p1.2_f10.rou.xml",
+        "sha256": "b42f6a86307c164e9c6a1759502dfcd7ed5cdf19cb211e44ec5de85367cc393c"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_13_p1.6_f10.rou.xml",
+        "sha256": "2f73db6626e7b9571d67ca9b1e91f86c7f7095cdd60ae7ae69cbd2103e42e61b"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_14_p2.0_f10.rou.xml",
+        "sha256": "f4e04e6da05b93672b6b69bff83ca045664ee349098eadc8964b4519d4f26c80"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_15_p2.5_f10.rou.xml",
+        "sha256": "71017c7fc627d220c0a2c474c0fdce3ac34af46e56128b57d7c8833fe6da4b42"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_16_p3.0_f10.rou.xml",
+        "sha256": "be3aa64ea5d4db94785eec4c34dca46e53df1134d58122df6d1fa4f1c8eebd28"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_17_peak_f10.rou.xml",
+        "sha256": "5f1fc946b6a11fa49324441fbe2534c47bb6bf9044cc1634477cba15b4d1b8bb"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_18_p1.2_f1.rou.xml",
+        "sha256": "380364f170e711f4b0e6666b877c3a3a8e06fe881904437de8adf4ff8a5b5118"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_19_p1.6_f1.rou.xml",
+        "sha256": "d8801273b25500d37af3a8412662cc3fc6d01e0bee4d0b4e6d70b2bb9cdd5567"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_20_p2.0_f1.rou.xml",
+        "sha256": "19331f7a43955bae9379621742b4d11b95b413feee85909bf61f57c12f2a8942"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_21_p2.5_f1.rou.xml",
+        "sha256": "a8ffdf6b0c28e53e30b2ea2fe8dc91c6caefea06d163084169617c6a1d9741b2"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_22_p3.0_f1.rou.xml",
+        "sha256": "08f1816c0b1a8fef5a80d87f0fa4e4f6ecc4f8cca98c8c6c9cf72f88dbc43a34"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_23_peak_f1.rou.xml",
+        "sha256": "f446f708a2fc591e699ba5fb7e732607a40597a68b1d20df2afe3b5eb0840fe5"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_24_p1.2_f5.rou.xml",
+        "sha256": "04f09184adf5ed0fd3b54d25f863c8c09185f80f032a009ed74f30cbbf05c488"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_25_p1.6_f5.rou.xml",
+        "sha256": "113ba481c39749b82212437cadbde4bdcc06b134785bf1a4b311515dfaf5078e"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_26_p2.0_f5.rou.xml",
+        "sha256": "5b33c22edd412ac3f8dc0eb929c4f124b7c3581a48ed7944b5638639890a67a2"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_27_p2.5_f5.rou.xml",
+        "sha256": "5c2d62622dc3c90e9c9a3e2db5b82008a67c1112a701be77a54693daf5e2c56a"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_28_p3.0_f5.rou.xml",
+        "sha256": "cd9ea92527c26d2ed806668b2aa24dfe2c5cddb1621c5d6cda20988b6b466ffe"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_29_peak_f5.rou.xml",
+        "sha256": "8b6b97a341ed956d29094a7a14b1139286e4af42a84d0861f354862c8ffde767"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_30_p1.2_f10.rou.xml",
+        "sha256": "f9a85ac0b267f29d3a7b4e9dec606c4afdfb680f86ea8f37295e493b114b9d02"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_31_p1.6_f10.rou.xml",
+        "sha256": "a6bacac0b8ac8c44edcbd8ae70e7259a4a2b589d8e3a81ee84cb2d691ec5e99c"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_32_p2.0_f10.rou.xml",
+        "sha256": "6492ac346c8647528a4174c3841bf926718b899c7df25e0de0615cfa07985018"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_33_p2.5_f10.rou.xml",
+        "sha256": "865858055d5aa88fae24b77ed37bf54628b9f8f1283e7b6e537588f39804eed6"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_34_p3.0_f10.rou.xml",
+        "sha256": "dfb34af8febf2e56ae7d49df8f798f9d0a8ce186670ee8b1b3c3dd3e2ebf166a"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_35_peak_f10.rou.xml",
+        "sha256": "ae6c5d97e7784fc5727ecfd2b0a058b4d66920f10cb2c25e9281f1653084bdc8"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_36_p1.2_f1.rou.xml",
+        "sha256": "296cac7d0e0184b4327d4f47347ddda782f5ac3c62aacf0945bbcccd0d1c46bb"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_37_p1.6_f1.rou.xml",
+        "sha256": "6a188ec23088334386ee1313e7a38535b6fb113386f5d59a5f1d936cc0d888e0"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_38_p2.0_f1.rou.xml",
+        "sha256": "669b35cc9f789d39955fc28d314b872406abf2de56d2db452a4e4925dafc061a"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/train/train_39_p2.5_f1.rou.xml",
+        "sha256": "f9332dd81c0affdc79f879c64cd0e8be86447bc3e568b01979fcbfb1fc7dad69"
+      }
+    ],
+    "validation": [
+      {
+        "file": "scenarios/3x3grid/demand/validation/validation_00_p1.2_f1.rou.xml",
+        "sha256": "61dcd848fd9e55255099f0d7d1ac3aadcfef2b621d2d4d39d33698a4a9902bce"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/validation/validation_01_p1.6_f1.rou.xml",
+        "sha256": "555c3d5058aaf303297d23295681ffad2acc993f77f752bf4294e350215cf212"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/validation/validation_02_p2.0_f1.rou.xml",
+        "sha256": "b743ba75a047bc714e53a7636a513c27886783d5a42c202e81e2bd3293778282"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/validation/validation_03_p2.5_f1.rou.xml",
+        "sha256": "c08f73ddd5bf261d86f3aada22b509e52c7523014a0e7065059fc766fc2a80f8"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/validation/validation_04_p3.0_f1.rou.xml",
+        "sha256": "5bcf3a4a21cbd98d6011d69ce8d83f2032e5eeb0a9c7cf59eb2532b2432a11a2"
+      },
+      {
+        "file": "scenarios/3x3grid/demand/validation/validation_05_peak_f1.rou.xml",
+        "sha256": "5425edc93b063b31537c14738825197b1745ca60bbd7c06825cfae863f79f1c5"
+      }
+    ]
   },
-  "selection": "minimize collisions, teleports, worst paired validation ratio to FixedTime (four emissions and traffic shortfall), then weighted emission cost"
+  "parent_model": null,
+  "actual_timesteps": 0,
+  "best_timesteps": 0,
+  "imitation_round": 3,
+  "imitation_samples": 20870,
+  "best_validation_comparison": {
+    "co2_ratio": 0.9283242974136406,
+    "nox_ratio": 0.930411956286512,
+    "fuel_ratio": 0.9283244398131477,
+    "pm_ratio": 1.003983421377978,
+    "arrival_shortfall_ratio": 0.9897538603574735,
+    "departure_shortfall_ratio": 1.0,
+    "departure_gap": 0,
+    "worst_ratio": 1.003983421377978,
+    "all_emissions_lower": false
+  },
+  "best_validation_versus_rules": {
+    "co2_ratio": 1.0038543297282851,
+    "nox_ratio": 1.0024977736556107,
+    "fuel_ratio": 1.0038541956320548,
+    "pm_ratio": 1.0005919853388556,
+    "arrival_shortfall_ratio": 0.9984209757882855,
+    "departure_shortfall_ratio": 0.9996666666666667,
+    "departure_gap": -1,
+    "worst_ratio": 1.0038543297282851,
+    "all_emissions_lower": false
+  },
+  "selection": "feasible (PM within +2%, no traffic loss, no collision), then lowest mean CO2/NOx/fuel ratio to FixedTime on validation demands",
+  "validation_reference": "FixedTime 20 s",
+  "test_comparison": {
+    "pool": "test (10 demands)",
+    "seeds": [
+      10200,
+      10201
+    ],
+    "reference": "FixedTime 20 s",
+    "model_vs_fixed20": {
+      "co2_ratio": 0.9353916644944176,
+      "nox_ratio": 0.9365826931776405,
+      "fuel_ratio": 0.9353916953613138,
+      "pm_ratio": 1.0073398719798283,
+      "arrival_shortfall_ratio": 0.9909294245166601,
+      "departure_shortfall_ratio": 1.0000673796791444,
+      "departure_gap": 0,
+      "worst_ratio": 1.0073398719798283,
+      "all_emissions_lower": false
+    },
+    "rules_vs_fixed20": {
+      "co2_ratio": 0.9203871881044918,
+      "nox_ratio": 0.9219708901814501,
+      "fuel_ratio": 0.9203872495433402,
+      "pm_ratio": 1.0068370057654181,
+      "arrival_shortfall_ratio": 0.9921967388261752,
+      "departure_shortfall_ratio": 1.0001091284360633,
+      "departure_gap": 0,
+      "worst_ratio": 1.0068370057654181,
+      "all_emissions_lower": false
+    },
+    "model_vs_rules": {
+      "co2_ratio": 1.0166983914361463,
+      "nox_ratio": 1.0162306207531588,
+      "fuel_ratio": 1.0166983552731392,
+      "pm_ratio": 1.0005218198675672,
+      "arrival_shortfall_ratio": 0.9987513327518702,
+      "departure_shortfall_ratio": 0.999958864664747,
+      "departure_gap": 0,
+      "worst_ratio": 1.0166983914361463,
+      "all_emissions_lower": false
+    }
+  },
+  "source_model": "runs/models/emission_imitation (round 3)"
 }
