@@ -450,3 +450,27 @@ suivante : entraînement PPO à partir de ce modèle, pour dépasser les règles
 python scripts/imitate_rules.py --output runs/models/emission_imitation
 python scripts/imitate_rules.py --evaluate runs/models/emission_imitation --pool test --seeds 10200 10201
 ```
+
+### Version 2 sur le code intégré (branche Adem, décision toutes les 5 s)
+
+Le modèle v1, appris avec une décision toutes les 3 s, ne fait plus que CO₂ −5,9 %
+sur le code intégré (`delta_time: 5`). Réentraînement avec la même méthode et
+5 tours DAgger :
+
+| Tour | Exemples | Précision (validation) | CO₂ par rapport aux feux fixes 20 s (validation) |
+|---|---:|---:|---:|
+| 0 | 4 800 | 0,81 | −3,6 % |
+| 3 | 19 200 | 0,94 | −6,1 % |
+| **4 (retenu)** | 24 000 | 0,97 | **−8,6 %** |
+| 5 | 28 800 | 0,98 | −8,1 % |
+
+Test final sur les 20 cas de test, sur le code intégré, par rapport aux feux fixes de 20 s :
+
+| Méthode | CO₂ | NOx | PM | Cas où le CO₂ baisse |
+|---|---:|---:|---:|---:|
+| Modèle v1 (actif avant) | −5,9 % | −5,8 % | +0,6 % | 20/20 |
+| **Modèle v2 (actif)** | **−6,6 %** | **−6,5 %** | +0,6 % | **20/20** |
+| Agent à règles | −7,1 % | −6,9 % | +0,6 % | — |
+
+Aucune collision. L’écart avec les règles passe de 1,3 à 0,6 point. Le modèle v1
+est sauvegardé localement dans `runs/models/emission_ppo_imitation_v1_20261029/`.
