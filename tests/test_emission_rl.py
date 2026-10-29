@@ -140,9 +140,13 @@ def test_rl_limits_intervene_before_teleport_without_changing_reference():
     import yaml
     from flowmind.env import ROOT
     from flowmind.emission_rl import training_safety, inference_safety
+    from flowmind.evaluation import emission_protocol
     config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
     limits = training_safety(config)
-    assert config["fixed_time"]["green"] == 20
+    assert config["fixed_time"]["green"] == 30  # team baseline unchanged
+    assert config["sim"]["reproducible"] is False
+    emission = emission_protocol(yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8")))
+    assert emission["fixed_time"]["green"] == 20 and emission["sim"]["reproducible"] is True
     assert limits["max_red"] == 30
     assert limits["max_green"] == 35
     resolved = inference_safety({"safety": limits}, {"max_red": 90, "max_green": 60, "min_green": 10})

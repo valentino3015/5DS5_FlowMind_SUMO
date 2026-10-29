@@ -8,6 +8,7 @@ sim:
   delta_time: 3        # one decision every 5 s
   seconds: 3600        # length of one simulation
   gui: false           # true = open sumo-gui
+  reproducible: false  # emission experiments only: ballistic, --random false, 1 thread (changes the physics)
 
 signals:
   yellow: 3            # inserted automatically by env.py
@@ -28,7 +29,7 @@ orchestrator:
 # --- one section per agent (placeholder values: each owner tunes their own) ---
 
 fixed_time:
-  green: 20                  # green time per phase (s); 30 s until 2026-10-29, see docs/PLAN_ENTRAINEMENT_LONG_FR.md
+  green: 30                  # green time per phase (s)
 
 max_pressure: {}             # no parameters
 
@@ -65,6 +66,7 @@ rules:
 
 evaluation:
   seeds: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109]
+  fixed_time_green: 20       # emission experiments only (flowmind/evaluation.py emission_protocol); see docs/PLAN_ENTRAINEMENT_LONG_FR.md
 
 # Only the emission PPO controller; the fixed-time reference stays unchanged.
 emission_rl:

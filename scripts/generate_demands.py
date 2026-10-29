@@ -18,6 +18,7 @@ import yaml
 from flowmind.env import ROOT, SumoCorridorEnv, simulation_protocol
 from flowmind.agents.baselines import FixedTime
 from flowmind.demands import DEMAND_DIR, INDEX, ROLES, file_sha256
+from flowmind.evaluation import emission_protocol
 from flowmind.kpis import atomic_json
 
 NET = ROOT / "scenarios" / "3x3grid" / "3x3Grid2lanes.net.xml"
@@ -56,7 +57,7 @@ def random_trips(spec, seed, seconds, output):
 
 def fixed_time_check(route, seconds, seed=0):
     """One classical run: teleports, collisions, departures and arrivals."""
-    config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+    config = emission_protocol(yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8")))
     config["sim"].update(seconds=seconds)
     samples = []
     env = SumoCorridorEnv(config=copy.deepcopy(config), route_file=route, seed=seed, use_gui=False)

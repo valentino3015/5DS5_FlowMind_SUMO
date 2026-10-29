@@ -21,3 +21,6 @@ runs/**/*.rou.xml
 # Trained models
 *.zip
 !runs/models/emission_ppo/*.zip
+
+# Generated PDF reports (rebuilt locally, not committed)
+output/

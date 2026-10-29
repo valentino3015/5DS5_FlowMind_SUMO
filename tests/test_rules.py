@@ -61,9 +61,10 @@ def test_environment_uses_fractional_occupancy(monkeypatch):
     from flowmind.env import SumoCorridorEnv, traci
     env = SumoCorridorEnv()
     env.phase_out_lanes = {"J": [["out"]]}
-    monkeypatch.setattr(traci.lane, "getLastStepOccupancy", lambda lane: 20)
+    # Our TraCI version already returns a fraction 0..1 (a jammed lane reads about 0.67).
+    monkeypatch.setattr(traci.lane, "getLastStepOccupancy", lambda lane: 0.2)
     assert not env._is_downstream_blocked("J", 0)
-    monkeypatch.setattr(traci.lane, "getLastStepOccupancy", lambda lane: 90)
+    monkeypatch.setattr(traci.lane, "getLastStepOccupancy", lambda lane: 0.9)
     assert env._is_downstream_blocked("J", 0)
 
 

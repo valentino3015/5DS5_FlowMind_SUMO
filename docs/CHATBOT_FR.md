@@ -31,7 +31,7 @@ si la configuration Gemini est absente : le chatbot explique alors le problème.
 
 ## Données et consommation
 
-- `flowmind/simulation_context.py` lit les données enregistrées côté serveur.
+- `chatbot/simulation_context.py` lit les données enregistrées côté serveur.
   Le navigateur fournit la question et l’identifiant affiché, jamais les faits.
 - Les statistiques de la fenêtre récente portent sur les 120 dernières mesures
   complètes au maximum ; les séries CSV brutes ne sont pas envoyées à Gemini.

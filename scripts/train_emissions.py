@@ -17,7 +17,7 @@ from stable_baselines3.common.callbacks import BaseCallback
 from flowmind.env import ROOT, SumoCorridorEnv, simulation_protocol
 from flowmind.agents.baselines import FixedTime
 from flowmind.emission_rl import MODEL_DIR, METRICS, SAMPLE_KEYS, SafetyGate, encode, topology, training_safety, decode_actions
-from flowmind.evaluation import SCENARIOS, digest_files
+from flowmind.evaluation import SCENARIOS, digest_files, emission_protocol
 from flowmind.demands import case_key, check_disjoint, describe, load_demands, validation_cases
 from flowmind.kpis import atomic_json, write_csv
 
@@ -428,7 +428,7 @@ def main():
             p.error(str(error))
     else:
         train_demands = validation_demands = None
-    config = yaml.safe_load((ROOT/"config.yaml").read_text(encoding="utf-8"))
+    config = emission_protocol(yaml.safe_load((ROOT/"config.yaml").read_text(encoding="utf-8")))
     args.weights = args.weights if args.weights is not None else config.get("emission_rl", {}).get("weights", [1,1,1,1])
     if args.seconds < 10 or args.timesteps < 32 or args.validation_every < 64 or set(args.train_seeds)&set(args.validation_seeds):
         p.error("Durée >=10, timesteps >=32 et seeds entraînement/validation distinctes requis")

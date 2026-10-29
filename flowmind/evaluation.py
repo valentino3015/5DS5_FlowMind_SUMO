@@ -21,6 +21,17 @@ SCENARIOS = {
 }
 
 
+def emission_protocol(config):
+    """Settings used only by the emission experiments, never by the team's runs:
+    reproducible SUMO (sim.reproducible) and the 20 s fixed-time reference
+    (evaluation.fixed_time_green; the shared fixed_time.green stays 30 s)."""
+    config.setdefault("sim", {})["reproducible"] = True
+    green = config.get("evaluation", {}).get("fixed_time_green")
+    if green is not None:
+        config["fixed_time"] = {**config.get("fixed_time", {}), "green": green}
+    return config
+
+
 def digest_files(paths):
     h = hashlib.sha256()
     for path in paths:
@@ -58,7 +69,7 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
         raise ValueError("Contrôleur ou scénario inconnu")
     if not 10 <= int(seconds) <= 86400:
         raise ValueError("La durée doit être comprise entre 10 et 86400 secondes")
-    config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+    config = emission_protocol(yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8")))
     initial_control = runtime_control.snapshot() if runtime_control else None
     if initial_control:
         controller = initial_control["method"]

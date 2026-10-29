@@ -8,7 +8,7 @@ import json
 import threading
 import time
 
-from flowmind.gemini_client import GeminiClient, GeminiError
+from chatbot.gemini_client import GeminiClient, GeminiError
 
 
 SYSTEM = """Tu es l'agent d'explication de FlowMind. Réponds en français, clairement,

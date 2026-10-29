@@ -6,7 +6,7 @@ sys.path.insert(0,str(ROOT))
 import yaml, torch, numpy as np
 from stable_baselines3 import PPO
 from scripts.train_emissions import EmissionTrainingEnv, official_emissions, compare_validation
-from flowmind.evaluation import SCENARIOS, digest_files
+from flowmind.evaluation import SCENARIOS, digest_files, emission_protocol
 from flowmind.kpis import atomic_json
 
 p=argparse.ArgumentParser()
@@ -18,7 +18,7 @@ p.add_argument('--seeds',type=int,nargs='+',help='Held-out validation seeds; def
 args=p.parse_args()
 torch.set_num_threads(1)
 manifest=json.loads((args.model_dir/'manifest.json').read_text(encoding='utf-8'))
-config=yaml.safe_load((ROOT/'config.yaml').read_text(encoding='utf-8'))
+config=emission_protocol(yaml.safe_load((ROOT/'config.yaml').read_text(encoding='utf-8')))
 net,route=SCENARIOS[manifest['scenario']]
 config['sim'].update(scenario=manifest['scenario'],net_file=net,route_file=route,seconds=manifest['seconds'])
 baseline=json.loads(args.baseline.read_text(encoding='utf-8'))

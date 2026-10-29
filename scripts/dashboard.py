@@ -16,9 +16,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from flowmind.evaluation import CONTROLLERS, ROOT, SCENARIOS, export_results, latest_comparisons, load_results, run_experiment
 from flowmind.runtime import RuntimeControl, RULE_LIMITS
 from flowmind.emission_rl import MODEL_DIR
-from flowmind.agents.simulation_explainer import SimulationExplainer
-from flowmind.gemini_client import GeminiError, load_environment
-from flowmind.simulation_context import build_context
+from chatbot.simulation_explainer import SimulationExplainer
+from chatbot.gemini_client import GeminiError, load_environment
+from chatbot.simulation_context import build_context
 
 lock = threading.Lock()
 stop = threading.Event()

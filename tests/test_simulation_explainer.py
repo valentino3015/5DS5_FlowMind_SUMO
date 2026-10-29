@@ -10,9 +10,9 @@ from urllib.request import Request, urlopen
 
 import pytest
 
-from flowmind.agents.simulation_explainer import SimulationExplainer
-from flowmind.gemini_client import GeminiClient, GeminiError
-from flowmind.simulation_context import build_context
+from chatbot.simulation_explainer import SimulationExplainer
+from chatbot.gemini_client import GeminiClient, GeminiError
+from chatbot.simulation_context import build_context
 from test_dashboard import load_dashboard
 
 
@@ -142,7 +142,7 @@ def test_agent_cache_is_bound_to_question_and_metric_snapshot(run):
 
 
 def test_cache_ttl_starts_after_slow_generation(run, monkeypatch):
-    import flowmind.agents.simulation_explainer as module
+    import chatbot.simulation_explainer as module
     clock = [0.0]
     monkeypatch.setattr(module.time, "monotonic", lambda: clock[0])
     fake = FakeClient()

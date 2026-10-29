@@ -15,9 +15,9 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from flowmind.agents.simulation_explainer import SimulationExplainer
-from flowmind.gemini_client import GeminiError, load_environment
-from flowmind.simulation_context import build_context
+from chatbot.simulation_explainer import SimulationExplainer
+from chatbot.gemini_client import GeminiError, load_environment
+from chatbot.simulation_context import build_context
 
 
 def evaluation_cases(context):
