@@ -41,7 +41,8 @@ for seed in seeds:
         finished=False
         while not finished:
             action,_=model.predict(obs,deterministic=False)
-            obs,_,_,finished,_=env.step(action)
+            obs,_,terminated,truncated,_=env.step(action)
+            finished=terminated or truncated
         scores.append(env.total_reward)
         stats[seed]=dict(env.episode_stats)
     finally:

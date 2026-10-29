@@ -143,3 +143,9 @@ python scripts/run.py --gui     # watch the simulation
 3. Use Git branches: `yourname/topic` → pull request to `dev`.
 4. Don't upload `runs/` or big files to GitHub.
 5. After Sat 24: only bug fixes.
+
+## Chatbot d’explication
+
+Le dashboard inclut un agent Gemini qui explique les métriques de la simulation
+affichée. Configuration, limites de tokens et évaluation :
+[guide du chatbot](docs/CHATBOT_FR.md).

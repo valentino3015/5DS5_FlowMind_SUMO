@@ -16,11 +16,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from flowmind.evaluation import CONTROLLERS, ROOT, SCENARIOS, export_results, latest_comparisons, load_results, run_experiment
 from flowmind.runtime import RuntimeControl, RULE_LIMITS
 from flowmind.emission_rl import MODEL_DIR
+from flowmind.agents.simulation_explainer import SimulationExplainer
+from flowmind.gemini_client import GeminiError, load_environment
+from flowmind.simulation_context import build_context
 
 lock = threading.Lock()
 stop = threading.Event()
 job = {"running": False, "status": "Prêt", "error": None, "run_ids": []}
 runtime_control = None
+explainer = SimulationExplainer()
 
 
 def latest_live(started_at=0):
@@ -171,6 +175,20 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         global runtime_control
+        # Drain a bounded request before any early reply. Closing a Windows TCP
+        # connection with an unread body can reset it and hide the JSON error.
+        try:
+            size = int(self.headers.get("Content-Length", "0"))
+            limit = 32768 if self.path == "/api/chat" else 8192
+            if not 0 < size < limit:
+                raise ValueError("Requête invalide")
+            self.connection.settimeout(10)
+            body = self.rfile.read(size)
+            if len(body) != size:
+                raise ValueError("Requête incomplète")
+        except (ValueError, OSError):
+            self.send_json({"error": "Requête invalide ou incomplète"}, 400)
+            return
         # Requests must come from this local page; no remote cross-origin controls.
         origin = self.headers.get("Origin")
         if origin and origin != f"http://{self.headers.get('Host')}":
@@ -183,14 +201,28 @@ class Handler(BaseHTTPRequestHandler):
             stop.set()
             self.send_json({"ok": True})
             return
-        if self.path not in ("/api/start", "/api/control"):
+        if self.path not in ("/api/start", "/api/control", "/api/chat"):
             self.send_json({"error": "Action inconnue"}, 404)
             return
         try:
-            size = int(self.headers.get("Content-Length", "0"))
-            if not 0 < size < 8192:
-                raise ValueError("Requête invalide")
-            options = json.loads(self.rfile.read(size))
+            options = json.loads(body)
+            if not isinstance(options, dict):
+                raise ValueError("Objet JSON requis")
+            if self.path == "/api/chat":
+                with lock:
+                    started_at = job.get("started_at", 0)
+                live = latest_live(started_at)
+                if not live:
+                    self.send_json({"error": "Aucune simulation courante : lancez une simulation et attendez les premières mesures."}, 409)
+                    return
+                run_id = live.get("run_id")
+                if options.get("run_id") != run_id:
+                    self.send_json({"error": "La simulation courante a changé. Actualisez puis posez de nouveau la question."}, 409)
+                    return
+                context = build_context(ROOT, run_id)
+                answer = explainer.explain(context, options.get("question"), options.get("history"))
+                self.send_json(answer)
+                return
             if self.path == "/api/control":
                 with lock:
                     if not job["running"] or runtime_control is None:
@@ -236,6 +268,10 @@ class Handler(BaseHTTPRequestHandler):
                 stop.clear()
             threading.Thread(target=worker, args=(options,), daemon=True).start()
             self.send_json({"ok": True})
+        except GeminiError as exc:
+            self.send_json({"error": str(exc)}, exc.status)
+        except OSError:
+            self.send_json({"error": "Les données de simulation sont temporairement indisponibles."}, 503)
         except (ValueError, TypeError, KeyError) as exc:
             self.send_json({"error": str(exc)}, 400)
 
@@ -253,6 +289,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
+    load_environment(ROOT)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8501)
     parser.add_argument("--no-browser", action="store_true")

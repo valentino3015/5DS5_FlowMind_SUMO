@@ -11,7 +11,7 @@ from flowmind.agents.baselines import FixedTime, MaxPressure
 from flowmind.agents.flow import FlowAgent
 from flowmind.agents.rules import RuleBasedAgent
 from flowmind.emission_rl import EmissionPolicy, MODEL_DIR
-from flowmind.env import ROOT, SumoCorridorEnv
+from flowmind.env import ROOT, SumoCorridorEnv, simulation_protocol
 from flowmind.kpis import atomic_json, compare_rows, compute_kpis, write_csv
 
 CONTROLLERS = ("fixed_time", "rules", "emission_model", "max_pressure", "flow_heuristic", "flow_model")
@@ -91,7 +91,7 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
         model_hash = digest_files([model_path])
     else:
         flow_params.pop("model_path", None)
-    protocol = {"signals": config.get("signals"), "shield": config.get("shield"),
+    protocol = {"simulation": simulation_protocol(gui), "signals": config.get("signals"), "shield": config.get("shield"),
                 "fixed_time": config.get("fixed_time"), "flow": {k:v for k,v in flow_params.items() if k != "model_path"},
                 "max_pressure": config.get("max_pressure"), "rules": config.get("rules", {}), "delta_time": config["sim"]["delta_time"],
                 "emission_rl": config.get("emission_rl", {}),
@@ -107,6 +107,8 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
             "model_hash": model_hash, "status": "running", "created_utc": datetime.now(timezone.utc).isoformat()}
     if emission_manifest and (controller == "emission_model" or runtime_control):
         meta.update(emission_model_qualification=emission_manifest.get("qualification", "experimental"),
+                    emission_action_mode=emission_manifest.get("action_mode", "phase"),
+                    emission_reward_mode=emission_manifest.get("reward_mode", "weighted"),
                     emission_model_timesteps=emission_manifest.get("actual_timesteps"),
                     emission_model_directory=str(model_directory.resolve()),
                     emission_model_deterministic=emission_manifest.get("deterministic_inference", True),

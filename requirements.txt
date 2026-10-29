@@ -21,3 +21,7 @@ pandas
 pyyaml
 matplotlib
 pytest
+
+# Read-only simulation explanation chatbot
+google-genai>=1.70,<3
+python-dotenv>=1,<2

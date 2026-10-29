@@ -31,7 +31,7 @@ vert maximal 35 s et priorité aux directions en file au rouge depuis 30 s.
 Une marge pour les décisions, le jaune et la libération du carrefour doit rester
 avant le seuil de téléportation SUMO de 60 s, qui n'est pas augmenté. Cela limite
 la famine aux feux sans garantir l'absence de tout blocage physique en aval.
-Le cycle classique de 30 s est conservé. Les protections sont enregistrées avec
+Le vert classique est de 20 s depuis le 29 octobre 2026 (30 s avant). Les protections sont enregistrées avec
 le modèle et utilisées aussi à l'inférence ; le dashboard peut les renforcer,
 mais pas les relâcher au-delà des limites entraînées.
 
@@ -155,8 +155,94 @@ Comparer les totaux officiels SUMO enregistrés dans result.json et les CSV expo
 
 ## Dashboard
 
+### Expérience de durées de vert et récompense équilibrée (22 octobre)
+
+Après un essai montrant 264 changements de phase pour l'ancien RL contre 153
+pour la référence, une nouvelle variante est testée séparément :
+
+```powershell
+python scripts/train_emissions.py --output runs/models/emission_duration_v5_20261022 --seconds 600 --timesteps 2048 --validation-every 512 --train-seeds 9 10 --validation-seeds 1004 1005 --weights 1 1 1 2 --action-mode duration --reward-mode balanced
+```
+
+`duration` encode les actions comme un seuil de vert de 20, 25, 30 ou 35 secondes,
+réévalué à chaque décision. L'ordre cyclique des phases est conservé. Ce n'est pas
+une durée verrouillée au début du vert : les observations suivantes peuvent
+ajuster le seuil. Toutes les demandes passent ensuite dans le SafetyGate.
+Les premiers paramètres privilégient 30 secondes ; cette initialisation n'est
+pas un apprentissage ni une preuve d'amélioration. Les anciennes politiques
+continuent d'interpréter leurs actions comme des numéros de phase.
+
+`balanced` utilise une différence de coût cumulatif : moitié moyenne pondérée,
+moitié maximum des quatre émissions normalisées. Les poids de la moyenne
+restent 1 / 1 / 1 / 2. Les normalisations sont calculées uniquement sur les seeds
+d'entraînement et restent fixes. La somme non actualisée des récompenses est
+l'opposé du coût final (à la première seconde commune près). Cela limite les
+compensations entre polluants sans garantir quatre réductions simultanées.
+Attente, files et comptages ne sont pas ajoutés à ce coût ; ils restent des
+contraintes de sécurité ou des vérifications du débit en validation.
+
+Cette variante repart d'un réseau neuf car le sens et le nombre d'actions
+changent. Ne pas réutiliser les poids d'une politique de phases dans cette
+architecture. Le manifeste conserve les modes, durées, poids et seeds. Le modèle
+actif est conservé pendant l'expérience et n'est pas remplacé par l'entraînement.
+
+Bilan de cette campagne : 2 048 étapes exécutées, checkpoint 1 536 retenu sur
+la validation, puis testé sans apprentissage sur 10060, 10061, 10062 (600 s).
+Variations des moyennes par rapport aux feux classiques : CO₂ -0,01724 %, NOx
+-0,01613 %, carburant -0,01724 %, PM -0,03222 %. Deux essais sont exactement
+identiques à la référence ; seul le troisième apporte la petite baisse.
+Les arrivées sont identiques et aucun des six essais ne produit de collision
+ou de téléportation. Cela ne prouve pas une supériorité générale.
+
+Après sélection en validation et vérification de sécurité des tests, la variante
+a été activée dans `runs/models/emission_ppo/`. L'ancien modèle est conservé
+dans `runs/models/emission_ppo_before_duration_v5_20261022/`. Le bilan complet
+et les identifiants sont dans `runs/reports/duration_v5_20261022/rapport.md`.
+
+### Reprise V6 : davantage d'étapes ne suffit pas
+
+La campagne suivante reprend le checkpoint 1 536, ajoute 4 096 étapes sur
+les seeds 11, 12, 13, 14 et valide sur 1004, 1005, 1006. Elle termine 28
+épisodes complets et atteint le compteur 5 632. Les sauvegardes 3 584 et
+5 632 sont moins bonnes en validation ; le checkpoint 1 536 reste retenu.
+
+Le dernier état (5 632) a été testé séparément à titre de diagnostic, après
+son rejet en validation, sur 10070, 10071, 10072. Les classiques sont répétés
+juste avant chaque essai : CO₂ +3,194 %, NOx +3,474 %, carburant +3,194 %,
+PM -1,490 %. Il fait arriver moins de véhicules, sans collision ni
+téléportation. Il n'a pas été activé. Le dashboard marque ces essais
+`diagnostic non déployé` ; le modèle actif précédent reste inchangé.
+
+Un contrôle de répétition de la référence classique sur 1004 a aussi produit
+des bilans différents à paramètres identiques ; la cause n'est pas isolée.
+Les faibles baisses de V5 ne constituent donc pas une preuve fiable de gain
+général. Les bilans et répétitions sont conservés dans
+`runs/reports/duration_v6_20261022/`, avec `rapport.md`, les CSV, le graphique
+et la décision de non-activation. Il faut consolider la reproductibilité et
+le compromis de récompense avant d'interpréter de petits pourcentages.
+
 `python scripts/dashboard.py` ouvre l’interface locale. La méthode **Agent avec
 modèle RL** est activée si le checkpoint et son manifeste existent pour le scénario
 choisi. Aucun retour silencieux à un contrôleur classique si le modèle manque.
 L’historique contient un sélecteur d’essai pour chaque méthode ; chaque courbe
 permet les trois tracés ou un tracé individuel (modèle en violet).
+
+
+## V7 — audit de reproductibilité et récompense équilibrée (22 octobre 2026)
+
+Le mode `worst_interval` donne le même poids aux quatre émissions, pénalise
+la pire émission normalisée et les dépassements au carré. Il utilise les
+références d’entraînement uniquement, un gamma de 1 et un apprentissage à
+0,0001. La circulation reste un critère de validation, sans entrer dans la
+récompense. `--adapt-reward` autorise explicitement cette modification lors
+d’une reprise compatible des actions.
+
+Après 2 048 nouvelles décisions, les 12 simulations de test (3 seeds, deux
+répétitions par méthode, 600 s) donnent en moyenne : CO₂ −0,147 %, NOx −0,150 %,
+carburant −0,147 %, PM +0,164 %. Le nouveau checkpoint n’est pas activé.
+Le protocole ballistic stabilise certains cas mais des écarts subsistent
+sur d’autres seeds : la reproductibilité générale n’est pas garantie.
+Les audits exacts échouent explicitement en présence d’un écart.
+
+Voir [le rapport détaillé V7](RAPPORT_REPRODUCTIBILITE_RL_V7_FR.md) pour les
+conditions, les limites, les commandes et les fichiers de résultats.

@@ -21,6 +21,38 @@ def test_reward_only_uses_four_quantities_with_fixed_scales():
     assert environmental_reward([20,40,60,80],[10,20,30,40],[1]*4)==-2
 
 
+def test_duration_actions_keep_cyclic_order_and_all_safety_guards():
+    from flowmind.emission_rl import decode_actions
+    st = states()
+    manifest = {"topology":topology(st), "action_mode":"duration", "green_durations_s":[20,25,30,35]}
+    assert decode_actions(st, [2], manifest) == {"J":0}
+    assert decode_actions(st, [0], manifest) == {"J":1}
+    later = {"J":replace(st["J"], time_in_phase=30)}
+    assert decode_actions(later, [2], manifest) == {"J":1}
+    assert decode_actions(later, [3], manifest) == {"J":0}
+    gate = SafetyGate({"min_green":10,"max_green":35,"max_red":30})
+    too_long = {"J":replace(st["J"], time_in_phase=35)}
+    assert gate.apply(too_long, decode_actions(too_long,[3],manifest))[0]["J"] == 1
+    with pytest.raises(ValueError, match="Durée"):
+        decode_actions(st,[4],manifest)
+    assert decode_actions(st,[1],{"topology":topology(st)}) == {"J":1}
+
+
+def test_balanced_reward_telescopes_and_discourages_pollutant_tradeoff():
+    from scripts.train_emissions import balanced_cost
+    args = ([1]*4,[1,1,1,2],100)
+    zero = [0]*4
+    halfway = [20,25,30,35]
+    final = [90]*4
+    first = balanced_cost(zero,*args)-balanced_cost(halfway,*args)
+    second = balanced_cost(halfway,*args)-balanced_cost(final,*args)
+    assert first+second == pytest.approx(-90)
+    assert balanced_cost([80,80,80,120],*args) > balanced_cost(final,*args)
+    for i in range(4):
+        worse = final.copy(); worse[i] += 10
+        assert balanced_cost(worse,*args) > balanced_cost(final,*args)
+
+
 def test_observations_ignore_queue_wait_and_vehicle_count():
     st=states()
     manifest={"topology":topology(st),"scales_mg_s":[10,2,5,1]}
@@ -52,8 +84,12 @@ def test_trained_model_rejects_training_seed_and_other_scenario():
     from flowmind.evaluation import run_experiment
     if not (MODEL_DIR / "best.zip").exists():
         pytest.skip("No smoke model installed")
+    import json
+    manifest = json.loads((MODEL_DIR / "manifest.json").read_text(encoding="utf-8"))
+    # The installed checkpoint may have been trained with seeds other than 0.
+    reserved_seed = manifest["train_seeds"][0]
     with pytest.raises(ValueError,match="Seed réservée"):
-        run_experiment("emission_model",seed=0,seconds=10)
+        run_experiment("emission_model",seed=reserved_seed,seconds=10)
     with pytest.raises(ValueError,match="autre scénario"):
         EmissionPolicy("cologne3",{})
 
@@ -106,7 +142,7 @@ def test_rl_limits_intervene_before_teleport_without_changing_reference():
     from flowmind.emission_rl import training_safety, inference_safety
     config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
     limits = training_safety(config)
-    assert config["fixed_time"]["green"] == 30
+    assert config["fixed_time"]["green"] == 20
     assert limits["max_red"] == 30
     assert limits["max_green"] == 35
     resolved = inference_safety({"safety": limits}, {"max_red": 90, "max_green": 60, "min_green": 10})
@@ -129,6 +165,17 @@ def test_rl_serves_queued_red_direction_before_teleport_deadline():
 def test_doubled_pm_weight_changes_only_environmental_reward():
     assert environmental_reward([0,0,0,10], [10]*4, [1,1,1,2]) == -.4
     assert environmental_reward([0,0,0,10], [10]*4, [1]*4) == -.25
+
+
+def test_worst_interval_reward_penalizes_imbalance_and_every_second():
+    from scripts.train_emissions import worst_interval_cost
+    scales = [100, 10, 50, 2]
+    reference = worst_interval_cost(scales, scales)
+    assert reference == pytest.approx(1.)
+    assert worst_interval_cost([90, 9, 45, 1.8], scales) < reference
+    # Same normalized mean, but PM worsens: the convex worst cost rises.
+    assert worst_interval_cost([80, 8, 40, 3.2], scales) > reference
+    assert sum(worst_interval_cost(scales, scales) for _ in range(8)) == pytest.approx(8.)
 
 
 def test_validation_compares_all_four_emissions_and_traffic_to_reference():

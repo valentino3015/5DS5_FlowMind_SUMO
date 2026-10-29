@@ -55,7 +55,7 @@ def encode(states, manifest):
             raise ValueError("Mesures d’émissions manquantes")
         for phase in state.phase_lanes:
             features.extend(np.log1p(sum(getattr(rates[l], k) for l in set(phase) if l in rates) / scale)
-                            for k, scale in zip(METRICS, manifest["scales_mg_s"]))
+                            for k, scale in zip(METRICS, manifest.get("observation_scales_mg_s", manifest["scales_mg_s"])))
         features.extend(float(i == state.phase) for i in range(state.num_phases))
         features.append(min(state.time_in_phase / 300, 1))
     result = np.asarray(features, dtype=np.float32)
@@ -94,6 +94,33 @@ class SafetyGate:
         return actions, reasons
 
 
+def decode_actions(states, predictions, manifest):
+    """Legacy phase choices or bounded timing adjustments around the reference.
+
+    Timing actions retain the cyclic phase order. They may only request a
+    switch once the chosen green duration has elapsed; SafetyGate still has
+    final authority over starvation, saturation and min/max green.
+    """
+    values = np.asarray(predictions).reshape(-1)
+    if manifest.get("coordinated_action") and len(values) == 1:
+        # One green duration for the whole network keeps the junctions in step.
+        values = np.repeat(values, len(manifest["topology"]))
+    if len(values) != len(manifest["topology"]):
+        raise ValueError("Nombre d’actions incompatible avec le réseau")
+    proposed = {}
+    durations = manifest.get("green_durations_s")
+    for item, value in zip(manifest["topology"], values):
+        st = states[item["id"]]
+        if manifest.get("action_mode", "phase") == "duration":
+            index = int(value)
+            if durations is None or not 0 <= index < len(durations):
+                raise ValueError("Durée de vert RL invalide")
+            proposed[item["id"]] = (st.phase + 1) % st.num_phases if st.time_in_phase >= durations[index] else st.phase
+        else:
+            proposed[item["id"]] = int(value)
+    return proposed
+
+
 class EmissionPolicy:
     def __init__(self, scenario, params, directory=MODEL_DIR, seed=None):
         from stable_baselines3 import PPO
@@ -113,5 +140,5 @@ class EmissionPolicy:
 
     def act_all(self, states):
         predictions, _ = self.model.predict(encode(states, self.manifest), deterministic=self.deterministic)
-        proposed = dict(zip((item["id"] for item in self.manifest["topology"]), np.asarray(predictions).reshape(-1)))
+        proposed = decode_actions(states, predictions, self.manifest)
         return self.gate.apply(states, proposed)

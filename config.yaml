@@ -28,7 +28,7 @@ orchestrator:
 # --- one section per agent (placeholder values: each owner tunes their own) ---
 
 fixed_time:
-  green: 30                  # green time per phase (s)
+  green: 20                  # green time per phase (s); 30 s until 2026-10-29, see docs/PLAN_ENTRAINEMENT_LONG_FR.md
 
 max_pressure: {}             # no parameters
 

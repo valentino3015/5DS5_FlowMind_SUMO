@@ -8,6 +8,8 @@ and executes phase changes with automatic yellow (3s) and all-red (2s) insertion
 from __future__ import annotations
 
 import os
+import hashlib
+from functools import lru_cache
 from pathlib import Path
 import sys
 import xml.etree.ElementTree as ET
@@ -20,6 +22,26 @@ from flowmind.contracts import Crossing, JunctionState, LaneState, SpecialVehicl
 
 # Root directory of the repository
 ROOT = Path(__file__).resolve().parent.parent
+
+# The Euler integrator exhibited process-dependent crossing of an internal
+# link in our Windows scenario (vehicle 22, second 79). Ballistic integration
+# passed repeated full-window traces. This is a NEW simulation protocol:
+# recompute both reference and agent results; never reuse old baselines.
+SUMO_REPRO_OPTIONS = ("--random", "false", "--threads", "1",
+                      "--step-length", "1", "--step-method.ballistic", "true")
+
+
+@lru_cache(maxsize=4)
+def _binary_hash(path, modified_ns, size):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def simulation_protocol(gui=False):
+    binary = Path(sumolib.checkBinary("sumo-gui" if gui else "sumo")).resolve()
+    stat = binary.stat()
+    return {"revision": "ballistic_v7", "options": list(SUMO_REPRO_OPTIONS),
+            "binary": str(binary),
+            "binary_sha256": _binary_hash(str(binary), stat.st_mtime_ns, stat.st_size)}
 
 
 def _get_first_depart(route_file: str | Path) -> int:
@@ -153,6 +175,7 @@ class SumoCorridorEnv:
             "--no-warnings", "true",
             "--duration-log.disable", "true",
         ]
+        cmd.extend(SUMO_REPRO_OPTIONS)
 
         output_dir = self.config.get("evaluation_output")
         if output_dir:
