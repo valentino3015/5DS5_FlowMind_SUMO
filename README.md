@@ -54,7 +54,7 @@ pas de base de données. SUMO est installé par `pip` (paquet `eclipse-sumo`).
 ## Modèle RL dédié aux émissions
 
 Entraînement PPO, fine-tuning et comparaison des trois méthodes : [guide français](docs/ENTRAINEMENT_EMISSIONS_FR.md).
-Le modèle fourni (`runs/models/emission_ppo`) imite l’agent à règles : sur 20 cas de test jamais vus, CO₂ −6,5 % et NOx −6,3 % par rapport aux feux fixes de 20 s, PM +0,7 % (détails : [plan d’entraînement](docs/PLAN_ENTRAINEMENT_LONG_FR.md)).
+Le modèle fourni (`runs/models/emission_ppo`) imite l’agent à règles. Sur la version intégrée (décision toutes les 5 s) et 20 cas de test jamais vus : CO₂ −6,6 %, NOx −6,5 %, PM +0,6 % par rapport aux feux fixes de 20 s, baisse du CO₂ dans 20 cas sur 20 (détails : [plan d’entraînement](docs/PLAN_ENTRAINEMENT_LONG_FR.md)).
 
 ## Dashboard local et évaluation
 
