@@ -42,6 +42,13 @@ emergency:
   min_speed_mps: 3           # speed floor used to compute the ETA (m/s)
   stall_patience_s: 15       # vehicle stopped this long under a phase -> try another phase (s)
   max_stall_s: 90            # vehicle stopped this long -> give up control until it moves (s)
+  urgency_near: 1.0          # claim urgency: vehicle arrives within preempt_eta_s
+  urgency_far: 0.8           # claim urgency: within detect_distance, ETA longer
+  urgency_hold: 0.6          # claim urgency: holding green after it passed
+  urgency_warning: 0.7       # claim urgency: coordinator warning
+  moving_speed_mps: 1.0      # at or above this speed the vehicle counts as moving (m/s)
+  stopped_speed_mps: 0.5     # below this speed the vehicle counts as stopped (m/s)
+  stop_line_margin_m: 2.0    # closer than this to the stop line = arriving, not blocked (m)
 
 bus:
   min_delay: 60              # help buses that are at least this late (s)
