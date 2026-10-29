@@ -14,11 +14,72 @@ from flowmind.emission_rl import EmissionPolicy, MODEL_DIR
 from flowmind.env import ROOT, SumoCorridorEnv, simulation_protocol
 from flowmind.kpis import atomic_json, compare_rows, compute_kpis, write_csv
 
-CONTROLLERS = ("fixed_time", "rules", "emission_model", "max_pressure", "flow_heuristic", "flow_model")
+CONTROLLERS = ("orchestrated", "fixed_time", "rules", "emission_model", "max_pressure", "flow_heuristic", "flow_model")
 SCENARIOS = {
+    "corridor": ("scenarios/corridor/corridor.net.xml", "scenarios/corridor/corridor.rou.xml"),
     "3x3grid": ("scenarios/3x3grid/3x3Grid2lanes.net.xml", "scenarios/3x3grid/routes14000.rou.xml"),
     "cologne3": ("scenarios/cologne3.net.xml", "scenarios/cologne3.rou.xml"),
 }
+# Team scenarios run with the team's settings (normal SUMO physics, fixed_time 30 s), exactly
+# like scripts/run.py; the emission protocol below stays for Manoubi's grid/Cologne studies.
+TEAM_SCENARIOS = ("corridor",)
+# Agents of the orchestrated system, in the order shown by the dashboard (added by Adem).
+TEAM_AGENTS = ("emergency", "incident", "pedestrian", "bus", "flow", "max_pressure", "operator")
+
+
+def team_live(states, events, decisions, shield_changes):
+    """Per-agent live figures for one decision step of the orchestrated system (added by Adem).
+
+    ctrl_<agent>: junctions controlled by that agent now; emergency_near / buses_near: vehicles
+    approaching a junction; ped_waiting / ped_wait_now_max_s: people waiting at the crossings;
+    incident_warnings / spillback_warnings: coordinator warnings now; shield_changes: total so far.
+    """
+    live = {f"ctrl_{a}": 0 for a in TEAM_AGENTS}
+    for d in decisions:
+        key = f"ctrl_{d.agent}"
+        if key in live:
+            live[key] += 1
+    specials = [v for st in states.values() for v in st.special_vehicles]
+    crossings = [c for st in states.values() for c in st.crossings]
+    warnings = [e for evs in events.values() for e in evs if e.kind == "incident"]
+    live.update(
+        emergency_near=len({v.vehicle_id for v in specials if v.kind == "emergency"}),
+        buses_near=len({v.vehicle_id for v in specials if v.kind == "bus"}),
+        ped_waiting=sum(c.waiting for c in crossings),
+        ped_wait_now_max_s=max((c.max_wait for c in crossings), default=0.0),
+        incident_warnings=sum(e.data.get("cause") == "incident" for e in warnings),
+        spillback_warnings=sum(e.data.get("cause") == "spillback" for e in warnings),
+        shield_changes=shield_changes,
+    )
+    return live
+
+
+def team_kpis(tripinfo):
+    """Final per-agent figures from SUMO's trip file (added by Adem). Only finished trips count
+    (the dashboard asks SUMO to also write unfinished ones, with arrival = -1)."""
+    import xml.etree.ElementTree as ET
+    root = ET.parse(tripinfo).getroot()
+    trips = [t.attrib for t in root.iter("tripinfo") if float(t.get("arrival", -1)) >= 0]
+    people = [p.attrib for p in root.iter("personinfo") if float(p.get("duration", -1)) >= 0]
+
+    def mean(xs):
+        return round(sum(xs) / len(xs), 2) if xs else None
+
+    buses = [t for t in trips if "bus" in t["id"].lower() or "bus" in t.get("vType", "").lower()]
+    ambulances = {t["id"]: float(t["duration"]) for t in trips
+                  if "emergency" in t.get("vType", "").lower() or "amb" in t["id"].lower()}
+    return {
+        "team_arrived": len(trips),
+        "team_mean_waiting_s": mean([float(t["waitingTime"]) for t in trips]),
+        "team_mean_trip_s": mean([float(t["duration"]) for t in trips]),
+        "bus_trips": len(buses),
+        "bus_mean_trip_s": mean([float(t["duration"]) for t in buses]),
+        "bus_mean_waiting_s": mean([float(t["waitingTime"]) for t in buses]),
+        "pedestrians": len(people),
+        "ped_mean_wait_s": mean([float(p["waitingTime"]) for p in people]),
+        "ped_max_wait_s": max((float(p["waitingTime"]) for p in people), default=None),
+        "ambulance_trip_s": ambulances,
+    }
 
 
 def emission_protocol(config):
@@ -69,7 +130,12 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
         raise ValueError("Contrôleur ou scénario inconnu")
     if not 10 <= int(seconds) <= 86400:
         raise ValueError("La durée doit être comprise entre 10 et 86400 secondes")
-    config = emission_protocol(yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8")))
+    config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+    team = scenario in TEAM_SCENARIOS
+    if not team:
+        config = emission_protocol(config)
+    if controller == "orchestrated" and runtime_control:
+        raise ValueError("Le système FlowMind complet ne se change pas en cours de route")
     initial_control = runtime_control.snapshot() if runtime_control else None
     if initial_control:
         controller = initial_control["method"]
@@ -106,8 +172,11 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
                 "fixed_time": config.get("fixed_time"), "flow": {k:v for k,v in flow_params.items() if k != "model_path"},
                 "max_pressure": config.get("max_pressure"), "rules": config.get("rules", {}), "delta_time": config["sim"]["delta_time"],
                 "emission_rl": config.get("emission_rl", {}),
+                "team_protocol": team, "orchestrator": config.get("orchestrator") if controller == "orchestrated" else None,
                 "teleport_seconds": 60, "metric_schema": 2,
-                "source_hash": digest_files([ROOT / p for p in ("flowmind/contracts.py", "flowmind/emission_rl.py", "flowmind/env.py", "flowmind/evaluation.py", "flowmind/kpis.py", "flowmind/agents/baselines.py", "flowmind/agents/flow.py", "flowmind/agents/rules.py")])}
+                "source_hash": digest_files([ROOT / p for p in ("flowmind/contracts.py", "flowmind/emission_rl.py", "flowmind/env.py", "flowmind/evaluation.py", "flowmind/kpis.py", "flowmind/agents/baselines.py", "flowmind/agents/flow.py", "flowmind/agents/rules.py",
+                                                                    "flowmind/control/orchestrator.py", "flowmind/control/coordinator.py", "flowmind/control/shield.py",
+                                                                    "flowmind/agents/emergency.py", "flowmind/agents/incident.py", "flowmind/agents/pedestrian.py", "flowmind/agents/bus.py")])}
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "_" + controller + "_" + uuid.uuid4().hex[:6]
     directory = ROOT / "runs" / run_id
     directory.mkdir(parents=True)
@@ -129,8 +198,11 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
     config["evaluation_output"] = str(directory)
     config["gui_delay_ms"] = int(gui_delay_ms)
     recorder = Recorder(directory, meta)
-    env = SumoCorridorEnv(config=config, use_gui=gui, seed=int(seed))
-    env.metrics_callback = recorder.sample
+    env = SumoCorridorEnv(config=config, use_gui=gui, seed=int(seed), begin_time=0 if scenario == "corridor" else None)
+    # Orchestrated runs add the per-agent figures of the last decision to every 1 s sample.
+    agent_live = team_live({}, {}, [], 0) if controller == "orchestrated" else {}
+    env.metrics_callback = lambda values: recorder.sample(values | agent_live)
+    team_log = None
     status, error = "completed", None
     applied_revision = -1
     control_events = []
@@ -149,10 +221,26 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
                     "min_green": config["signals"]["min_green"],
                     "max_green": config["signals"]["max_green"],
                 })
+            elif controller == "orchestrated":
+                # Same system as scripts/run.py --controller orchestrated (added by Adem)
+                from scripts.run import make_orchestrator
+                agents[tls] = make_orchestrator(config, env.get_phase_movements(tls))
             else:
                 agents[tls] = FlowAgent(flow_params)
                 if controller == "flow_model" and agents[tls].model is None:
                     raise ValueError("Le modèle n’a pas pu être chargé ; essai annulé.")
+        if controller == "orchestrated":
+            from flowmind.control.coordinator import Coordinator
+            from flowmind.control.shield import SafetyShield
+            from flowmind.logger import DecisionLogger
+            from scripts.run import warning_text
+            order = [t for t in config.get("corridor", {}).get("order", []) if t in env.tls_ids] or list(env.tls_ids)
+            coordinator = Coordinator(config["coordinator"], order)
+            shield = SafetyShield(config["signals"], config.get("shield", {}))
+            # the team's own log (decisions.csv / summary.csv), readable by scripts/explain.py
+            team_log = DecisionLogger(directory / "team", latency_budget_ms=config["orchestrator"]["max_decision_ms"])
+            colors = config.get("overlay", {}).get("colors", {})
+            team_decisions, shield_changes = [], 0
         with (directory / "decisions.csv").open("w", newline="", encoding="utf-8-sig") as f:
             log = csv.DictWriter(f, fieldnames=["elapsed_s", "junction", "previous_phase", "requested_phase", "applied_phase", "reason"])
             log.writeheader()
@@ -190,6 +278,20 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
                 model_reasons = {}
                 if method == "emission_model":
                     actions, model_reasons = emission_policy.act_all(states)
+                elif method == "orchestrated":
+                    now = next(iter(states.values())).time
+                    events = coordinator.update(now, env.emergency_approaches(), team_decisions, states)
+                    team_decisions, actions = [], {}
+                    for tls, st in states.items():
+                        d = agents[tls].decide(st, events.get(tls, []), shield.allowed_phases(st))
+                        actions[tls] = d.final
+                        model_reasons[tls] = f"{d.agent}: {d.explanation}"
+                        shield_changes += bool(d.shield_note)
+                        team_log.log(d, events.get(tls, []))
+                        team_decisions.append(d)
+                        env.show(tls, f"{tls} | {d.agent.upper()}: {d.explanation}", colors.get(d.agent, [128, 128, 128, 255]),
+                                 warning_text(events.get(tls, [])))
+                    agent_live = team_live(states, events, team_decisions, shield_changes)
                 else:
                     actions = {tls: agents[tls].act(st, [], [True] * st.num_phases) for tls, st in states.items()}
                 if runtime_control:
@@ -211,6 +313,18 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
         env.close()
         recorder.close()
     result = meta | {"status": status, "error": error}
+    if team and (directory / "tripinfo.xml").exists():
+        try:
+            result.update(team_kpis(directory / "tripinfo.xml"))
+        except Exception as exc:
+            result.update(team_kpis_error=str(exc))
+    if team_log is not None:
+        total = sum(team_log.control_steps.values()) or 1
+        result["control_share"] = {a: round(100 * n / total, 1) for a, n in team_log.control_steps.most_common()}
+        result["shield_changes"] = shield_changes
+        result.update(team_log.stats())
+        team_log.close({k: result[k] for k in ("team_arrived", "team_mean_waiting_s", "team_mean_trip_s", "ambulance_trip_s")
+                        if k in result} | team_log.stats())
     if runtime_control:
         result.update(initial_controller=controller, control_changes=max(0, len(control_events)-1))
         if len(control_events) > 1:

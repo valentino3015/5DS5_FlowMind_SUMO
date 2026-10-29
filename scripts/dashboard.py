@@ -13,12 +13,17 @@ import time
 from urllib.parse import parse_qs, unquote, urlsplit
 import webbrowser
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from flowmind.evaluation import CONTROLLERS, ROOT, SCENARIOS, export_results, latest_comparisons, load_results, run_experiment
+from flowmind.evaluation import CONTROLLERS, ROOT, SCENARIOS, TEAM_AGENTS, export_results, latest_comparisons, load_results, run_experiment
 from flowmind.runtime import RuntimeControl, RULE_LIMITS
 from flowmind.emission_rl import MODEL_DIR
 from chatbot.simulation_explainer import SimulationExplainer
 from chatbot.gemini_client import GeminiError, load_environment
 from chatbot.simulation_context import build_context
+
+TEAM_SERIES = tuple(f"ctrl_{a}" for a in TEAM_AGENTS) + (
+    "emergency_near", "buses_near", "ped_waiting", "ped_wait_now_max_s",
+    "incident_warnings", "spillback_warnings", "shield_changes")
+INTERACTIVE_METHODS = ("fixed_time", "rules", "emission_model")  # methods RuntimeControl can switch between
 
 lock = threading.Lock()
 stop = threading.Event()
@@ -70,6 +75,11 @@ def read_series(run_id, start=0, end=float("inf")):
                     for key in ("waiting_mean_active_s", "queue_max_lane", "nox_mg_s", "pmx_mg_s", "fuel_mg_s"):
                         value = row.get(key)
                         values[key] = float(value) if value not in (None, "") else None
+                    # per-agent figures of the orchestrated system (added by Adem); absent in other runs
+                    for key in TEAM_SERIES:
+                        value = row.get(key)
+                        if value not in (None, ""):
+                            values[key] = float(value)
                     values["controller"] = row.get("controller") or meta.get("controller", "unknown")
                     values["control_revision"] = int(row.get("control_revision", 0))
                     if start <= values["elapsed_s"] <= end:
@@ -238,7 +248,11 @@ class Handler(BaseHTTPRequestHandler):
                     control = runtime_control.update(options["method"], options.get("rules", {}))
                 self.send_json({"ok": True, "control": control})
                 return
-            interactive = options.get("interactive", False)
+            # The team methods (FlowMind system, Flow, MaxPressure) run as one plain trial.
+            interactive = options.get("interactive", False) and options.get("method") in INTERACTIVE_METHODS
+            if not interactive and options.get("method"):
+                options.setdefault("controllers", [options["method"]])
+                options.setdefault("seeds", [int(options["seed"])])
             next_control = None
             if interactive:
                 next_control = RuntimeControl(options["method"], options.get("rules", {}))
