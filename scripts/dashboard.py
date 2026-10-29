@@ -27,7 +27,7 @@ INTERACTIVE_METHODS = ("fixed_time", "rules", "emission_model")  # methods Runti
 
 lock = threading.Lock()
 stop = threading.Event()
-job = {"running": False, "status": "Prêt", "error": None, "run_ids": []}
+job = {"running": False, "status": "Ready", "error": None, "run_ids": []}
 runtime_control = None
 explainer = SimulationExplainer()
 
@@ -51,10 +51,10 @@ def latest_live(started_at=0):
 
 def read_series(run_id, start=0, end=float("inf")):
     if not math.isfinite(start) or start < 0 or end < start or math.isnan(end):
-        raise ValueError("Période invalide")
+        raise ValueError("Invalid period")
     directory = (ROOT / "runs" / run_id).resolve()
     if directory.parent != (ROOT / "runs").resolve():
-        raise ValueError("Identifiant d’essai invalide")
+        raise ValueError("Invalid run id")
     points = []
     meta = {}
     try:
@@ -110,16 +110,16 @@ def worker(options):
             if stop.is_set():
                 break
         with lock:
-            job["status"] = "Interrompu" if stop.is_set() else "Terminé"
+            job["status"] = "Stopped" if stop.is_set() else "Finished"
     except Exception as exc:
         with lock:
-            job.update(status="Échec", error=str(exc))
+            job.update(status="Failed", error=str(exc))
     finally:
         try:
             export_results()
         except Exception as exc:
             with lock:
-                job.update(status="Échec de l’export", error=str(exc))
+                job.update(status="Export failed", error=str(exc))
         with lock:
             job["running"] = False
 
@@ -169,13 +169,13 @@ class Handler(BaseHTTPRequestHandler):
         elif path.startswith("/files/"):
             target = (ROOT / "runs" / path[len("/files/"):]).resolve()
             if not target.is_relative_to((ROOT / "runs").resolve()) or target.suffix not in (".csv", ".json", ".xml", ".png"):
-                self.send_json({"error": "Accès refusé"}, 403)
+                self.send_json({"error": "Access denied"}, 403)
                 return
         else:
-            self.send_json({"error": "Page introuvable"}, 404)
+            self.send_json({"error": "Page not found"}, 404)
             return
         if not target.is_file():
-            self.send_json({"error": "Fichier introuvable"}, 404)
+            self.send_json({"error": "File not found"}, 404)
             return
         data = target.read_bytes()
         self.send_response(200)
@@ -193,33 +193,33 @@ class Handler(BaseHTTPRequestHandler):
             size = int(self.headers.get("Content-Length", "0"))
             limit = 32768 if self.path == "/api/chat" else 8192
             if not 0 < size < limit:
-                raise ValueError("Requête invalide")
+                raise ValueError("Invalid request")
             self.connection.settimeout(10)
             body = self.rfile.read(size)
             if len(body) != size:
-                raise ValueError("Requête incomplète")
+                raise ValueError("Incomplete request")
         except (ValueError, OSError):
-            self.send_json({"error": "Requête invalide ou incomplète"}, 400)
+            self.send_json({"error": "Invalid or incomplete request"}, 400)
             return
         # Requests must come from this local page; no remote cross-origin controls.
         origin = self.headers.get("Origin")
         if origin and origin != f"http://{self.headers.get('Host')}":
-            self.send_json({"error": "Origine refusée"}, 403)
+            self.send_json({"error": "Origin refused"}, 403)
             return
         if self.headers.get("X-FlowMind") != "dashboard":
-            self.send_json({"error": "En-tête de contrôle requis"}, 403)
+            self.send_json({"error": "Control header required"}, 403)
             return
         if self.path == "/api/stop":
             stop.set()
             self.send_json({"ok": True})
             return
         if self.path not in ("/api/start", "/api/control", "/api/chat"):
-            self.send_json({"error": "Action inconnue"}, 404)
+            self.send_json({"error": "Unknown action"}, 404)
             return
         try:
             options = json.loads(body)
             if not isinstance(options, dict):
-                raise ValueError("Objet JSON requis")
+                raise ValueError("JSON object required")
             if self.path == "/api/chat":
                 # Any saved simulation can be explained; build_context checks
                 # that the run exists inside runs/. Without one, use the latest.
@@ -229,7 +229,7 @@ class Handler(BaseHTTPRequestHandler):
                         started_at = job.get("started_at", 0)
                     live = latest_live(started_at)
                     if not live:
-                        self.send_json({"error": "Aucune simulation disponible : lancez une simulation et attendez les premières mesures."}, 409)
+                        self.send_json({"error": "No simulation available: start one and wait for the first measurements."}, 409)
                         return
                     run_id = live.get("run_id")
                 context = build_context(ROOT, run_id)
@@ -239,7 +239,7 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/control":
                 with lock:
                     if not job["running"] or runtime_control is None:
-                        self.send_json({"error": "Aucune simulation interactive en cours"}, 409)
+                        self.send_json({"error": "No interactive simulation running"}, 409)
                         return
                     if options["method"] == "emission_model":
                         live = latest_live(job.get("started_at",0))
@@ -262,25 +262,25 @@ class Handler(BaseHTTPRequestHandler):
             seeds = list(dict.fromkeys(int(s) for s in options["seeds"]))
             seconds = int(options["seconds"])
             if not controllers or any(c not in CONTROLLERS for c in controllers):
-                raise ValueError("Choisissez au moins un contrôleur disponible")
+                raise ValueError("Choose at least one available controller")
             if not seeds or len(seeds) > 20 or any(s < 0 or s > 2147483647 for s in seeds):
-                raise ValueError("Choisissez de 1 à 20 seeds positives")
+                raise ValueError("Choose 1 to 20 positive seeds")
             if options["scenario"] not in SCENARIOS or not 10 <= seconds <= 86400:
-                raise ValueError("Scénario ou durée invalide (10 à 86400 s)")
+                raise ValueError("Invalid scenario or length (10 to 86400 s)")
             if "flow_model" in controllers and not (ROOT / "runs/models/flow_ppo.zip").is_file():
-                raise ValueError("Modèle entraîné absent")
+                raise ValueError("Trained model missing")
             if "emission_model" in controllers:
                 for test_seed in seeds:
                     self.check_emission_model(options["scenario"], test_seed, next_control.snapshot()["rules"] if next_control else None)
             delay = int(options.get("delay", 100))
             if not 0 <= delay <= 1000:
-                raise ValueError("Délai invalide")
+                raise ValueError("Invalid delay")
             options.update(controllers=controllers, seeds=seeds, seconds=seconds, delay=delay, gui=bool(options.get("gui", False)))
             with lock:
                 if job["running"]:
-                    self.send_json({"error": "Une simulation est déjà en cours"}, 409)
+                    self.send_json({"error": "A simulation is already running"}, 409)
                     return
-                job.update(running=True, status="Démarrage…", error=None, run_ids=[], started_at=time.time())
+                job.update(running=True, status="Starting…", error=None, run_ids=[], started_at=time.time())
                 runtime_control = next_control
                 stop.clear()
             threading.Thread(target=worker, args=(options,), daemon=True).start()
@@ -288,7 +288,7 @@ class Handler(BaseHTTPRequestHandler):
         except GeminiError as exc:
             self.send_json({"error": str(exc)}, exc.status)
         except OSError:
-            self.send_json({"error": "Les données de simulation sont temporairement indisponibles."}, 503)
+            self.send_json({"error": "The simulation data is temporarily unavailable."}, 503)
         except (ValueError, TypeError, KeyError) as exc:
             self.send_json({"error": str(exc)}, 400)
 

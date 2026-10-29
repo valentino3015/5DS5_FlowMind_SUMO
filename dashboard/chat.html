@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FlowMind · Assistant</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FlowMind · Assistant</title>
 <style>
 :root{font:15px 'Segoe UI',Arial,sans-serif;color:#203c48;background:#f1f6f7}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;flex-direction:column}header{background:#123440;color:#fff;padding:22px 4%;display:flex;justify-content:space-between;align-items:center;gap:16px}h1{font-size:25px;margin:4px 0}header small{color:#aed5dc}nav{display:flex;gap:8px;background:#fff;padding:14px 4%;border-bottom:1px solid #d9e4e7;flex-wrap:wrap}nav a{padding:10px 22px;text-decoration:none;border-radius:8px;color:#3e626f}nav a.active{background:#087e8b;color:white}
 main{flex:1;width:100%;max-width:1450px;margin:auto;padding:26px;display:grid;grid-template-columns:340px minmax(0,1fr);gap:22px;min-height:0}
@@ -13,45 +13,45 @@ select,textarea{width:100%;border:1px solid #c5d6dc;border-radius:7px;padding:10
 @media(max-width:900px){main{grid-template-columns:1fr;padding:16px}.conversation{min-height:60vh}}
 @media(max-width:560px){.composer{flex-direction:column;align-items:stretch}.facts{grid-template-columns:1fr}}
 </style></head><body>
-<header><div><small>SIMULATION DE CIRCULATION</small><h1>FlowMind</h1></div><div class="note" style="color:#aed5dc">Assistant d’explication Gemini · lecture seule</div></header>
-<nav><a href="/simulation">Simulation</a><a href="/history">Historique des métriques</a><a href="/chat" class="active">Assistant</a></nav>
+<header><div><small>TRAFFIC SIMULATION</small><h1>FlowMind</h1></div><div class="note" style="color:#aed5dc">Gemini explanation assistant · read only</div></header>
+<nav><a href="/simulation">Simulation</a><a href="/history">Metrics history</a><a href="/chat" class="active">Assistant</a></nav>
 <main>
 <aside class="panel">
-  <h2>Simulation à expliquer</h2>
-  <label for="run">Choisir dans l’historique</label>
+  <h2>Simulation to explain</h2>
+  <label for="run">Pick from the history</label>
   <select id="run"></select>
   <p class="note" id="runInfo"></p>
   <div class="facts" id="facts"></div>
-  <h2 style="margin-top:20px">Questions suggérées</h2>
+  <h2 style="margin-top:20px">Suggested questions</h2>
   <div class="suggestions" id="suggestions"></div>
 </aside>
 <section class="panel conversation">
   <h2 id="title">Conversation</h2>
-  <div id="log" class="log" role="log" aria-live="polite"><p class="empty" id="empty">Choisissez une simulation, puis posez une question.<br>L’assistant explique uniquement les mesures enregistrées de cette simulation.</p></div>
+  <div id="log" class="log" role="log" aria-live="polite"><p class="empty" id="empty">Pick a simulation, then ask a question.<br>The assistant only explains the recorded measurements of that simulation.</p></div>
   <form id="form" class="composer">
-    <div style="flex:1"><label for="question">Votre question</label><textarea id="question" maxlength="2000" rows="2" placeholder="Que montrent les résultats de cette simulation ?"></textarea></div>
-    <button id="send" type="submit">Envoyer</button>
-    <button id="clear" type="button" class="secondary">Effacer</button>
+    <div style="flex:1"><label for="question">Your question</label><textarea id="question" maxlength="2000" rows="2" placeholder="What do the results of this simulation show?"></textarea></div>
+    <button id="send" type="submit">Send</button>
+    <button id="clear" type="button" class="secondary">Clear</button>
   </form>
   <p id="error" class="error" role="alert"></p>
 </section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const names={emission_model:'Modèle RL émissions',rules:'Règles Python',fixed_time:'Sans agent (feux classiques)',interactive:'Méthodes changées en cours',flow_heuristic:'Flow',flow_model:'Flow entraîné',max_pressure:'MaxPressure'};
-const statuses={completed:'Terminé',stopped:'Interrompu',failed:'Échec',running:'En cours'};
-const SUGGESTIONS=['Résume les résultats de cette simulation en trois phrases.','Combien de véhicules sont partis, arrivés et encore présents à la fin ?','Que signifient l’attente et le CO₂ mesurés ?','Le CO₂ représente-t-il une consommation de carburant ?','Quelles limites faut-il garder en tête pour interpréter ces chiffres ?'];
+const names={orchestrated:'FlowMind system',emission_model:'Emission RL model',rules:'Emission rules',fixed_time:'No agent (fixed-time lights)',interactive:'Methods changed during the run',flow_heuristic:'Flow only',flow_model:'Trained Flow',max_pressure:'MaxPressure'};
+const statuses={completed:'Finished',stopped:'Stopped',failed:'Failed',running:'Running'};
+const SUGGESTIONS=['Summarise the results of this simulation in three sentences.','How many vehicles departed, arrived and were still in the network at the end?','What do the measured waiting and CO₂ mean?','Does the CO₂ stand for fuel consumption?','What limits should I keep in mind when reading these numbers?'];
 let runs=[],runId=null,history=[],busy=false;
-const fmt=(v,d=2)=>v==null||Number.isNaN(+v)?'—':(+v).toLocaleString('fr-FR',{maximumFractionDigits:d});
-const when=r=>{const t=r.created_utc?new Date(r.created_utc):null;return t&&!isNaN(t)?t.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):r.run_id;};
-async function post(path,data){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-FlowMind':'dashboard'},body:JSON.stringify(data)});let d={};try{d=await r.json();}catch(e){}if(!r.ok)throw Error(d.error||'Erreur du serveur ('+r.status+')');return d;}
-function bubble(role,text,meta){$('empty')?.remove();const el=document.createElement('div');el.className='bubble '+role;const who=document.createElement('span');who.className='who';who.textContent=role==='user'?'Vous':'Assistant FlowMind';el.append(who,document.createTextNode(text));if(meta){const m=document.createElement('span');m.className='meta';m.textContent=meta;el.append(m);}$('log').append(el);$('log').scrollTop=$('log').scrollHeight;return el;}
-function resetConversation(){history=[];$('log').replaceChildren();const p=document.createElement('p');p.className='empty';p.id='empty';p.textContent='Posez une question sur cette simulation.';$('log').append(p);$('error').textContent='';}
+const fmt=(v,d=2)=>v==null||Number.isNaN(+v)?'—':(+v).toLocaleString('en-GB',{maximumFractionDigits:d});
+const when=r=>{const t=r.created_utc?new Date(r.created_utc):null;return t&&!isNaN(t)?t.toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):r.run_id;};
+async function post(path,data){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-FlowMind':'dashboard'},body:JSON.stringify(data)});let d={};try{d=await r.json();}catch(e){}if(!r.ok)throw Error(d.error||'Server error ('+r.status+')');return d;}
+function bubble(role,text,meta){$('empty')?.remove();const el=document.createElement('div');el.className='bubble '+role;const who=document.createElement('span');who.className='who';who.textContent=role==='user'?'You':'FlowMind assistant';el.append(who,document.createTextNode(text));if(meta){const m=document.createElement('span');m.className='meta';m.textContent=meta;el.append(m);}$('log').append(el);$('log').scrollTop=$('log').scrollHeight;return el;}
+function resetConversation(){history=[];$('log').replaceChildren();const p=document.createElement('p');p.className='empty';p.id='empty';p.textContent='Ask a question about this simulation.';$('log').append(p);$('error').textContent='';}
 function sync(){$('send').disabled=busy||!runId;$('run').disabled=busy;$('question').disabled=busy;$('clear').disabled=busy;document.querySelectorAll('#suggestions button').forEach(b=>b.disabled=busy||!runId);}
-function showRun(){const r=runs.find(x=>x.run_id===runId);$('facts').replaceChildren();if(!r){$('runInfo').textContent='Aucune simulation enregistrée : lancez-en une depuis la page Simulation.';$('title').textContent='Conversation';return;}
+function showRun(){const r=runs.find(x=>x.run_id===runId);$('facts').replaceChildren();if(!r){$('runInfo').textContent='No saved simulation: start one from the Simulation page.';$('title').textContent='Conversation';return;}
   $('title').textContent='Conversation · '+(names[r.controller]||r.controller)+' · seed '+r.seed;
-  $('runInfo').textContent=`${names[r.controller]||r.controller} · ${r.scenario} · seed ${r.seed} · ${fmt(r.actual_seconds??r.seconds,0)} s · ${statuses[r.status]||r.status}`+(r.controller==='interactive'?' — la méthode a changé pendant la simulation.':'');
-  for(const [label,v,u] of [['CO₂',r.co2_kg,'kg'],['NOx',r.nox_g,'g'],['Carburant',r.fuel_kg,'kg'],['PM',r.pmx_g,'g'],['Attente moyenne',r.mean_wait_s,'s'],['Arrivés / partis',r.arrived!=null?fmt(r.arrived,0)+' / '+fmt(r.departed,0):null,'']]){const f=document.createElement('div');f.className='fact';const s=document.createElement('span');s.textContent=label;const b=document.createElement('b');b.textContent=(typeof v==='string'?v:fmt(v))+(v!=null&&u?' '+u:'');f.append(s,b);$('facts').append(f);}}
+  $('runInfo').textContent=`${names[r.controller]||r.controller} · ${r.scenario} · seed ${r.seed} · ${fmt(r.actual_seconds??r.seconds,0)} s · ${statuses[r.status]||r.status}`+(r.controller==='interactive'?' — the method changed during the simulation.':'');
+  for(const [label,v,u] of [['CO₂',r.co2_kg,'kg'],['NOx',r.nox_g,'g'],['Fuel',r.fuel_kg,'kg'],['PM',r.pmx_g,'g'],['Mean waiting',r.mean_wait_s,'s'],['Arrived / departed',r.arrived!=null?fmt(r.arrived,0)+' / '+fmt(r.departed,0):null,'']]){const f=document.createElement('div');f.className='fact';const s=document.createElement('span');s.textContent=label;const b=document.createElement('b');b.textContent=(typeof v==='string'?v:fmt(v))+(v!=null&&u?' '+u:'');f.append(s,b);$('facts').append(f);}}
 async function loadRuns(keep=true){const s=await fetch('/api/state',{cache:'no-store'}).then(r=>r.json());
   runs=(s.results||[]).filter(r=>r.run_id&&(r.actual_seconds??0)>0).sort((a,b)=>(b.created_utc||'').localeCompare(a.created_utc||''));
   if(s.live?.run_id&&!runs.some(r=>r.run_id===s.live.run_id))runs.unshift(s.live);
@@ -60,9 +60,9 @@ async function loadRuns(keep=true){const s=await fetch('/api/state',{cache:'no-s
   runId=keep&&previous&&runs.some(r=>r.run_id===previous)?previous:runs.some(r=>r.run_id===wanted)?wanted:runs[0]?.run_id??null;
   if(runId)$('run').value=runId;if(runId!==previous)resetConversation();showRun();sync();}
 async function ask(question){question=question.trim();if(!question||!runId||busy)return;busy=true;sync();$('error').textContent='';bubble('user',question);$('question').value='';
-  const wait=bubble('assistant','Analyse des mesures en cours… (10 à 30 secondes)');wait.classList.add('waiting');const id=runId;
+  const wait=bubble('assistant','Analysing the measurements… (10 to 30 seconds)');wait.classList.add('waiting');const id=runId;
   try{const a=await post('/api/chat',{run_id:id,question,history});wait.remove();
-    bubble('assistant',a.answer,`Mesures jusqu’à ${fmt(a.observed_until_s,0)} s · ${statuses[a.simulation_status]||a.simulation_status}`+(a.cached?' · réponse réutilisée':''));
+    bubble('assistant',a.answer,`Measurements up to ${fmt(a.observed_until_s,0)} s · ${statuses[a.simulation_status]||a.simulation_status}`+(a.cached?' · reused answer':''));
     history.push({role:'user',text:question.slice(0,800)},{role:'assistant',text:a.answer.slice(0,800)});history=history.slice(-4);}
   catch(err){wait.remove();$('error').textContent=err.message;$('question').value=question;}
   finally{busy=false;sync();$('question').focus();}}
@@ -71,7 +71,7 @@ $('question').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();
 $('run').onchange=()=>{runId=$('run').value;resetConversation();showRun();sync();};
 $('clear').onclick=()=>{resetConversation();sync();};
 $('suggestions').replaceChildren(...SUGGESTIONS.map(q=>{const b=document.createElement('button');b.type='button';b.textContent=q;b.onclick=()=>ask(q);return b;}));
-loadRuns(false).catch(()=>{$('error').textContent='Serveur du tableau de bord indisponible.';});
+loadRuns(false).catch(()=>{$('error').textContent='Dashboard server unavailable.';});
 // New simulations appear in the list without changing the one being discussed.
 setInterval(()=>{if(!busy)loadRuns(true).catch(()=>{});},15000);
 </script>

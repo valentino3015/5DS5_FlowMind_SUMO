@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FlowMind corridor DEMO traffic: 10 minutes where every agent gets its moment. Owner: Adem.
+     Same network and normal traffic as corridor.rou.xml (which stays the scenario of all reported
+     results); only the events are packed into 600 s:
+       t =  60 s  ambulance amb_1, west to east through J1, J2, J3        -> emergency agent
+       t = 140 s  pedestrian rush at J2 (school exit, 100 s)             -> pedestrian agent and shield
+       t = 230 s  accident between J1 and J2 (2 eastbound lanes, 4 min)
+                  with an eastbound peak behind it                       -> incident agent, spillback
+       t = 330 s  late bus bus_ew.1, then bus_ew.2 only 15 s behind it   -> bus agent helps the late one only
+       t = 430 s  ambulance amb_2 from the east, crosses J1 while the
+                  incident agent handles the accident there              -> emergency beats incident
+       (all entries below are in time order: SUMO silently drops one that starts earlier than the one before) -->
+<routes>
+    <vType id="car"       vClass="passenger"/>
+    <vType id="bus"       vClass="bus" length="12" maxSpeed="13.89" color="0,0.6,1"/>
+    <!-- Ambulance WITHOUT bluelight device: it stops at red lights like everyone else -->
+    <vType id="ambulance" vClass="emergency" maxSpeed="16.67" color="1,0,0"/>
+
+    <!-- normal traffic, same as corridor.rou.xml -->
+    <flow id="main_we" type="car" from="W_J1" to="J3_E" begin="0" end="600" probability="0.12" departLane="best" departSpeed="max"/>
+    <flow id="main_ew" type="car" from="E_J3" to="J1_W" begin="0" end="600" probability="0.12" departLane="best" departSpeed="max"/>
+    <flow id="side_ns1" type="car" from="N1_J1" to="J1_S1" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_sn1" type="car" from="S1_J1" to="J1_N1" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_ns2" type="car" from="N2_J2" to="J2_S2" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_sn2" type="car" from="S2_J2" to="J2_N2" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_ns3" type="car" from="N3_J3" to="J3_S3" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_sn3" type="car" from="S3_J3" to="J3_N3" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="turn_n1_e" type="car" from="N1_J1" to="J3_E"  begin="0" end="600" probability="0.02" departSpeed="max"/>
+    <flow id="turn_w_s2" type="car" from="W_J1"  to="J2_S2" begin="0" end="600" probability="0.02" departLane="best" departSpeed="max"/>
+    <flow id="turn_e_n2" type="car" from="E_J3"  to="J2_N2" begin="0" end="600" probability="0.02" departLane="best" departSpeed="max"/>
+    <flow id="turn_s3_w" type="car" from="S3_J3" to="J1_W"  begin="0" end="600" probability="0.02" departSpeed="max"/>
+
+    <!-- pedestrians, same as corridor.rou.xml -->
+    <personFlow id="ped_x1" begin="0" end="600" probability="0.01"><walk from="N1_J1" to="J1_S1"/></personFlow>
+    <personFlow id="ped_x2" begin="0" end="600" probability="0.01"><walk from="S2_J2" to="J2_N2"/></personFlow>
+    <personFlow id="ped_x3" begin="0" end="600" probability="0.01"><walk from="N3_J3" to="J3_S3"/></personFlow>
+    <personFlow id="ped_along" begin="0" end="600" probability="0.01"><walk from="W_J1" to="J3_E"/></personFlow>
+
+    <!-- fixed events, sorted by departure time: SUMO silently drops an entry that starts before the one read just before it -->
+    <!-- first bus of the line: gives the bus agent its reference passage -->
+    <vehicle id="bus_ew.0" type="bus" depart="5" departLane="best">
+        <route edges="E_J3 J3_J2 J2_J1 J1_W"/>
+    </vehicle>
+    <vehicle id="amb_1" type="ambulance" depart="60" departLane="best" departSpeed="max">
+        <route edges="W_J1 J1_J2 J2_J3 J3_E"/>
+    </vehicle>
+    <!-- (t = 140 s) pedestrian rush at J2 (school exit): about 30 people in 100 s -->
+    <personFlow id="ped_rush" begin="140" end="240" probability="0.3"><walk from="S2_J2" to="J2_N2"/></personFlow>
+    <!-- (t = 220 s) eastbound peak while the accident blocks the road, so the queue always builds up behind it -->
+    <flow id="peak_we" type="car" from="W_J1" to="J3_E" begin="220" end="420" probability="0.12" departLane="best" departSpeed="max"/>
+    <!-- accident: two cars stop side by side and block both eastbound lanes for 4 minutes -->
+    <vehicle id="accident_1" type="car" depart="230" departLane="1" departPos="0" color="1,0.5,0">
+        <route edges="J1_J2 J2_J3 J3_E"/>
+        <stop lane="J1_J2_1" endPos="120" duration="240"/>
+    </vehicle>
+    <vehicle id="accident_2" type="car" depart="230" departLane="2" departPos="0" color="1,0.5,0">
+        <route edges="J1_J2 J2_J3 J3_E"/>
+        <stop lane="J1_J2_2" endPos="120" duration="240"/>
+    </vehicle>
+    <!-- bus_ew.1 is ~25 s late on the 300 s headway; bus_ew.2 follows only 15 s behind (bunching) -->
+    <vehicle id="bus_ew.1" type="bus" depart="330" departLane="best">
+        <route edges="E_J3 J3_J2 J2_J1 J1_W"/>
+    </vehicle>
+    <vehicle id="bus_ew.2" type="bus" depart="345" departLane="best">
+        <route edges="E_J3 J3_J2 J2_J1 J1_W"/>
+    </vehicle>
+    <!-- second ambulance, westbound (not behind the accident): reaches J1 while the incident agent
+         is handling the accident there -->
+    <vehicle id="amb_2" type="ambulance" depart="430" departLane="best" departSpeed="max">
+        <route edges="E_J3 J3_J2 J2_J1 J1_W"/>
+    </vehicle>
+</routes>

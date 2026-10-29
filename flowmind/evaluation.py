@@ -17,12 +17,13 @@ from flowmind.kpis import atomic_json, compare_rows, compute_kpis, write_csv
 CONTROLLERS = ("orchestrated", "fixed_time", "rules", "emission_model", "max_pressure", "flow_heuristic", "flow_model")
 SCENARIOS = {
     "corridor": ("scenarios/corridor/corridor.net.xml", "scenarios/corridor/corridor.rou.xml"),
+    "corridor_demo": ("scenarios/corridor/corridor.net.xml", "scenarios/corridor/corridor_demo.rou.xml"),
     "3x3grid": ("scenarios/3x3grid/3x3Grid2lanes.net.xml", "scenarios/3x3grid/routes14000.rou.xml"),
     "cologne3": ("scenarios/cologne3.net.xml", "scenarios/cologne3.rou.xml"),
 }
 # Team scenarios run with the team's settings (normal SUMO physics, fixed_time 30 s), exactly
 # like scripts/run.py; the emission protocol below stays for Manoubi's grid/Cologne studies.
-TEAM_SCENARIOS = ("corridor",)
+TEAM_SCENARIOS = ("corridor", "corridor_demo")
 # Agents of the orchestrated system, in the order shown by the dashboard (added by Adem).
 TEAM_AGENTS = ("emergency", "incident", "pedestrian", "bus", "flow", "max_pressure", "operator")
 
@@ -127,15 +128,15 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
                    seed=100, gui=False, gui_delay_ms=100, stop_event=None, runtime_control=None,
                    model_directory=None):
     if controller not in CONTROLLERS or scenario not in SCENARIOS:
-        raise ValueError("Contrôleur ou scénario inconnu")
+        raise ValueError("Unknown controller or scenario")
     if not 10 <= int(seconds) <= 86400:
-        raise ValueError("La durée doit être comprise entre 10 et 86400 secondes")
+        raise ValueError("The length must be between 10 and 86400 seconds")
     config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
     team = scenario in TEAM_SCENARIOS
     if not team:
         config = emission_protocol(config)
     if controller == "orchestrated" and runtime_control:
-        raise ValueError("Le système FlowMind complet ne se change pas en cours de route")
+        raise ValueError("The full FlowMind system cannot be switched during a run")
     initial_control = runtime_control.snapshot() if runtime_control else None
     if initial_control:
         controller = initial_control["method"]
@@ -163,7 +164,7 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
     if controller == "flow_model":
         model_path = ROOT / flow_params["model_path"]
         if not model_path.is_file():
-            raise ValueError("Aucun modèle entraîné disponible. Utilisez Flow (règles).")
+            raise ValueError("No trained model available. Use Flow only.")
         flow_params["model_path"] = str(model_path)
         model_hash = digest_files([model_path])
     else:
@@ -198,7 +199,7 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
     config["evaluation_output"] = str(directory)
     config["gui_delay_ms"] = int(gui_delay_ms)
     recorder = Recorder(directory, meta)
-    env = SumoCorridorEnv(config=config, use_gui=gui, seed=int(seed), begin_time=0 if scenario == "corridor" else None)
+    env = SumoCorridorEnv(config=config, use_gui=gui, seed=int(seed), begin_time=0 if scenario in TEAM_SCENARIOS else None)
     # Orchestrated runs add the per-agent figures of the last decision to every 1 s sample.
     agent_live = team_live({}, {}, [], 0) if controller == "orchestrated" else {}
     env.metrics_callback = lambda values: recorder.sample(values | agent_live)
@@ -228,7 +229,7 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
             else:
                 agents[tls] = FlowAgent(flow_params)
                 if controller == "flow_model" and agents[tls].model is None:
-                    raise ValueError("Le modèle n’a pas pu être chargé ; essai annulé.")
+                    raise ValueError("The model could not be loaded; run cancelled.")
         if controller == "orchestrated":
             from flowmind.control.coordinator import Coordinator
             from flowmind.control.shield import SafetyShield
@@ -333,7 +334,7 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
         try:
             result.update(compute_kpis(directory))
         except Exception as exc:
-            result.update(status="failed", error=f"Calcul des métriques : {exc}")
+            result.update(status="failed", error=f"Metric computation: {exc}")
     atomic_json(directory / "result.json", result)
     atomic_json(directory / "live.json", result | recorder.last)
     if result["status"] == "failed":
