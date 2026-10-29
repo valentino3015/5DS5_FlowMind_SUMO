@@ -42,7 +42,7 @@ coordinator:
   spillback_occupancy: 0.4
 
 agents:
-  emergency: demo            # demo = Adem's demo rule (agents/demo_rules.py), team = agents/emergency.py
+  emergency: team            # demo = Adem's demo rule (agents/demo_rules.py), team = agents/emergency.py
 
 # --- one section per agent (placeholder values: each owner tunes their own) ---
 
