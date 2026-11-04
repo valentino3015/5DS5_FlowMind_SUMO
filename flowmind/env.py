@@ -215,6 +215,7 @@ class SumoCorridorEnv:
             cmd += ["--additional-files", str(bus_stops)]
         self._emergency_cache.clear()
         self._pois.clear()
+        self._label_levels = {}   # tls -> 0/1, height of its GUI label (see _label_level)
         # --- end added by Adem ---
 
         # Opt-in (sim.reproducible, off by default): only the emission evaluation scripts use it.
@@ -709,12 +710,23 @@ class SumoCorridorEnv:
                 result.append((v, tls, float(distance), float(traci.vehicle.getSpeed(v)), lane))
         return result
 
+    def _label_level(self, tls_id: str) -> int:
+        """0 or 1, alternating along each street from west to east (junctions with the same y).
+        The position in tls_ids is not enough: SUMO sorts the ids as text (J1, J10, J2, ...),
+        so on grid10 J1 and J2 got the same height and their labels overlapped."""
+        if tls_id not in self._label_levels:
+            spots = {t: traci.junction.getPosition(t) for t in self.tls_ids}
+            for t, (x, y) in spots.items():
+                street = sorted((sx, s) for s, (sx, sy) in spots.items() if round(sy) == round(y))
+                self._label_levels[t] = [s for _, s in street].index(t) % 2
+        return self._label_levels[tls_id]
+
     def show(self, tls_id: str, label: str, color: list, warning: str = ""):
         """sumo-gui only: text near a junction (who controls it and why, plus a warning)."""
         if not self.use_gui or not self.is_running:
             return
         x, y = traci.junction.getPosition(tls_id)
-        shift = 40 + 45 * (self.tls_ids.index(tls_id) % 2)  # every other junction higher: no overlap
+        shift = 40 + 45 * self._label_level(tls_id)  # every other junction along its street higher: no overlap
         for name, text, dy, rgba in (("label", label, shift, color), ("warning", warning, -shift, [220, 0, 0, 255])):
             poi = f"{tls_id}_{name}"
             if poi not in self._pois:
