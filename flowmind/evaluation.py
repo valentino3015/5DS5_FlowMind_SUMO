@@ -18,12 +18,14 @@ CONTROLLERS = ("orchestrated", "fixed_time", "rules", "emission_model", "max_pre
 SCENARIOS = {
     "corridor": ("scenarios/corridor/corridor.net.xml", "scenarios/corridor/corridor.rou.xml"),
     "corridor_demo": ("scenarios/corridor/corridor.net.xml", "scenarios/corridor/corridor_demo.rou.xml"),
+    "corridor5": ("scenarios/corridor5/corridor5.net.xml", "scenarios/corridor5/corridor5.rou.xml"),
+    "corridor5_demo": ("scenarios/corridor5/corridor5.net.xml", "scenarios/corridor5/corridor5_demo.rou.xml"),
     "3x3grid": ("scenarios/3x3grid/3x3Grid2lanes.net.xml", "scenarios/3x3grid/routes14000.rou.xml"),
     "cologne3": ("scenarios/cologne3.net.xml", "scenarios/cologne3.rou.xml"),
 }
 # Team scenarios run with the team's settings (normal SUMO physics, fixed_time 30 s), exactly
 # like scripts/run.py; the emission protocol below stays for Manoubi's grid/Cologne studies.
-TEAM_SCENARIOS = ("corridor", "corridor_demo")
+TEAM_SCENARIOS = ("corridor", "corridor_demo", "corridor5", "corridor5_demo")
 # Agents of the orchestrated system, in the order shown by the dashboard (added by Adem).
 TEAM_AGENTS = ("emergency", "incident", "pedestrian", "bus", "flow", "max_pressure", "operator")
 

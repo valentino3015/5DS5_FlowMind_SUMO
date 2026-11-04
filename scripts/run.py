@@ -106,8 +106,9 @@ def main():
     parser.add_argument(
         "--scenario",
         default=None,
-        choices=["3x3grid", "cologne3", "corridor", "corridor_demo"],
-        help="Traffic scenario: 3x3grid (default), cologne3, corridor or corridor_demo (10 min, every agent acts)",
+        choices=["3x3grid", "cologne3", "corridor", "corridor_demo", "corridor5", "corridor5_demo"],
+        help="Traffic scenario: 3x3grid (default), cologne3, corridor or corridor_demo (10 min, every agent acts); "
+             "corridor5 / corridor5_demo: the same with 5 junctions",
     )
     parser.add_argument("--gui", action="store_true", help="Open SUMO GUI")
     parser.add_argument("--heuristic", action="store_true", help="Run FlowAgent heuristic directly without loading checkpoint")
@@ -137,6 +138,10 @@ def main():
         elif args.scenario == "corridor_demo":  # same network, all events packed into 10 minutes
             config["sim"]["net_file"] = "scenarios/corridor/corridor.net.xml"
             config["sim"]["route_file"] = "scenarios/corridor/corridor_demo.rou.xml"
+            begin_time = 0
+        elif args.scenario in ("corridor5", "corridor5_demo"):  # 5 junctions J1-J5, same design
+            config["sim"]["net_file"] = "scenarios/corridor5/corridor5.net.xml"
+            config["sim"]["route_file"] = f"scenarios/corridor5/{args.scenario}.rou.xml"
             begin_time = 0
 
     if args.seconds:
