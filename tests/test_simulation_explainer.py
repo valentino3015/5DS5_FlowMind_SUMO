@@ -322,3 +322,33 @@ def test_http_chat_explains_any_saved_simulation_and_rejects_unknown_ones(run, m
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_team_facts_only_for_the_full_flowmind_system(run):
+    # Added by Adem: the assistant gets the agents' facts (control share, ambulances, story).
+    root, directory = run
+    (directory / "result.json").write_text(json.dumps({"status": "completed"}))
+    assert "team" not in build_context(root, "trial")
+    (directory / "result.json").write_text(json.dumps({
+        "status": "completed", "control_share": {"flow": 75.0, "emergency": 25.0},
+        "ambulance_trip_s": {"amb_1": 61.0}, "bus_mean_waiting_s": 4.67}))
+    team = directory / "team"
+    team.mkdir()
+    (team / "decisions.csv").write_text(
+        "time,tls_id,agent,urgency,reason,proposed,final,shield_note,explanation,events,latency_ms,fixed_time_would,claims\n"
+        "56,J1,flow,0.1,normal traffic,0,0,,keep,,0.1,0,\n"
+        "61,J1,emergency,1.0,amb_1 is 186 m away,0,0,,green,,0.1,0,\n", encoding="utf-8")
+    context = build_context(root, "trial")
+    assert context["team"]["ambulance_trip_s"] == {"amb_1": 61.0}
+    assert any("emergency took control: amb_1" in line for line in context["team"]["story"])
+    assert len(json.dumps(context, ensure_ascii=False)) < 6000
+
+
+def test_answer_language_follows_the_question():
+    # Added by Adem: the dashboard is in English; the rules are in French.
+    from chatbot.simulation_explainer import answer_language
+    assert answer_language("What happened when the ambulance arrived?") == "English"
+    assert answer_language("why did J2 switch at 160?") == "English"
+    assert answer_language("Que s'est-il passé quand l'ambulance est arrivée ?") == "French"
+    assert answer_language("Explique") == "French"
+    assert answer_language("Combien de bus sont en retard") == "French"

@@ -43,6 +43,37 @@ def read_json(path):
         return {}
 
 
+TEAM_KEYS = ("control_share", "ambulance_trip_s", "team_arrived", "team_mean_waiting_s", "team_mean_trip_s",
+             "bus_trips", "bus_mean_waiting_s", "pedestrians", "ped_mean_wait_s", "ped_max_wait_s",
+             "shield_changes")
+MAX_STORY_LINES = 12
+
+
+def team_facts(directory: Path, result: dict) -> dict | None:
+    """Agent facts of a full FlowMind run (added by Adem), or None for the other controllers.
+
+    From result.json: who controlled the lights (% of decisions), ambulance trip times, bus and
+    pedestrian figures. From the team decision log: the XAI story (xai/explain.py), at most
+    MAX_STORY_LINES moments, e.g. "[J1 t=61-76] emergency took control: amb_1 is 186 m away".
+    """
+    if "control_share" not in result:
+        return None
+    facts = {k: result[k] for k in TEAM_KEYS if result.get(k) is not None}
+    try:
+        from xai.explain import load_run, run_story
+        story = run_story(load_run(directory / "team"))
+        moments = [line for line in story if line.startswith("[")]       # "[J1 t=61-76] ..."
+        summary = [line for line in story if not line.startswith("[")]   # control share, vs fixed timer
+        facts["story"] = moments[:MAX_STORY_LINES] + summary
+        if len(moments) > MAX_STORY_LINES:
+            facts["story_note"] = f"{len(moments) - MAX_STORY_LINES} later moments not shown"
+    except (OSError, ValueError, KeyError, IndexError):
+        pass
+    facts["units"] = {"control_share": "% of decisions", "ambulance_trip_s": "s per ambulance trip",
+                      "*_waiting_s / *_wait_s / *_trip_s": "s per finished trip"}
+    return facts
+
+
 def build_context(root: Path, run_id: str) -> dict:
     """Read complete CSV rows, keeping at most 120 one-second samples in memory.
 
@@ -104,7 +135,7 @@ def build_context(root: Path, run_id: str) -> dict:
         if source in final:
             conversions[target] = {"value": round(final[source]["value"] * 1000, 2),
                                    "unit": unit, "source": source, "factor": 1000}
-    return {
+    context = {
         "simulation": {"run_id": run_id, "scenario": meta.get("scenario"),
                        "controller": result.get("controller", meta.get("controller")),
                        "status": status, "status_fr": STATUS_LABELS.get(status, "inconnu"),
@@ -132,3 +163,7 @@ def build_context(root: Path, run_id: str) -> dict:
             "Un changement de commande ne démontre pas une causalité ; le trafic précédent reste présent.",
         ],
     }
+    team = team_facts(directory, result)
+    if team:  # full FlowMind system only: which agent acted, when, and the per-agent figures
+        context["team"] = team
+    return context
