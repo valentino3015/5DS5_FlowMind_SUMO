@@ -135,8 +135,11 @@ def worker(options):
                 with lock:
                     job["status"] = f"{controller} · seed {seed}"
                 runtime_args = {"runtime_control": runtime_control} if options.get("interactive") else {}
+                # Only the chosen method opens the SUMO window; comparison baselines (fixed timer,
+                # max-pressure) run without it, at full speed (added by Adem).
+                gui = options["gui"] and controller == options.get("method", controller)
                 result = run_experiment(controller, options["scenario"], options["seconds"], seed,
-                                        options["gui"], options["delay"], stop, **runtime_args)
+                                        gui, options["delay"], stop, **runtime_args)
                 with lock:
                     job["run_ids"].append(result["run_id"])
             if stop.is_set():
