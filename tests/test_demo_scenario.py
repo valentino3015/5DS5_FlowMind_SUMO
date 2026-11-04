@@ -21,7 +21,8 @@ def starts(route_file):
 
 
 @pytest.mark.parametrize("name", ["corridor/corridor.rou.xml", "corridor/corridor_demo.rou.xml",
-                                  "corridor5/corridor5.rou.xml", "corridor5/corridor5_demo.rou.xml"])
+                                  "corridor5/corridor5.rou.xml", "corridor5/corridor5_demo.rou.xml",
+                                  "grid10/grid10.rou.xml", "grid10/grid10_demo.rou.xml"])
 def test_route_file_is_in_departure_order(name):
     entries = starts(SCENARIOS / name)
     for (a, ta), (b, tb) in zip(entries, entries[1:]):
@@ -35,4 +36,9 @@ def test_demo_has_every_event():
 
 def test_long_corridor_demo_has_every_event():
     ids = {i for i, _ in starts(SCENARIOS / "corridor5" / "corridor5_demo.rou.xml")}
+    assert {"amb_1", "amb_2", "accident_1", "accident_2", "bus_ew.0", "bus_ew.1", "bus_ew.2", "ped_rush"} <= ids
+
+
+def test_grid_demo_has_every_event():
+    ids = {i for i, _ in starts(SCENARIOS / "grid10" / "grid10_demo.rou.xml")}
     assert {"amb_1", "amb_2", "accident_1", "accident_2", "bus_ew.0", "bus_ew.1", "bus_ew.2", "ped_rush"} <= ids

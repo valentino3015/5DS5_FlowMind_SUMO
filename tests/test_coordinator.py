@@ -92,3 +92,29 @@ def test_no_warning_below_threshold_or_without_states():
     c = Coordinator(SPILL, ORDER)
     assert all(v == [] for v in c.update(10.0, [], [], corridor_states(0.39, 0.39)).values())
     assert all(v == [] for v in c.update(10.0, [], []).values())
+
+
+# --- any layout: neighbours from the roads between junctions (grid10) ---
+from flowmind.control.coordinator import road_links  # noqa: E402
+
+
+def test_road_links_follow_the_lanes():
+    links = road_links(corridor_states())
+    assert sorted(links) == [("J1", "J2"), ("J2", "J1")]     # J3 is joined to nothing here
+
+
+def test_incident_warns_the_junction_below_in_a_grid():
+    # J1 - J2 on the top street, J6 below J1: a road J1 <-> J6 makes J6 a neighbour too.
+    links = [("J1", "J2"), ("J2", "J1"), ("J1", "J6"), ("J6", "J1")]
+    c = Coordinator(PARAMS, ["J1", "J2", "J6"], links)
+    events = c.update(10.0, [], [SimpleNamespace(agent="incident", tls_id="J1", reason="lane blocked")])
+    assert [e.data["from_tls"] for e in events["J2"]] == ["J1"]
+    assert [e.data["from_tls"] for e in events["J6"]] == ["J1"]
+    assert events["J1"] == []
+
+
+def test_links_give_the_same_warnings_as_the_corridor_order():
+    states = corridor_states(j1_j2=0.55)
+    plain = Coordinator(SPILL, ORDER).update(10.0, [], [], states)
+    linked = Coordinator(SPILL, ORDER, road_links(states)).update(10.0, [], [], states)
+    assert plain == linked

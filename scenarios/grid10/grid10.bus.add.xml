@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Bus stop zones of the grid. Owner: Adem. Loaded by env.py (NAME.bus.add.xml next to NAME.net.xml).
+     Far-side stops, 15-45 m after each junction on the right car lane, like scenarios/corridor5:
+     4 per direction on each main street (lines bus_we/bus_ew on top, bus_we2/bus_ew2 at the bottom). -->
+<additional>
+    <busStop id="bs_we_1" name="bus_we stop 1, after J1" lane="J1_J2_1" startPos="15" endPos="45" lines="bus_we"/>
+    <busStop id="bs_we_2" name="bus_we stop 2, after J2" lane="J2_J3_1" startPos="15" endPos="45" lines="bus_we"/>
+    <busStop id="bs_we_3" name="bus_we stop 3, after J3" lane="J3_J4_1" startPos="15" endPos="45" lines="bus_we"/>
+    <busStop id="bs_we_4" name="bus_we stop 4, after J4" lane="J4_J5_1" startPos="15" endPos="45" lines="bus_we"/>
+    <busStop id="bs_ew_1" name="bus_ew stop 1, after J5" lane="J5_J4_1" startPos="15" endPos="45" lines="bus_ew"/>
+    <busStop id="bs_ew_2" name="bus_ew stop 2, after J4" lane="J4_J3_1" startPos="15" endPos="45" lines="bus_ew"/>
+    <busStop id="bs_ew_3" name="bus_ew stop 3, after J3" lane="J3_J2_1" startPos="15" endPos="45" lines="bus_ew"/>
+    <busStop id="bs_ew_4" name="bus_ew stop 4, after J2" lane="J2_J1_1" startPos="15" endPos="45" lines="bus_ew"/>
+    <busStop id="bs_we2_1" name="bus_we2 stop 1, after J6" lane="J6_J7_1" startPos="15" endPos="45" lines="bus_we2"/>
+    <busStop id="bs_we2_2" name="bus_we2 stop 2, after J7" lane="J7_J8_1" startPos="15" endPos="45" lines="bus_we2"/>
+    <busStop id="bs_we2_3" name="bus_we2 stop 3, after J8" lane="J8_J9_1" startPos="15" endPos="45" lines="bus_we2"/>
+    <busStop id="bs_we2_4" name="bus_we2 stop 4, after J9" lane="J9_J10_1" startPos="15" endPos="45" lines="bus_we2"/>
+    <busStop id="bs_ew2_1" name="bus_ew2 stop 1, after J10" lane="J10_J9_1" startPos="15" endPos="45" lines="bus_ew2"/>
+    <busStop id="bs_ew2_2" name="bus_ew2 stop 2, after J9" lane="J9_J8_1" startPos="15" endPos="45" lines="bus_ew2"/>
+    <busStop id="bs_ew2_3" name="bus_ew2 stop 3, after J8" lane="J8_J7_1" startPos="15" endPos="45" lines="bus_ew2"/>
+    <busStop id="bs_ew2_4" name="bus_ew2 stop 4, after J7" lane="J7_J6_1" startPos="15" endPos="45" lines="bus_ew2"/>
+</additional>

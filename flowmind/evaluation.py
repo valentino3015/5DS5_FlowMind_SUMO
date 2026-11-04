@@ -20,12 +20,14 @@ SCENARIOS = {
     "corridor_demo": ("scenarios/corridor/corridor.net.xml", "scenarios/corridor/corridor_demo.rou.xml"),
     "corridor5": ("scenarios/corridor5/corridor5.net.xml", "scenarios/corridor5/corridor5.rou.xml"),
     "corridor5_demo": ("scenarios/corridor5/corridor5.net.xml", "scenarios/corridor5/corridor5_demo.rou.xml"),
+    "grid10": ("scenarios/grid10/grid10.net.xml", "scenarios/grid10/grid10.rou.xml"),
+    "grid10_demo": ("scenarios/grid10/grid10.net.xml", "scenarios/grid10/grid10_demo.rou.xml"),
     "3x3grid": ("scenarios/3x3grid/3x3Grid2lanes.net.xml", "scenarios/3x3grid/routes14000.rou.xml"),
     "cologne3": ("scenarios/cologne3.net.xml", "scenarios/cologne3.rou.xml"),
 }
 # Team scenarios run with the team's settings (normal SUMO physics, fixed_time 30 s), exactly
 # like scripts/run.py; the emission protocol below stays for Manoubi's grid/Cologne studies.
-TEAM_SCENARIOS = ("corridor", "corridor_demo", "corridor5", "corridor5_demo")
+TEAM_SCENARIOS = ("corridor", "corridor_demo", "corridor5", "corridor5_demo", "grid10", "grid10_demo")
 # Agents of the orchestrated system, in the order shown by the dashboard (added by Adem).
 TEAM_AGENTS = ("emergency", "incident", "pedestrian", "bus", "flow", "max_pressure", "operator")
 
@@ -239,12 +241,13 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
                 if controller == "flow_model" and agents[tls].model is None:
                     raise ValueError("The model could not be loaded; run cancelled.")
         if controller == "orchestrated":
-            from flowmind.control.coordinator import Coordinator
+            from flowmind.control.coordinator import Coordinator, road_links
             from flowmind.control.shield import SafetyShield
             from flowmind.logger import DecisionLogger
             from scripts.run import warning_text
-            order = [t for t in config.get("corridor", {}).get("order", []) if t in env.tls_ids] or list(env.tls_ids)
-            coordinator = Coordinator(config["coordinator"], order)
+            listed = [t for t in config.get("corridor", {}).get("order", []) if t in env.tls_ids]
+            order = listed + [t for t in env.tls_ids if t not in listed]   # grid10: J6-J10 too
+            coordinator = Coordinator(config["coordinator"], order, road_links(states))
             shield = SafetyShield(config["signals"], config.get("shield", {}))
             # the team's own log (decisions.csv / summary.csv / states.jsonl) for the XAI layer
             team_log = DecisionLogger(directory / "team", latency_budget_ms=config["orchestrator"]["max_decision_ms"],

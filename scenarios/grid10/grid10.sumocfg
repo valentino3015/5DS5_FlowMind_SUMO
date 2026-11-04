@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FlowMind grid simulation (10 junctions). Owner: Adem. env.py adds the seed, end time and GUI options. -->
+<configuration>
+    <input>
+        <net-file value="grid10.net.xml"/>
+        <route-files value="grid10.rou.xml"/>
+        <additional-files value="grid10.bus.add.xml"/>
+    </input>
+    <processing>
+        <time-to-teleport value="300"/>
+    </processing>
+    <report>
+        <no-step-log value="true"/>
+        <no-warnings value="true"/>
+    </report>
+</configuration>

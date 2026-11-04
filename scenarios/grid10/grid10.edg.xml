@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Edges are named FROM_TO, e.g. "J1_J6" goes from J1 down to J6. -->
+<edges>
+    <!-- top main street: 2 lanes per direction, 50 km/h -->
+    <edge id="W_J1" from="W" to="J1" numLanes="2" speed="13.89"/>
+    <edge id="J1_W" from="J1" to="W" numLanes="2" speed="13.89"/>
+    <edge id="J1_J2" from="J1" to="J2" numLanes="2" speed="13.89"/>
+    <edge id="J2_J1" from="J2" to="J1" numLanes="2" speed="13.89"/>
+    <edge id="J2_J3" from="J2" to="J3" numLanes="2" speed="13.89"/>
+    <edge id="J3_J2" from="J3" to="J2" numLanes="2" speed="13.89"/>
+    <edge id="J3_J4" from="J3" to="J4" numLanes="2" speed="13.89"/>
+    <edge id="J4_J3" from="J4" to="J3" numLanes="2" speed="13.89"/>
+    <edge id="J4_J5" from="J4" to="J5" numLanes="2" speed="13.89"/>
+    <edge id="J5_J4" from="J5" to="J4" numLanes="2" speed="13.89"/>
+    <edge id="J5_E" from="J5" to="E" numLanes="2" speed="13.89"/>
+    <edge id="E_J5" from="E" to="J5" numLanes="2" speed="13.89"/>
+    <!-- bottom main street -->
+    <edge id="W2_J6" from="W2" to="J6" numLanes="2" speed="13.89"/>
+    <edge id="J6_W2" from="J6" to="W2" numLanes="2" speed="13.89"/>
+    <edge id="J6_J7" from="J6" to="J7" numLanes="2" speed="13.89"/>
+    <edge id="J7_J6" from="J7" to="J6" numLanes="2" speed="13.89"/>
+    <edge id="J7_J8" from="J7" to="J8" numLanes="2" speed="13.89"/>
+    <edge id="J8_J7" from="J8" to="J7" numLanes="2" speed="13.89"/>
+    <edge id="J8_J9" from="J8" to="J9" numLanes="2" speed="13.89"/>
+    <edge id="J9_J8" from="J9" to="J8" numLanes="2" speed="13.89"/>
+    <edge id="J9_J10" from="J9" to="J10" numLanes="2" speed="13.89"/>
+    <edge id="J10_J9" from="J10" to="J9" numLanes="2" speed="13.89"/>
+    <edge id="J10_E2" from="J10" to="E2" numLanes="2" speed="13.89"/>
+    <edge id="E2_J10" from="E2" to="J10" numLanes="2" speed="13.89"/>
+    <!-- side streets: 1 lane per direction, 40 km/h; north end - top junction - bottom junction - south end -->
+    <edge id="N1_J1" from="N1" to="J1" numLanes="1" speed="11.11"/>
+    <edge id="J1_N1" from="J1" to="N1" numLanes="1" speed="11.11"/>
+    <edge id="J1_J6" from="J1" to="J6" numLanes="1" speed="11.11"/>
+    <edge id="J6_J1" from="J6" to="J1" numLanes="1" speed="11.11"/>
+    <edge id="J6_S6" from="J6" to="S6" numLanes="1" speed="11.11"/>
+    <edge id="S6_J6" from="S6" to="J6" numLanes="1" speed="11.11"/>
+    <edge id="N2_J2" from="N2" to="J2" numLanes="1" speed="11.11"/>
+    <edge id="J2_N2" from="J2" to="N2" numLanes="1" speed="11.11"/>
+    <edge id="J2_J7" from="J2" to="J7" numLanes="1" speed="11.11"/>
+    <edge id="J7_J2" from="J7" to="J2" numLanes="1" speed="11.11"/>
+    <edge id="J7_S7" from="J7" to="S7" numLanes="1" speed="11.11"/>
+    <edge id="S7_J7" from="S7" to="J7" numLanes="1" speed="11.11"/>
+    <edge id="N3_J3" from="N3" to="J3" numLanes="1" speed="11.11"/>
+    <edge id="J3_N3" from="J3" to="N3" numLanes="1" speed="11.11"/>
+    <edge id="J3_J8" from="J3" to="J8" numLanes="1" speed="11.11"/>
+    <edge id="J8_J3" from="J8" to="J3" numLanes="1" speed="11.11"/>
+    <edge id="J8_S8" from="J8" to="S8" numLanes="1" speed="11.11"/>
+    <edge id="S8_J8" from="S8" to="J8" numLanes="1" speed="11.11"/>
+    <edge id="N4_J4" from="N4" to="J4" numLanes="1" speed="11.11"/>
+    <edge id="J4_N4" from="J4" to="N4" numLanes="1" speed="11.11"/>
+    <edge id="J4_J9" from="J4" to="J9" numLanes="1" speed="11.11"/>
+    <edge id="J9_J4" from="J9" to="J4" numLanes="1" speed="11.11"/>
+    <edge id="J9_S9" from="J9" to="S9" numLanes="1" speed="11.11"/>
+    <edge id="S9_J9" from="S9" to="J9" numLanes="1" speed="11.11"/>
+    <edge id="N5_J5" from="N5" to="J5" numLanes="1" speed="11.11"/>
+    <edge id="J5_N5" from="J5" to="N5" numLanes="1" speed="11.11"/>
+    <edge id="J5_J10" from="J5" to="J10" numLanes="1" speed="11.11"/>
+    <edge id="J10_J5" from="J10" to="J5" numLanes="1" speed="11.11"/>
+    <edge id="J10_S10" from="J10" to="S10" numLanes="1" speed="11.11"/>
+    <edge id="S10_J10" from="S10" to="J10" numLanes="1" speed="11.11"/>
+</edges>

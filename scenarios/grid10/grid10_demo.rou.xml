@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FlowMind grid DEMO traffic (10 junctions, 10 min): every agent gets its moment. Owner: Adem.
+     Same normal traffic as grid10.rou.xml; events packed into 600 s:
+       t =  60 s  ambulance amb_1: top street, turns down at J3, bottom street  -> green corridor round the corner
+       t = 140 s  pedestrian rush at J3                                       -> pedestrian agent and shield
+       t = 230 s  accident on the top street between J2 and J3, peak behind it -> incident agent, spillback
+       t = 330 s  late bus bus_ew.1, bus_ew.2 15 s behind (top street)         -> bus agent helps the late one only
+       t = 430 s  ambulance amb_2: bottom street, up at J8, through J3 and J2  -> emergency beats incident
+     Buses stop for passengers at the far-side stop zones of grid10.bus.add.xml (loaded by env.py):
+     at least 10 s (doors), longer while passengers board or alight (2.5 s each).
+     (all entries are in time order: SUMO silently drops one that starts earlier than the one before) -->
+<routes>
+    <vType id="car"       vClass="passenger"/>
+    <vType id="bus"       vClass="bus" length="12" maxSpeed="13.89" color="0,0.6,1" boardingDuration="2.5"/>
+    <!-- Ambulance WITHOUT bluelight device: it stops at red lights like everyone else -->
+    <vType id="ambulance" vClass="emergency" maxSpeed="16.67" color="1,0,0"/>
+
+    <!-- main streets, both directions (~430 veh/h each) -->
+    <flow id="main_we" type="car" from="W_J1" to="J5_E" begin="0" end="600" probability="0.12" departLane="best" departSpeed="max"/>
+    <flow id="main_ew" type="car" from="E_J5" to="J1_W" begin="0" end="600" probability="0.12" departLane="best" departSpeed="max"/>
+    <flow id="main_we2" type="car" from="W2_J6" to="J10_E2" begin="0" end="600" probability="0.12" departLane="best" departSpeed="max"/>
+    <flow id="main_ew2" type="car" from="E2_J10" to="J6_W2" begin="0" end="600" probability="0.12" departLane="best" departSpeed="max"/>
+    <!-- side streets, across both main streets (~145 veh/h each) -->
+    <flow id="side_ns1" type="car" from="N1_J1" to="J6_S6" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_sn1" type="car" from="S6_J6" to="J1_N1" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_ns2" type="car" from="N2_J2" to="J7_S7" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_sn2" type="car" from="S7_J7" to="J2_N2" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_ns3" type="car" from="N3_J3" to="J8_S8" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_sn3" type="car" from="S8_J8" to="J3_N3" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_ns4" type="car" from="N4_J4" to="J9_S9" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_sn4" type="car" from="S9_J9" to="J4_N4" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_ns5" type="car" from="N5_J5" to="J10_S10" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <flow id="side_sn5" type="car" from="S10_J10" to="J5_N5" begin="0" end="600" probability="0.04" departSpeed="max"/>
+    <!-- turning traffic, also between the two main streets -->
+    <flow id="turn_w_s8" type="car" from="W_J1" to="J8_S8" begin="0" end="600" probability="0.02" departLane="best" departSpeed="max"/>
+    <flow id="turn_n2_e2" type="car" from="N2_J2" to="J10_E2" begin="0" end="600" probability="0.02" departLane="best" departSpeed="max"/>
+    <flow id="turn_e2_n4" type="car" from="E2_J10" to="J4_N4" begin="0" end="600" probability="0.02" departLane="best" departSpeed="max"/>
+    <flow id="turn_s7_w" type="car" from="S7_J7" to="J1_W" begin="0" end="600" probability="0.02" departLane="best" departSpeed="max"/>
+    <flow id="turn_e_s6" type="car" from="E_J5" to="J6_S6" begin="0" end="600" probability="0.02" departLane="best" departSpeed="max"/>
+    <flow id="turn_n5_w2" type="car" from="N5_J5" to="J6_W2" begin="0" end="600" probability="0.02" departLane="best" departSpeed="max"/>
+    <!-- pedestrians crossing each main street at each junction, and walking along both -->
+    <personFlow id="ped_x1" begin="0" end="600" probability="0.01"><walk from="N1_J1" to="J1_J6"/></personFlow>
+    <personFlow id="ped_x6" begin="0" end="600" probability="0.01"><walk from="S6_J6" to="J6_J1"/></personFlow>
+    <personFlow id="ped_x2" begin="0" end="600" probability="0.01"><walk from="N2_J2" to="J2_J7"/></personFlow>
+    <personFlow id="ped_x7" begin="0" end="600" probability="0.01"><walk from="S7_J7" to="J7_J2"/></personFlow>
+    <personFlow id="ped_x3" begin="0" end="600" probability="0.01"><walk from="N3_J3" to="J3_J8"/></personFlow>
+    <personFlow id="ped_x8" begin="0" end="600" probability="0.01"><walk from="S8_J8" to="J8_J3"/></personFlow>
+    <personFlow id="ped_x4" begin="0" end="600" probability="0.01"><walk from="N4_J4" to="J4_J9"/></personFlow>
+    <personFlow id="ped_x9" begin="0" end="600" probability="0.01"><walk from="S9_J9" to="J9_J4"/></personFlow>
+    <personFlow id="ped_x5" begin="0" end="600" probability="0.01"><walk from="N5_J5" to="J5_J10"/></personFlow>
+    <personFlow id="ped_x10" begin="0" end="600" probability="0.01"><walk from="S10_J10" to="J10_J5"/></personFlow>
+    <personFlow id="ped_along" begin="0" end="600" probability="0.01"><walk from="W_J1" to="J5_E"/></personFlow>
+    <personFlow id="ped_along2" begin="0" end="600" probability="0.01"><walk from="W2_J6" to="J10_E2"/></personFlow>
+    <!-- bus passengers of the top westbound line (the line of the demo buses) -->
+    <personFlow id="pax_ew_1" begin="0" end="600" probability="0.015"><walk from="J5_J4" busStop="bs_ew_1"/><ride busStop="bs_ew_3" lines="bus_ew"/></personFlow>
+    <personFlow id="pax_ew_2" begin="0" end="600" probability="0.015"><walk from="J4_J3" busStop="bs_ew_2"/><ride busStop="bs_ew_4" lines="bus_ew"/></personFlow>
+    <personFlow id="pax_ew_3" begin="0" end="600" probability="0.015"><walk from="J3_J2" busStop="bs_ew_3"/><ride busStop="bs_ew_4" lines="bus_ew"/></personFlow>
+
+    <!-- fixed events, sorted by departure time -->
+    <!-- first bus of the line: gives the bus agent its reference passage -->
+    <vehicle id="bus_ew.0" type="bus" line="bus_ew" depart="5" departLane="best">
+        <route edges="E_J5 J5_J4 J4_J3 J3_J2 J2_J1 J1_W"/><stop busStop="bs_ew_1" duration="10"/><stop busStop="bs_ew_2" duration="10"/><stop busStop="bs_ew_3" duration="10"/><stop busStop="bs_ew_4" duration="10"/>
+    </vehicle>
+    <vehicle id="amb_1" type="ambulance" depart="60" departLane="best" departSpeed="max">
+        <route edges="W_J1 J1_J2 J2_J3 J3_J8 J8_J9 J9_J10 J10_E2"/>
+    </vehicle>
+    <!-- (t = 140 s) pedestrian rush at J3 (school exit): about 30 people in 100 s -->
+    <personFlow id="ped_rush" begin="140" end="240" probability="0.3"><walk from="N3_J3" to="J3_J8"/></personFlow>
+    <!-- (t = 220 s) eastbound peak on the top street while the accident blocks it -->
+    <flow id="peak_we" type="car" from="W_J1" to="J5_E" begin="220" end="420" probability="0.12" departLane="best" departSpeed="max"/>
+    <!-- accident: two cars stop side by side and block both eastbound lanes of the top street between J2 and J3 -->
+    <vehicle id="accident_1" type="car" depart="230" departLane="1" departPos="0" color="1,0.5,0">
+        <route edges="J2_J3 J3_J4 J4_J5 J5_E"/>
+        <stop lane="J2_J3_1" endPos="120" duration="240"/>
+    </vehicle>
+    <vehicle id="accident_2" type="car" depart="230" departLane="2" departPos="0" color="1,0.5,0">
+        <route edges="J2_J3 J3_J4 J4_J5 J5_E"/>
+        <stop lane="J2_J3_2" endPos="120" duration="240"/>
+    </vehicle>
+    <!-- bus_ew.1 is ~25 s late on the 300 s headway; bus_ew.2 follows only 15 s behind (bunching) -->
+    <vehicle id="bus_ew.1" type="bus" line="bus_ew" depart="330" departLane="best">
+        <route edges="E_J5 J5_J4 J4_J3 J3_J2 J2_J1 J1_W"/><stop busStop="bs_ew_1" duration="10"/><stop busStop="bs_ew_2" duration="10"/><stop busStop="bs_ew_3" duration="10"/><stop busStop="bs_ew_4" duration="10"/>
+    </vehicle>
+    <vehicle id="bus_ew.2" type="bus" line="bus_ew" depart="345" departLane="best">
+        <route edges="E_J5 J5_J4 J4_J3 J3_J2 J2_J1 J1_W"/><stop busStop="bs_ew_1" duration="10"/><stop busStop="bs_ew_2" duration="10"/><stop busStop="bs_ew_3" duration="10"/><stop busStop="bs_ew_4" duration="10"/>
+    </vehicle>
+    <!-- second ambulance: bottom street westbound, turns up at J8 and crosses J3, J2 while the incident agent handles the accident -->
+    <vehicle id="amb_2" type="ambulance" depart="430" departLane="best" departSpeed="max">
+        <route edges="E2_J10 J10_J9 J9_J8 J8_J3 J3_J2 J2_J1 J1_W"/>
+    </vehicle>
+</routes>

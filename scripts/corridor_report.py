@@ -117,9 +117,9 @@ def main():
     p.add_argument("--seconds", type=int, default=1800, help="simulated seconds per run (default 1800)")
     p.add_argument("--seeds", type=int, default=None, help="use only the first N seeds of evaluation.seeds")
     p.add_argument("--workers", type=int, default=4, help="runs at the same time (default 4)")
-    p.add_argument("--scenario", default="corridor", choices=["corridor", "corridor5"],
-                   help="corridor (3 junctions, default) or corridor5 (5 junctions)")
-    p.add_argument("--out", default=None, help="output folder (default runs/corridor_report, or runs/corridor5_report)")
+    p.add_argument("--scenario", default="corridor", choices=["corridor", "corridor5", "grid10"],
+                   help="corridor (3 junctions, default), corridor5 (5 junctions) or grid10 (2 x 5 junctions)")
+    p.add_argument("--out", default=None, help="output folder (default runs/<scenario>_report)")
     args = p.parse_args()
 
     config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))

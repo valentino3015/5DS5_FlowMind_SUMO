@@ -24,7 +24,8 @@ shield:
   spillback_threshold: 0.75  # suppress green switch if ANY downstream lane exceeds this occupancy
 
 corridor:
-  order: [J1, J2, J3, J4, J5]  # junctions from west to east (each scenario keeps the ones it has: corridor J1-J3, corridor5 J1-J5)
+  order: [J1, J2, J3, J4, J5]  # junctions from west to east (each scenario keeps the ones it has: corridor J1-J3, corridor5 J1-J5;
+                               # grid10 adds J6-J10). The coordinator's neighbours come from the roads (road_links).
 
 orchestrator:
   priority: [emergency, incident, pedestrian, bus, flow]   # first = most important

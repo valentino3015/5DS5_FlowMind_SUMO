@@ -37,7 +37,7 @@ from flowmind.agents.flow import FlowAgent
 from flowmind.agents.incident import IncidentAgent
 from flowmind.agents.pedestrian import PedestrianAgent
 from flowmind.control.shield import SafetyShield
-from flowmind.control.coordinator import Coordinator
+from flowmind.control.coordinator import Coordinator, road_links
 from flowmind.control.orchestrator import Decision, Orchestrator
 from flowmind.agents.rules import RuleBasedAgent
 from flowmind.env import SumoCorridorEnv
@@ -106,9 +106,9 @@ def main():
     parser.add_argument(
         "--scenario",
         default=None,
-        choices=["3x3grid", "cologne3", "corridor", "corridor_demo", "corridor5", "corridor5_demo"],
+        choices=["3x3grid", "cologne3", "corridor", "corridor_demo", "corridor5", "corridor5_demo", "grid10", "grid10_demo"],
         help="Traffic scenario: 3x3grid (default), cologne3, corridor or corridor_demo (10 min, every agent acts); "
-             "corridor5 / corridor5_demo: the same with 5 junctions",
+             "corridor5 / corridor5_demo: the same with 5 junctions; grid10 / grid10_demo: 2 streets x 5 junctions",
     )
     parser.add_argument("--gui", action="store_true", help="Open SUMO GUI")
     parser.add_argument("--heuristic", action="store_true", help="Run FlowAgent heuristic directly without loading checkpoint")
@@ -139,9 +139,10 @@ def main():
             config["sim"]["net_file"] = "scenarios/corridor/corridor.net.xml"
             config["sim"]["route_file"] = "scenarios/corridor/corridor_demo.rou.xml"
             begin_time = 0
-        elif args.scenario in ("corridor5", "corridor5_demo"):  # 5 junctions J1-J5, same design
-            config["sim"]["net_file"] = "scenarios/corridor5/corridor5.net.xml"
-            config["sim"]["route_file"] = f"scenarios/corridor5/{args.scenario}.rou.xml"
+        elif args.scenario in ("corridor5", "corridor5_demo", "grid10", "grid10_demo"):  # 5 or 2 x 5 junctions
+            folder = args.scenario.removesuffix("_demo")
+            config["sim"]["net_file"] = f"scenarios/{folder}/{folder}.net.xml"
+            config["sim"]["route_file"] = f"scenarios/{folder}/{args.scenario}.rou.xml"
             begin_time = 0
 
     if args.seconds:
@@ -195,9 +196,11 @@ def main():
         else:
             print(f"Override ignored: {tls} is not an orchestrated junction")
 
-    # Corridor order for the coordinator (falls back to the junction list of the scenario)
-    order = [t for t in config.get("corridor", {}).get("order", []) if t in env.tls_ids] or list(env.tls_ids)
-    coordinator = Coordinator(config["coordinator"], order)
+    # Junction order for the coordinator: corridor.order first, then any other junction (grid10: J6-J10).
+    # Neighbours come from the roads between junctions (road_links), so any layout works.
+    listed = [t for t in config.get("corridor", {}).get("order", []) if t in env.tls_ids]
+    order = listed + [t for t in env.tls_ids if t not in listed]
+    coordinator = Coordinator(config["coordinator"], order, road_links(states))
     safety = SafetyShield(config["signals"], config.get("shield", {}))
     overlay = config.get("overlay", {})
 

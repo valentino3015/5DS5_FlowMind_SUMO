@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FlowMind grid: 10 traffic lights in 2 rows of 5 (two parallel main streets, 200 m apart),
+     joined by the side streets. Same street design as scenarios/corridor5/.
+     Owner: Adem. Edit this file, then run: python scenarios/build.py grid10 -->
+<nodes>
+    <!-- main road ends -->
+    <node id="W"  x="-200" y="0"/>
+    <node id="E"  x="1000" y="0"/>
+    <node id="W2" x="-200" y="-200"/>
+    <node id="E2" x="1000" y="-200"/>
+    <!-- the 10 junctions with traffic lights: top street J1-J5, bottom street J6-J10 -->
+    <node id="J1" x="0" y="0" type="traffic_light"/>
+    <node id="J2" x="200" y="0" type="traffic_light"/>
+    <node id="J3" x="400" y="0" type="traffic_light"/>
+    <node id="J4" x="600" y="0" type="traffic_light"/>
+    <node id="J5" x="800" y="0" type="traffic_light"/>
+    <node id="J6" x="0" y="-200" type="traffic_light"/>
+    <node id="J7" x="200" y="-200" type="traffic_light"/>
+    <node id="J8" x="400" y="-200" type="traffic_light"/>
+    <node id="J9" x="600" y="-200" type="traffic_light"/>
+    <node id="J10" x="800" y="-200" type="traffic_light"/>
+    <!-- side street ends: north of the top street, south of the bottom street -->
+    <node id="N1" x="0" y="150"/>
+    <node id="N2" x="200" y="150"/>
+    <node id="N3" x="400" y="150"/>
+    <node id="N4" x="600" y="150"/>
+    <node id="N5" x="800" y="150"/>
+    <node id="S6" x="0" y="-350"/>
+    <node id="S7" x="200" y="-350"/>
+    <node id="S8" x="400" y="-350"/>
+    <node id="S9" x="600" y="-350"/>
+    <node id="S10" x="800" y="-350"/>
+</nodes>
