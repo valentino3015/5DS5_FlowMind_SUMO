@@ -154,6 +154,33 @@ def test_event_claim_reason_stays_short():
     claim = agent.wants_control(make_example_state(), [e])
     assert claim.reason == "spillback warning from J2, 41% full"
 
+def with_exit(states, occupancy, queue, vehicles):
+    """The same states with the exit south_out (fed by north_in_0) at the given load."""
+    return [replace(s, out_lanes=tuple(
+        replace(l, occupancy=occupancy, queue=queue, vehicles=vehicles) if l.lane_id == "south_out" else l
+        for l in s.out_lanes)) for s in states]
+
+
+def test_lane_stuck_behind_a_full_exit_is_spillback_not_incident():
+    # Seen in SUMO: W_J1_1 queued behind the accident on J1_J2 was flagged as an incident and the
+    # agent then kept the main road red after the accident had cleared. Its exit is full: spillback.
+    from flowmind.contracts import example_phase_movements
+    agent = IncidentAgent(RULES, example_phase_movements())
+    claim = None
+    for state in with_exit(blocked_sequence(), occupancy=0.42, queue=14, vehicles=15):
+        claim = agent.wants_control(state, []) or claim
+    assert claim is None and not agent.blocked
+
+
+def test_lane_stuck_with_a_free_exit_is_still_an_incident():
+    from flowmind.contracts import example_phase_movements
+    agent = IncidentAgent(RULES, example_phase_movements())
+    claim = None
+    for state in with_exit(blocked_sequence(), occupancy=0.05, queue=0, vehicles=2):
+        claim = agent.wants_control(state, []) or claim
+    assert claim is not None and "north_in_0" in claim.reason
+
+
 def test_missing_model_falls_back_to_the_rule():
     # use_ppo on but no model file (e.g. a teammate without runs/models): the rule decides.
     agent = IncidentAgent({**CONFIG["incident"], "use_ppo": True, "model_path": "runs/models/does_not_exist.zip"})

@@ -79,6 +79,27 @@ class Specialist:
         return self._phase_with(state, state.phase_crossings, crossing_id, allowed)
 
     @staticmethod
+    def exits_backed_up(state: JunctionState, lane_id: str, movements: dict,
+                        occupancy: float, halted_share: float = 0.7) -> bool:
+        """True if an exit lane this incoming lane feeds is backed up: its cars cannot move
+        because the road after the junction is full (spillback), not because of this lane.
+
+        One exit is enough: cars queue in one line, so the first car waiting for the full road
+        blocks the ones behind it that would turn (W_J1_1 feeds J1_J2_1 and J1_S1_1).
+        movements: {phase: [(incoming lane, outgoing lane), ...]} from env.get_phase_movements.
+        Backed up = occupancy >= `occupancy` and at least `halted_share` of its cars halting.
+        Measured on the corridor (3 seeds, 30 min): normal exit lanes stay below 0.32
+        (99 % below 0.16); the road blocked by the accident reads 0.35-0.44.
+        Without movements (or if the lane feeds no known exit) the answer is False.
+        """
+        exits = {dst for moves in movements.values() for src, dst in moves if src == lane_id}
+        out = {lane.lane_id: lane for lane in state.out_lanes}
+        lanes = [out[d] for d in exits if d in out]
+        return any(
+            l.occupancy >= occupancy and l.vehicles > 0 and l.queue >= halted_share * l.vehicles
+            for l in lanes)
+
+    @staticmethod
     def _phase_with(state: JunctionState, per_phase: tuple, item_id: str, allowed: list[bool]) -> int | None:
         candidates = [p for p, ids in enumerate(per_phase) if item_id in ids and allowed[p]]
         if not candidates:

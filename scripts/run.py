@@ -56,7 +56,7 @@ def make_orchestrator(config: dict, movements: dict) -> Orchestrator:
     emergency = EmergencyAgent if config.get("agents", {}).get("emergency") == "team" else DemoEmergency
     agents = [
         emergency(config["emergency"]),
-        IncidentAgent(config["incident"]),
+        IncidentAgent(config["incident"], movements),  # movements: tell spillback from an incident
         PedestrianAgent(config["pedestrian"]),
         BusAgent(config["bus"]),
         FlowAgent(config.get("flow", {})),

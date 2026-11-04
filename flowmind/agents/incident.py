@@ -99,9 +99,16 @@ class IncidentAgent(Specialist):
         window = float(self.params.get("check_window", 20))
         min_green = float(self.params.get("min_green_seen", 10))
         min_left = int(self.params.get("min_departures", 2))
+        downstream = float(self.params.get("downstream_occupancy", 0.25))
 
         for lane in state.lanes:
             lid = lane.lane_id
+            if self.exits_backed_up(state, lid, self.movements, downstream):
+                # Stuck because the road after the junction is full (spillback): the blockage is
+                # downstream, not on this lane (seen: W_J1_1 queued behind the accident on J1_J2).
+                # The coordinator's spillback warning handles it; do not call it an incident.
+                self._clear(lid)
+                continue
             green_time, left = self._green_check(lid, window)
             judged = green_time >= min_green  # the lane got a fair chance to move
             moving = judged and left >= min_left

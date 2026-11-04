@@ -108,6 +108,7 @@ incident:
   min_departures: 2        # this many vehicles leaving on green = the lane moves again
   recheck_after: 60        # stop claiming after this long without a new confirmation (s)
   out_occupancy: 0.95      # an outgoing lane this full blocks the box
+  downstream_occupancy: 0.25 # a stuck lane whose exit is this full (and mostly halted) is spillback, not an incident (normal exits stay < 0.32, the blocked road reads 0.35-0.44)
   urgency: 0.85            # claim urgency
   hold_green: 20           # rule response keeps a safe green at least this long (s): each switch costs 5 s
   # --- RL response (Notion: anomaly detector + PPO for the response) ---
