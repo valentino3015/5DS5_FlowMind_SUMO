@@ -18,8 +18,8 @@ def state_at(t, buses, lanes=None, phase=2):
                    lanes=lanes if lanes is not None else s.lanes)
 
 
-def bus(vid, dist, lane="north_in_0"):
-    return SpecialVehicle(vid, "bus", lane, distance=float(dist), speed=8.0, delay=None)
+def bus(vid, dist, lane="north_in_0", speed=8.0):
+    return SpecialVehicle(vid, "bus", lane, distance=float(dist), speed=speed, delay=None)
 
 
 def agent_with_passage(t_pass=0.0, line="bus_ns"):
@@ -118,7 +118,17 @@ def test_fast_bus_passage_is_recorded():
     # so the bus right behind it is early (bunched), not late.
     a = BusAgent(PARAMS)
     a.last_passage["bus_ns"] = -500.0
-    a.wants_control(state_at(95, [bus("bus_ns.0", 70)]), [])
+    a.wants_control(state_at(95, [bus("bus_ns.0", 70, speed=13.9)]), [])
     a.wants_control(state_at(100, []), [])
     assert a.last_passage["bus_ns"] == 100.0
     assert a.wants_control(state_at(110, [bus("bus_ns.1", 100)]), []) is None
+
+
+def test_bus_vanishing_far_away_has_not_crossed():
+    # A bus last seen 140 m away at 8 m/s cannot reach the stop line in 5 s (40 m + 20 m margin):
+    # it was teleported or left another way, so it is not a passage of its line.
+    a = BusAgent(PARAMS)
+    a.last_passage["bus_ns"] = -500.0
+    a.wants_control(state_at(95, [bus("bus_ns.0", 140)]), [])
+    a.wants_control(state_at(100, []), [])
+    assert a.last_passage["bus_ns"] == -500.0

@@ -42,6 +42,7 @@ DEFAULTS = {
     "max_queue": 15,           # veh, refuse if a losing approach queue exceeds this
     "max_hold": 20.0,          # s of control per bus at most
     "urgency_scale": 300.0,    # s of lateness that gives urgency 1
+    "passed_margin": 20.0,     # m, slack on top of speed x step for "it crossed" (see _update_memory)
 }
 
 
@@ -59,7 +60,7 @@ class BusAgent(Specialist):
     def __init__(self, params: dict | None = None):
         super().__init__({**DEFAULTS, **(params or {})})
         self.last_passage: dict[str, float] = {}   # line -> time a bus of it crossed
-        self.seen: dict[str, float] = {}           # bus id -> last distance seen
+        self.seen: dict[str, tuple[float, float]] = {}  # bus id -> (last distance, last speed)
         self.held: dict[str, float] = {}           # bus id -> seconds of control used
         self.last_time: float | None = None
         self.served: str | None = None             # bus currently being served
@@ -71,12 +72,15 @@ class BusAgent(Specialist):
         if self.served is not None:
             self.held[self.served] = self.held.get(self.served, 0.0) + dt
         self.last_time = state.time
-        here = {v.vehicle_id: v.distance for v in state.special_vehicles if v.kind == "bus"}
-        # A bus that left the approach lanes has crossed. No distance check: at 13.9 m/s a bus
-        # moves ~70 m between two decisions, so it is often last seen far from the stop line.
-        for bus_id in self.seen:
+        here = {v.vehicle_id: (v.distance, v.speed) for v in state.special_vehicles if v.kind == "bus"}
+        # A bus that left the approach lanes has crossed only if it could reach the stop line since
+        # the last decision: last distance <= last speed x step + passed_margin. A fixed 30 m check
+        # missed most crossings (at 13.9 m/s a bus moves ~70 m in 5 s); no check at all counted a
+        # bus that vanished far away (teleported after time-to-teleport, end of route) as crossed.
+        for bus_id, (distance, speed) in self.seen.items():
             if bus_id not in here:
-                self.last_passage[line_of(bus_id)] = state.time   # it crossed the junction
+                if distance <= max(speed, 0.0) * dt + self.params["passed_margin"]:
+                    self.last_passage[line_of(bus_id)] = state.time   # it crossed the junction
                 self.held.pop(bus_id, None)
         self.seen = here
         self.served = None
