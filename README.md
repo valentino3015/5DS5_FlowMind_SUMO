@@ -38,8 +38,8 @@ Optional:
 .venv\Scripts\python.exe scripts\dashboard.py            # http://127.0.0.1:8501 (other port: --port 8600)
 ```
 
-From the page: run any method on any scenario, watch the agents live, compare with the fixed
-timer, read the XAI story of a run, ask questions about it. `Lancer-dashboard.cmd` starts the
+From the page: run any method on any scenario, watch the agents live, optionally compare with
+the fixed timer and max-pressure (ticked baselines run first, without the SUMO window), read the XAI story of a run, ask questions about it. `Lancer-dashboard.cmd` starts the
 same thing with the `python` on the PATH.
 
 **One simulation from the command line:**
@@ -82,7 +82,25 @@ Keep `--workers` at 2 on a laptop: each worker is one SUMO simulation.
 
 Details and how to rebuild a map: [scenarios/README.md](scenarios/README.md).
 
-## 4. Results (FlowMind vs fixed timer, mean of seeds 100-102)
+## 4. Results (mean of seeds 100-102)
+
+**Read this first.** The fixed timer is a weak reference: it gives every phase the same 30 s
+(the main road gets half of the green while it carries about 3x more cars) and its junctions are
+not coordinated. Real adaptive systems are usually reported to gain about 10-25 % over a well-tuned plan. The fair
+reference for cars is **max-pressure**, a strong adaptive method from the literature (it ignores
+ambulances, buses and pedestrians):
+
+| Demo (10 min) | Cars waiting | Ambulances | Pedestrian waiting | Bus waiting |
+|---|---|---|---|---|
+| `corridor_demo` | 32.6 vs 34.9 s (**-7 %**) | 60-63 vs 61-89 s | 18.8 vs 108 s (**-83 %**) | 13.1 vs 16.2 s |
+| `corridor5_demo` | 25.0 vs 26.3 s (**-5 %**) | 91-111 vs 115-144 s | 15.4 vs 64 s (**-76 %**) | 20.9 vs 22.7 s |
+| `grid10_demo` | 29.0 vs 30.5 s (**-5 %**) | `amb_1` 136 vs 175 s (**-22 %**); max-pressure's `amb_2` never arrives in 10 min | 11.4 vs 32 s (**-65 %**) | 23.3 vs 22.9 s (same) |
+
+For cars FlowMind is a little better than max-pressure (its flow agent is pressure-based too); its
+real gain is what the specialists add: ambulances through faster and more reliably, and pedestrians
+served (max-pressure leaves them waiting up to minutes).
+
+FlowMind vs the fixed timer:
 
 | Scenario | Cars waiting | Ambulance trips | Bus waiting | Pedestrian waiting |
 |---|---|---|---|---|
