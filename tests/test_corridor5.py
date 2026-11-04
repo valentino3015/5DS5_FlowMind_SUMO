@@ -46,3 +46,13 @@ def test_coordinator_warns_the_far_junctions_about_the_ambulance():
         assert {"J4", "J5"} <= warned, f"only warned {sorted(warned)}"
     finally:
         env.close()
+
+
+def test_bus_stop_zones_are_loaded():
+    import traci
+    env = SumoCorridorEnv(config=CONFIG, net_file=NET, route_file=DEMO, seed=1, begin_time=0)
+    try:
+        env.start()
+        assert len(traci.busstop.getIDList()) == 8      # 4 per direction, after each junction
+    finally:
+        env.close()

@@ -3,10 +3,12 @@
      Same rates per junction as scenarios/corridor/corridor.rou.xml. All flows use
      probability = chance per second that a vehicle/person departs, so a different seed gives
      different traffic. The fixed events are the same in every run.
+     Buses stop for passengers at the far-side stop zones of corridor5.bus.add.xml, loaded by env.py:
+     at least 10 s (doors), longer while passengers board or alight (2.5 s each).
      (all entries are in time order: SUMO silently drops one that starts earlier than the one before) -->
 <routes>
     <vType id="car"       vClass="passenger"/>
-    <vType id="bus"       vClass="bus" length="12" maxSpeed="13.89" color="0,0.6,1"/>
+    <vType id="bus"       vClass="bus" length="12" maxSpeed="13.89" color="0,0.6,1" boardingDuration="2.5"/>
     <!-- Ambulance WITHOUT bluelight device: it stops at red lights like everyone else,
          so it only gets through fast if our system gives it green. -->
     <vType id="ambulance" vClass="emergency" maxSpeed="16.67" color="1,0,0"/>
@@ -36,8 +38,21 @@
     <flow id="turn_s5_w" type="car" from="S5_J5" to="J1_W"  begin="0" end="3600" probability="0.02" departSpeed="max"/>
 
     <!-- bus line along the corridor (about one bus every 5 min per direction) -->
-    <flow id="bus_we" type="bus" from="W_J1" to="J5_E" begin="0" end="3600" probability="0.0033" departLane="best"/>
-    <flow id="bus_ew" type="bus" from="E_J5" to="J1_W" begin="0" end="3600" probability="0.0033" departLane="best"/>
+    <flow id="bus_we" type="bus" line="bus_we" begin="0" end="3600" probability="0.0033" departLane="best">
+        <route edges="W_J1 J1_J2 J2_J3 J3_J4 J4_J5 J5_E"/><stop busStop="bs_e1" duration="10"/><stop busStop="bs_e2" duration="10"/><stop busStop="bs_e3" duration="10"/><stop busStop="bs_e4" duration="10"/>
+    </flow>
+    <flow id="bus_ew" type="bus" line="bus_ew" begin="0" end="3600" probability="0.0033" departLane="best">
+        <route edges="E_J5 J5_J4 J4_J3 J3_J2 J2_J1 J1_W"/><stop busStop="bs_w1" duration="10"/><stop busStop="bs_w2" duration="10"/><stop busStop="bs_w3" duration="10"/><stop busStop="bs_w4" duration="10"/>
+    </flow>
+
+    <!-- bus passengers: they walk to a stop, wait for their line and ride 1-2 stops. A late bus finds
+         more people waiting, boards longer (2.5 s each) and gets later: the start of bunching -->
+    <personFlow id="pax_e1" begin="0" end="3600" probability="0.015"><walk from="J1_J2" busStop="bs_e1"/><ride busStop="bs_e3" lines="bus_we"/></personFlow>
+    <personFlow id="pax_e2" begin="0" end="3600" probability="0.015"><walk from="J2_J3" busStop="bs_e2"/><ride busStop="bs_e4" lines="bus_we"/></personFlow>
+    <personFlow id="pax_e3" begin="0" end="3600" probability="0.015"><walk from="J3_J4" busStop="bs_e3"/><ride busStop="bs_e4" lines="bus_we"/></personFlow>
+    <personFlow id="pax_w1" begin="0" end="3600" probability="0.015"><walk from="J5_J4" busStop="bs_w1"/><ride busStop="bs_w3" lines="bus_ew"/></personFlow>
+    <personFlow id="pax_w2" begin="0" end="3600" probability="0.015"><walk from="J4_J3" busStop="bs_w2"/><ride busStop="bs_w4" lines="bus_ew"/></personFlow>
+    <personFlow id="pax_w3" begin="0" end="3600" probability="0.015"><walk from="J3_J2" busStop="bs_w3"/><ride busStop="bs_w4" lines="bus_ew"/></personFlow>
 
     <!-- pedestrians crossing the main road at each junction, and walking along it -->
     <personFlow id="ped_x1" begin="0" end="3600" probability="0.01"><walk from="N1_J1" to="J1_S1"/></personFlow>

@@ -90,7 +90,10 @@ bus:                         # BO4 conditional bus priority (Firas), see flowmin
   max_queue: 15              # refuse if an approach that would lose green has more halting vehicles
   max_hold: 20               # at most this much control per bus (s)
   urgency_scale: 300         # lateness (s) that gives urgency 1
-  passed_margin: 20          # a bus that vanished counts as crossed if last distance <= last speed x step + this (m)
+  passed_margin: 20          # a bus that vanished counts as crossed if last distance <= last speed x step + 1/2 max_accel step^2 + this (m)
+  max_accel: 1.2             # bus acceleration (m/s2, SUMO default): a bus leaving a stop at 0 m/s still moves ~15 m in 5 s
+  stopped_speed: 0.1         # slower than this a bus stands still (m/s)
+  stopped_far: 120           # a bus standing still farther than this from the stop line is at a bus stop: no priority yet (m)
 
 pedestrian:
   min_waiting: 4             # normal request starts when a group has formed

@@ -132,3 +132,22 @@ def test_bus_vanishing_far_away_has_not_crossed():
     a.wants_control(state_at(95, [bus("bus_ns.0", 140)]), [])
     a.wants_control(state_at(100, []), [])
     assert a.last_passage["bus_ns"] == -500.0
+
+
+def test_bus_leaving_a_stop_from_standstill_has_crossed():
+    # Last seen standing 30 m before the line (doors just closed), gone 5 s later: it accelerated
+    # through (0 m/s x 5 s + 1/2 x 1.2 x 5^2 = 15 m, + 20 m margin covers 30 m).
+    a = BusAgent(PARAMS)
+    a.last_passage["bus_ns"] = -500.0
+    a.wants_control(state_at(95, [bus("bus_ns.0", 30, speed=0.0)]), [])
+    a.wants_control(state_at(100, []), [])
+    assert a.last_passage["bus_ns"] == 100.0
+
+
+def test_bus_dwelling_at_a_stop_far_away_is_not_helped_yet():
+    # Standing still 140 m before the line = boarding at a stop zone: a green now would be wasted.
+    a = agent_with_passage(0.0)
+    assert a.wants_control(state_at(400, [bus("bus_ns.1", 140, speed=0.0)]), []) is None
+    assert "bus stop" in a.explain()
+    # Once it drives again, it is helped as usual.
+    assert a.wants_control(state_at(405, [bus("bus_ns.1", 120, speed=8.0)]), []) is not None

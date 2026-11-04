@@ -76,7 +76,7 @@ Keep `--workers` at 2 on a laptop: each worker is one SUMO simulation.
 |---|---|
 | `corridor` | 3 junctions J1-J3, 30 min: random traffic, a bus line both ways, pedestrians, ambulance `amb_1` at 120 s, accident between J1 and J2 from ~700 s for 5 min, `amb_2` at 1100 s. **Scenario of the reported results: do not change it.** |
 | `corridor_demo` | Same street, 10 min, every agent acts: ambulance 60 s, pedestrian rush at J2 140 s, accident 230 s, late + bunched buses 330 s, 2nd ambulance 430 s. |
-| `corridor5`, `corridor5_demo` | Same design with 5 junctions J1-J5 (accident between J2 and J3, pedestrian rush at J3). |
+| `corridor5`, `corridor5_demo` | Same design with 5 junctions J1-J5 (accident between J2 and J3, pedestrian rush at J3), and **bus stop zones**: buses stop just after each junction for passengers, at least 10 s and 2.5 s per person boarding or alighting, so a late bus finds more people and gets later (bunching). |
 | `3x3grid`, `cologne3` | Cars only (from SUMO-RL): flow-agent training and the emission studies. |
 
 Details and how to rebuild a map: [scenarios/README.md](scenarios/README.md).
@@ -87,8 +87,12 @@ Details and how to rebuild a map: [scenarios/README.md](scenarios/README.md).
 |---|---|---|---|---|
 | `corridor` (30 min) | 20.9 vs 35.1 s (**-40 %**) | 61 vs 81 s (**-25 %**) | 29.3 vs 46.8 s (**-37 %**) | 5.6 vs 24.7 s (**-77 %**) |
 | `corridor_demo` (10 min) | 32.6 vs 30.4 s (+7 %) | `amb_1` 60 vs 124 s (**2x faster**) | 13.1 vs 39.9 s (**-67 %**) | 18.8 vs 49.5 s (**-62 %**) |
-| `corridor5` (30 min) | 22.5 vs 42.7 s (**-47 %**) | 97-101 vs 178-180 s (**-43 to -46 %**) | 39.5 vs 83.3 s (**-53 %**) | 5.6 vs 22.3 s (**-75 %**) |
-| `corridor5_demo` (10 min) | 18.8 vs 34.3 s (**-45 %**) | 91-96 vs 162-183 s (**-41 to -50 %**) | 14.9 vs 73.0 s (**-80 %**) | 9.1 vs 41.6 s (**-78 %**) |
+| `corridor5` (30 min) | 23.0 vs 43.4 s (**-47 %**) | 100-105 vs 179-181 s (**-42 to -44 %**) | 35.5 vs 128.3 s (**-72 %**) | 5.6 vs 24.3 s (**-77 %**) |
+| `corridor5_demo` (10 min) | 25.0 vs 34.3 s (**-27 %**) | 91-110 vs 162-179 s (**-32 to -49 %**) | 20.9 vs 104.7 s (**-80 %**) | 15.4 vs 46.4 s (**-67 %**) |
+
+Bus waiting = time a bus stands still in traffic (SUMO does not count its stops for passengers).
+Passengers on `corridor5` wait about the same at the stop with both controllers (240 vs 244 s in
+30 min): the buses leave the terminus at random, and signal priority cannot fix that.
 
 Cars in the 3-junction demo: while the accident blocks the road, every adaptive controller loses
 to the fixed timer there. On 5 junctions the fixed timer gridlocks (200-250 vehicles teleported

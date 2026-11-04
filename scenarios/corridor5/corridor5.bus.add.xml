@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Bus stop zones of the long corridor. Owner: Adem.
+     env.py loads NAME.bus.add.xml automatically when it sits next to NAME.net.xml (SUMO only accepts
+     bus stops in an additional file, not in the route file).
+     Far-side stops: each one is just AFTER a junction (15-45 m into the next road), on the right car
+     lane (_1; lane _0 is the sidewalk). A bus dwelling there does not waste the green of the junction
+     it just crossed, which is how bus-priority corridors are usually built.
+     Eastbound line bus_we stops after J1, J2, J3, J4; westbound line bus_ew after J5, J4, J3, J2. -->
+<additional>
+    <busStop id="bs_e1" name="after J1 eastbound" lane="J1_J2_1" startPos="15" endPos="45" lines="bus_we"/>
+    <busStop id="bs_e2" name="after J2 eastbound" lane="J2_J3_1" startPos="15" endPos="45" lines="bus_we"/>
+    <busStop id="bs_e3" name="after J3 eastbound" lane="J3_J4_1" startPos="15" endPos="45" lines="bus_we"/>
+    <busStop id="bs_e4" name="after J4 eastbound" lane="J4_J5_1" startPos="15" endPos="45" lines="bus_we"/>
+    <busStop id="bs_w1" name="after J5 westbound" lane="J5_J4_1" startPos="15" endPos="45" lines="bus_ew"/>
+    <busStop id="bs_w2" name="after J4 westbound" lane="J4_J3_1" startPos="15" endPos="45" lines="bus_ew"/>
+    <busStop id="bs_w3" name="after J3 westbound" lane="J3_J2_1" startPos="15" endPos="45" lines="bus_ew"/>
+    <busStop id="bs_w4" name="after J2 westbound" lane="J2_J1_1" startPos="15" endPos="45" lines="bus_ew"/>
+</additional>

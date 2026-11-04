@@ -43,6 +43,9 @@ DEFAULTS = {
     "max_hold": 20.0,          # s of control per bus at most
     "urgency_scale": 300.0,    # s of lateness that gives urgency 1
     "passed_margin": 20.0,     # m, slack on top of speed x step for "it crossed" (see _update_memory)
+    "max_accel": 1.2,          # m/s2, bus acceleration (SUMO default): a bus leaving a stop at 0 m/s still moves
+    "stopped_speed": 0.1,      # m/s, slower than this the bus stands still
+    "stopped_far": 120.0,      # m, a bus standing still farther than this is dwelling at a stop: no priority yet
 }
 
 
@@ -74,12 +77,14 @@ class BusAgent(Specialist):
         self.last_time = state.time
         here = {v.vehicle_id: (v.distance, v.speed) for v in state.special_vehicles if v.kind == "bus"}
         # A bus that left the approach lanes has crossed only if it could reach the stop line since
-        # the last decision: last distance <= last speed x step + passed_margin. A fixed 30 m check
-        # missed most crossings (at 13.9 m/s a bus moves ~70 m in 5 s); no check at all counted a
-        # bus that vanished far away (teleported after time-to-teleport, end of route) as crossed.
+        # the last decision: last distance <= speed x step + 1/2 x max_accel x step^2 + passed_margin
+        # (the acceleration term: a bus leaving a stop at 0 m/s still covers ~15 m in 5 s). A fixed
+        # 30 m check missed most crossings (at 13.9 m/s a bus moves ~70 m in 5 s); no check at all
+        # counted a bus that vanished far away (teleported, end of route) as crossed.
+        reach_extra = 0.5 * self.params["max_accel"] * dt * dt + self.params["passed_margin"]
         for bus_id, (distance, speed) in self.seen.items():
             if bus_id not in here:
-                if distance <= max(speed, 0.0) * dt + self.params["passed_margin"]:
+                if distance <= max(speed, 0.0) * dt + reach_extra:
                     self.last_passage[line_of(bus_id)] = state.time   # it crossed the junction
                 self.held.pop(bus_id, None)
         self.seen = here
@@ -105,6 +110,11 @@ class BusAgent(Specialist):
         best, best_late, notes = None, None, []
         for bus in state.special_vehicles:
             if bus.kind != "bus" or bus.distance > p["detect_distance"]:
+                continue
+            if bus.speed < p["stopped_speed"] and bus.distance > p["stopped_far"]:
+                # Standing still far from the stop line: passengers are boarding at a stop zone
+                # (corridor5: 140 m before the next junction). A green now would not reach it.
+                notes.append(f"{bus.vehicle_id}: stopped {bus.distance:.0f} m away (bus stop), not helped yet")
                 continue
             late = self.lateness(bus, state.time)
             if late is None:

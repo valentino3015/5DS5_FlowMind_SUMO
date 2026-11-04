@@ -208,6 +208,11 @@ class SumoCorridorEnv:
             gui_settings = self.net_file.parent / "gui-settings.xml"
             if gui_settings.is_file():
                 cmd += ["--gui-settings-file", str(gui_settings)]
+        # Bus stop zones: NAME.bus.add.xml next to NAME.net.xml (SUMO only reads bus stops from an
+        # additional file). Only scenarios/corridor5 has one; the other scenarios are unchanged.
+        bus_stops = self.net_file.with_name(self.net_file.name.replace(".net.xml", ".bus.add.xml"))
+        if bus_stops.is_file():
+            cmd += ["--additional-files", str(bus_stops)]
         self._emergency_cache.clear()
         self._pois.clear()
         # --- end added by Adem ---

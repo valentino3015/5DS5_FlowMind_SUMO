@@ -47,3 +47,18 @@ def test_team_kpis_ignore_unfinished_trips(tmp_path):
     assert k["bus_trips"] == 1 and k["bus_mean_trip_s"] == 120
     assert k["ambulance_trip_s"] == {"amb_1": 62.0}
     assert k["pedestrians"] == 2 and k["ped_mean_wait_s"] == 14 and k["ped_max_wait_s"] == 20
+
+
+def test_team_kpis_keep_bus_passengers_out_of_the_pedestrians(tmp_path):
+    # corridor5 has bus stop zones: riders are SUMO persons too, but they are not pedestrians.
+    xml = tmp_path / "tripinfo.xml"
+    xml.write_text(
+        '<tripinfos>'
+        '<personinfo id="walker" duration="60" waitingTime="12"><walk duration="60"/></personinfo>'
+        '<personinfo id="rider" duration="400" waitingTime="250"><walk duration="20"/>'
+        '<ride waitingTime="240" depart="300" arrival="330" vehicle="bus_we.1"/></personinfo>'
+        '<personinfo id="still_waiting" duration="-1" waitingTime="500"><ride waitingTime="500" depart="-1"/></personinfo>'
+        '</tripinfos>', encoding="utf-8")
+    k = team_kpis(xml)
+    assert k["pedestrians"] == 1 and k["ped_mean_wait_s"] == 12.0
+    assert k["bus_passengers"] == 1 and k["pax_mean_wait_s"] == 240.0

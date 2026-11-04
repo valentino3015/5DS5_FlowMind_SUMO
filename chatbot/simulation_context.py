@@ -44,8 +44,8 @@ def read_json(path):
 
 
 TEAM_KEYS = ("control_share", "ambulance_trip_s", "team_arrived", "team_mean_waiting_s", "team_mean_trip_s",
-             "bus_trips", "bus_mean_waiting_s", "pedestrians", "ped_mean_wait_s", "ped_max_wait_s",
-             "shield_changes")
+             "bus_trips", "bus_mean_waiting_s", "bus_passengers", "pax_mean_wait_s", "pax_max_wait_s",
+             "pedestrians", "ped_mean_wait_s", "ped_max_wait_s", "shield_changes")
 MAX_STORY_LINES = 12
 
 

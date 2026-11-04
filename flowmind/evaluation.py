@@ -63,7 +63,10 @@ def team_kpis(tripinfo):
     import xml.etree.ElementTree as ET
     root = ET.parse(tripinfo).getroot()
     trips = [t.attrib for t in root.iter("tripinfo") if float(t.get("arrival", -1)) >= 0]
-    people = [p.attrib for p in root.iter("personinfo") if float(p.get("duration", -1)) >= 0]
+    finished = [p for p in root.iter("personinfo") if float(p.get("duration", -1)) >= 0]
+    # Bus passengers (corridor5 stop zones) are persons too: keep them out of the pedestrian figures.
+    people = [p.attrib for p in finished if p.find("ride") is None]
+    rides = [r.attrib for p in finished for r in p.iter("ride") if float(r.get("depart", -1)) >= 0]
 
     def mean(xs):
         return round(sum(xs) / len(xs), 2) if xs else None
@@ -81,6 +84,9 @@ def team_kpis(tripinfo):
         "pedestrians": len(people),
         "ped_mean_wait_s": mean([float(p["waitingTime"]) for p in people]),
         "ped_max_wait_s": max((float(p["waitingTime"]) for p in people), default=None),
+        "bus_passengers": len(rides),                      # finished bus rides (scenarios with stop zones)
+        "pax_mean_wait_s": mean([float(r["waitingTime"]) for r in rides]),   # waiting at the stop for the bus
+        "pax_max_wait_s": max((float(r["waitingTime"]) for r in rides), default=None),
         "ambulance_trip_s": ambulances,
     }
 
