@@ -341,6 +341,7 @@ def test_team_facts_only_for_the_full_flowmind_system(run):
     context = build_context(root, "trial")
     assert context["team"]["ambulance_trip_s"] == {"amb_1": 61.0}
     assert any("emergency took control: amb_1" in line for line in context["team"]["story"])
+    assert context["team"]["green_given_by_agent"] == {"emergency": {"junctions": ["J1"], "from_s": 61.0, "to_s": 61.0}}
     assert len(json.dumps(context, ensure_ascii=False)) < 6000
 
 

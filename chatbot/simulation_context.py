@@ -60,8 +60,20 @@ def team_facts(directory: Path, result: dict) -> dict | None:
         return None
     facts = {k: result[k] for k in TEAM_KEYS if result.get(k) is not None}
     try:
-        from xai.explain import load_run, run_story
-        story = run_story(load_run(directory / "team"))
+        from xai.explain import DEFAULT_AGENTS, load_run, run_story
+        rows = load_run(directory / "team")
+        # Stated as a fact, not left to the model: "emergency took control at J4" means J4 gave the
+        # green to the ambulance's lane, but the model refused to say so from the story alone.
+        green = {}
+        for r in rows:
+            if r["agent"] not in DEFAULT_AGENTS and r["agent"] != "max_pressure":
+                g = green.setdefault(r["agent"], {"junctions": [], "from_s": r["time"], "to_s": r["time"]})
+                if r["tls_id"] not in g["junctions"]:
+                    g["junctions"].append(r["tls_id"])
+                g["to_s"] = r["time"]
+        if green:
+            facts["green_given_by_agent"] = green
+        story = run_story(rows)
         moments = [line for line in story if line.startswith("[")]       # "[J1 t=61-76] ..."
         summary = [line for line in story if not line.startswith("[")]   # control share, vs fixed timer
         facts["story"] = moments[:MAX_STORY_LINES] + summary
@@ -70,6 +82,8 @@ def team_facts(directory: Path, result: dict) -> dict | None:
     except (OSError, ValueError, KeyError, IndexError):
         pass
     facts["units"] = {"control_share": "% of decisions", "ambulance_trip_s": "s per ambulance trip",
+                      "green_given_by_agent": "junctions where that agent gave the green (emergency: to "
+                                              "the ambulance's lane), and the time span in s",
                       "*_waiting_s / *_wait_s / *_trip_s": "s per finished trip"}
     return facts
 

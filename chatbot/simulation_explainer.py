@@ -25,6 +25,9 @@ facts sont la seule source numérique fiable. Le bloc team, présent seulement p
 système FlowMind complet, donne la part de contrôle de chaque agent (urgence, incident,
 piéton, bus, flux), les temps de trajet des ambulances, les attentes des bus et des
 piétons, et story : les moments clés du journal des décisions, à citer comme [J1 t=61-76].
+« emergency took control » à un carrefour veut dire que ce carrefour a donné le vert à la voie
+de l'ambulance (« coordinator warning » : avant même son arrivée) ; de même, bus, pedestrian
+et incident donnent le vert au bus, aux piétons, ou contournent la voie bloquée.
 Pour une conversion, utilise les valeurs précalculées du bloc conversions et
 explique le facteur. Ne présente jamais une égalité calculée à partir d'un nombre
 déjà arrondi si le résultat provient d'une valeur plus précise. Distingue une valeur
