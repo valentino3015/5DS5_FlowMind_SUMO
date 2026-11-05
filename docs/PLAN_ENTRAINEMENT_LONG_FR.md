@@ -615,12 +615,18 @@ urgence 10 %, bus 1,4 %, piéton 0,6 %.
 
 | Corridor 30 min | CO₂ | NOx | PM | Arrivées | Attente moy. | Trajet bus | Piétons moy./max | Ambulance moy./max |
 |---|---|---|---|---|---|---|---|---|
-| Feux fixes 30 s | 182,0 kg | 68,9 g | 13,4 g | 976 | 34,3 s | 119 s | 25,8 / 245 s | 84,0 / 88 s |
-| Tous les agents, Flow seul | 174,7 kg | 63,4 g | 13,6 g | 978 | 20,2 s | 112 s | 6,2 / 72 s | 65,5 / 77 s |
-| **Tous les agents + émissions** | **162,1 kg** | **58,8 g** | **13,2 g** | 975 | **18,0 s** | **93 s** | 7,0 / **60 s** | **61,4 / 63 s** |
+| Feux fixes 30 s | 182,0 kg | 68,9 g | 13,4 g | 976 | 34,3 s | 119 s | 56,1 / 245 s | 84,0 / 88 s |
+| Tous les agents, Flow seul | 174,7 kg | 63,4 g | 13,6 g | 978 | 20,2 s | 112 s | 13,2 / 72 s | 65,5 / 77 s |
+| **Tous les agents + émissions** | **162,1 kg** | **58,8 g** | **13,2 g** | 975 | **18,0 s** | **93 s** | 14,9 / **60 s** | **61,4 / 63 s** |
 
 Par rapport à Flow seul : CO₂ −7,2 % (5 seeds sur 5), NOx −7,2 %, PM −2,9 %.
 Part d’activation : Flow 46 %, émissions 44 %, incident 5 %, urgence 3 %, bus 1,4 %.
 
 Points à surveiller (démo) : PM +2,7 % et attente moyenne des piétons +4,5 s
 (maximum inchangé).
+
+Attente des piétons recalculée avec le correctif d’Adem (459a933 : seules les
+personnes parties et arrivées comptent), sur les mêmes simulations : corridor
+30 min 56,1 s (feux fixes), 13,2 s (Flow seul), 14,9 s (avec l’agent émissions),
+au lieu de 25,8 / 6,2 / 7,0 s. Les chiffres de la démo et toutes les émissions
+ne changent pas.
