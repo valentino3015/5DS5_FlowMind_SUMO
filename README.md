@@ -104,11 +104,11 @@ FlowMind vs the fixed timer:
 
 | Scenario | Cars waiting | Ambulance trips | Bus waiting | Pedestrian waiting |
 |---|---|---|---|---|
-| `corridor` (30 min) | 20.9 vs 35.1 s (**-40 %**) | 61 vs 81 s (**-25 %**) | 29.3 vs 46.8 s (**-37 %**) | 5.6 vs 24.7 s (**-77 %**) |
+| `corridor` (30 min) | 20.9 vs 35.1 s (**-40 %**) | 61 vs 81 s (**-25 %**) | 29.3 vs 46.8 s (**-37 %**) | 12.4 vs 56.3 s (**-78 %**) |
 | `corridor_demo` (10 min) | 32.6 vs 30.4 s (+7 %) | `amb_1` 60 vs 124 s (**2x faster**) | 13.1 vs 39.9 s (**-67 %**) | 18.8 vs 49.5 s (**-62 %**) |
-| `corridor5` (30 min) | 23.0 vs 43.4 s (**-47 %**) | 100-105 vs 179-181 s (**-42 to -44 %**) | 35.5 vs 128.3 s (**-72 %**) | 5.6 vs 24.3 s (**-77 %**) |
+| `corridor5` (30 min) | 23.0 vs 43.4 s (**-47 %**) | 100-105 vs 179-181 s (**-42 to -44 %**) | 35.5 vs 128.3 s (**-72 %**) | 12.9 vs 58.2 s (**-78 %**) |
 | `corridor5_demo` (10 min) | 25.0 vs 34.3 s (**-27 %**) | 91-110 vs 162-179 s (**-32 to -49 %**) | 20.9 vs 104.7 s (**-80 %**) | 15.4 vs 46.4 s (**-67 %**) |
-| `grid10` (30 min) | 30.5 vs 61.4 s (**-50 %**) | 115-137 vs 196-206 s (**-33 to -41 %**) | 33.9 vs 137.0 s (**-75 %**) | 4.4 vs 23.1 s (**-81 %**) |
+| `grid10` (30 min) | 30.5 vs 61.4 s (**-50 %**) | 115-137 vs 196-206 s (**-33 to -41 %**) | 33.9 vs 137.0 s (**-75 %**) | 9.9 vs 53.6 s (**-82 %**) |
 | `grid10_demo` (10 min) | 29.0 vs 50.9 s (**-43 %**) | `amb_1` 136 vs 256 s (**-47 %**) | 23.3 vs 110.7 s (**-79 %**) | 11.4 vs 44.2 s (**-74 %**) |
 
 Bus waiting = time a bus stands still in traffic (SUMO does not count its stops for passengers).

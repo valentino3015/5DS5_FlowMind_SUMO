@@ -65,7 +65,11 @@ def team_kpis(tripinfo):
     import xml.etree.ElementTree as ET
     root = ET.parse(tripinfo).getroot()
     trips = [t.attrib for t in root.iter("tripinfo") if float(t.get("arrival", -1)) >= 0]
-    finished = [p for p in root.iter("personinfo") if float(p.get("duration", -1)) >= 0]
+    # Finished = departed and arrived. With write-unfinished SUMO also lists people still walking
+    # (duration -1) and people who have not left yet (depart -1, duration 0, waitingTime 0): those
+    # zeros used to pull the 30-min pedestrian means down (seed 100: 4.8 s instead of 12.2 s).
+    finished = [p for p in root.iter("personinfo")
+                if float(p.get("depart", 0)) >= 0 and float(p.get("duration", -1)) >= 0]
     # Bus passengers (corridor5 stop zones) are persons too: keep them out of the pedestrian figures.
     people = [p.attrib for p in finished if p.find("ride") is None]
     rides = [r.attrib for p in finished for r in p.iter("ride") if float(r.get("depart", -1)) >= 0]
