@@ -62,3 +62,14 @@ def test_team_kpis_keep_bus_passengers_out_of_the_pedestrians(tmp_path):
     k = team_kpis(xml)
     assert k["pedestrians"] == 1 and k["ped_mean_wait_s"] == 12.0
     assert k["bus_passengers"] == 1 and k["pax_mean_wait_s"] == 240.0
+
+def test_team_kpis_ignore_people_who_have_not_left_yet(tmp_path):
+    # write-unfinished lists people of a personFlow who have not departed: depart -1, duration 0.
+    xml = tmp_path / "tripinfo.xml"
+    xml.write_text('<tripinfos>'
+                   '<personinfo id="ped.1" depart="10" duration="100" waitingTime="12"><walk duration="100"/></personinfo>'
+                   '<personinfo id="ped.2" depart="-1" duration="0.00" waitingTime="0.00"/>'
+                   '<personinfo id="ped.3" depart="900" duration="-1" waitingTime="30"><walk duration="-1"/></personinfo>'
+                   '</tripinfos>', encoding="utf-8")
+    k = team_kpis(xml)
+    assert k["pedestrians"] == 1 and k["ped_mean_wait_s"] == 12.0
