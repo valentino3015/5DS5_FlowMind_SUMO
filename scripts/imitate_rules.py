@@ -9,6 +9,12 @@ mistakes. Each round is checked on the validation demands against FixedTime
 
     python scripts/imitate_rules.py --output runs/models/emission_imitation
     python scripts/imitate_rules.py --evaluate runs/models/emission_imitation --pool test --seeds 10200 10201
+
+Integration corridor (team protocol, reference: the team's fixed-time lights): both
+corridor traffics (30 min and 10 min demo), separated SUMO seeds per role.
+
+    python scripts/imitate_rules.py --scenario corridor --output runs/models/emission_ppo_corridor
+    python scripts/imitate_rules.py --scenario corridor --evaluate runs/models/emission_ppo_corridor
 """
 from __future__ import annotations
 import argparse
@@ -25,20 +31,44 @@ from flowmind.env import ROOT, SumoCorridorEnv, simulation_protocol
 from flowmind.agents.baselines import FixedTime
 from flowmind.agents.rules import RuleBasedAgent
 from flowmind.emission_rl import SafetyGate, decode_actions, encode, training_safety
-from flowmind.evaluation import SCENARIOS, digest_files, emission_protocol
+from flowmind.evaluation import SCENARIOS, TEAM_SCENARIOS, digest_files, emission_protocol
 from flowmind.demands import DEMAND_DIR, check_disjoint, describe, load_demands, validation_cases
 from flowmind.kpis import atomic_json
 from scripts.train_emissions import (EmissionTrainingEnv, calibrate, compare_validation, official_emissions,
                                      tolerant_selection)
 
-CONTROLLERS = ("fixed20", "rules", "teacher", "model")
+CONTROLLERS = ("fixed20", "fixed30", "rules", "teacher", "model")
+# The corridor model serves both corridor traffics (same network, same junctions).
+CORRIDOR_ROUTES = {"corridor": 1800, "corridor_demo": 600}  # scenario: length used by the team (s)
+CORRIDOR_SEEDS = {"train": list(range(8)), "validation": [1000, 1001, 1002, 1003],
+                  "test": [10200, 10201, 10202, 10203, 10204]}
 
 
 def load_config(seconds, scenario="3x3grid"):
-    config = emission_protocol(yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8")))
+    """Grid: emission protocol (20 s reference). Corridor: the team protocol used by the dashboard."""
+    config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+    if scenario not in TEAM_SCENARIOS:
+        config = emission_protocol(config)
     net, route = SCENARIOS[scenario]
     config["sim"].update(scenario=scenario, net_file=net, route_file=route, seconds=seconds)
     return config
+
+
+def reference_controller(config):
+    return "fixed30" if config["sim"]["scenario"] in TEAM_SCENARIOS else "fixed20"
+
+
+def case_config(config, route):
+    """Corridor cases run for the length the team uses with that traffic."""
+    config = copy.deepcopy(config)
+    for scenario, seconds in CORRIDOR_ROUTES.items():
+        if Path(route).resolve() == (ROOT / SCENARIOS[scenario][1]).resolve():
+            config["sim"]["seconds"] = seconds
+    return config
+
+
+def corridor_cases(seeds):
+    return [(seed, str(ROOT / SCENARIOS[s][1])) for s in CORRIDOR_ROUTES for seed in seeds]
 
 
 def rollout(job):
@@ -52,7 +82,7 @@ def rollout(job):
     model = PPO.load(learner, device="cpu") if learner else None
     teacher = {k: RuleBasedAgent(manifest["safety"]) for k in ids}
     gate = SafetyGate(manifest["safety"])
-    env = SumoCorridorEnv(config=copy.deepcopy(config), route_file=route, seed=seed, use_gui=False)
+    env = SumoCorridorEnv(config=case_config(config, route), route_file=route, seed=seed, use_gui=False)
     env.metrics_callback = samples.append
     try:
         states = env.reset()
@@ -77,7 +107,7 @@ def run_case(job):
     torch.set_num_threads(1)
     config, controller, route, seed, directory, model_dir = job
     from flowmind.emission_rl import EmissionPolicy
-    config = copy.deepcopy(config)
+    config = case_config(config, route)
     config["evaluation_output"] = str(directory)
     rules = config["rules"] | {k: config["signals"][k] for k in ("min_green", "max_green")}
     samples = []
@@ -89,7 +119,8 @@ def run_case(job):
             policy = EmissionPolicy(config["sim"]["scenario"], rules, directory=model_dir, seed=seed)
         else:
             params = training_safety(config) if controller == "teacher" else rules
-            agents = {k: FixedTime(config["fixed_time"]) if controller == "fixed20" else RuleBasedAgent(params)
+            fixed = {**config["fixed_time"], "green": 20 if controller == "fixed20" else 30}
+            agents = {k: FixedTime(fixed) if controller.startswith("fixed") else RuleBasedAgent(params)
                       for k in states}
         while samples[-1]["elapsed_s"] < env.sim_seconds:
             if controller == "model":
@@ -167,30 +198,41 @@ def train(args):
     import torch
     from stable_baselines3 import PPO
     torch.manual_seed(args.seed)
-    config = load_config(args.seconds)
-    train_demands = load_demands(DEMAND_DIR / "train", "train")
-    validation_demands = load_demands(DEMAND_DIR / "validation", "validation")
-    check_disjoint(train_demands, validation_demands)
+    config = load_config(args.seconds, args.scenario)
+    reference_name = reference_controller(config)
+    corridor = args.scenario in TEAM_SCENARIOS
+    if corridor:
+        train_demands = validation_demands = None
+        train_cases, validation = corridor_cases(args.train_seeds), corridor_cases(args.validation_seeds)
+    else:
+        train_demands = load_demands(DEMAND_DIR / "train", "train")
+        validation_demands = load_demands(DEMAND_DIR / "validation", "validation")
+        check_disjoint(train_demands, validation_demands)
+        train_cases = [(seed, str(r)) for seed, r in validation_cases(args.train_seeds, train_demands)]
+        validation = [(seed, str(r)) for seed, r in validation_cases(args.validation_seeds, validation_demands)]
     safety = training_safety(config)
     print("Calibration des échelles d’observation (FixedTime, demandes d’entraînement)…", flush=True)
     layout, scales = calibrate(config, args.train_seeds, train_demands)
-    net, route = SCENARIOS["3x3grid"]
-    manifest = {"schema": 1, "simulation": simulation_protocol(), "scenario": "3x3grid", "topology": layout,
+    net, route = SCENARIOS[args.scenario]
+    manifest = {"schema": 1, "simulation": simulation_protocol(), "scenario": args.scenario, "topology": layout,
                 "scales_mg_s": scales, "weights": config.get("emission_rl", {}).get("weights", [1, 1, 1, 1]),
                 "safety": safety, "train_seeds": args.train_seeds, "validation_seeds": args.validation_seeds,
                 "seconds": args.seconds, "input_hash": digest_files([ROOT / net, ROOT / route]),
                 "action_mode": "phase", "reward_mode": "imitation", "training_method": "imitation",
                 "deterministic_inference": True, "qualification": "experimental",
                 "reward": "none: behaviour cloning of the rules agent (same safeguards), DAgger rounds",
-                "demands": {"train": describe(train_demands), "validation": describe(validation_demands)},
+                "demands": ({"train": describe(train_demands), "validation": describe(validation_demands)}
+                            if not corridor else {"routes": CORRIDOR_ROUTES}),
                 "parent_model": None}
+    if corridor:  # same network: the model also serves the other corridor traffic
+        manifest["compatible_scenarios"] = {s: digest_files([ROOT / SCENARIOS[s][0], ROOT / SCENARIOS[s][1]])
+                                            for s in CORRIDOR_ROUTES}
     env = EmissionTrainingEnv(config, manifest, args.train_seeds)
     model = PPO("MlpPolicy", env, seed=args.seed, device="cpu", policy_kwargs={"net_arch": [256, 256]})
-    train_cases = [(seed, str(r)) for seed, r in validation_cases(args.train_seeds, train_demands)]
-    validation = [(seed, str(r)) for seed, r in validation_cases(args.validation_seeds, validation_demands)]
     print("Références de validation : feux fixes, règles, règles avec les protections du modèle…", flush=True)
-    reference = compare(config, ("fixed20", "rules", "teacher"), validation, output / "validation", args.workers)
-    print_summary("Références (par rapport aux feux fixes) :", summary(reference, "fixed20"))
+    reference = compare(config, ("fixed20", "fixed30", "rules", "teacher"), validation, output / "validation",
+                        args.workers)
+    print_summary(f"Références (par rapport à {reference_name}) :", summary(reference, reference_name))
     held_out = [(config, manifest, r, s, None) for s, r in validation]
     with ProcessPoolExecutor(args.workers) as pool:
         test_obs, test_labels = map(np.concatenate, zip(*pool.map(rollout, held_out)))
@@ -212,13 +254,13 @@ def train(args):
         atomic_json(candidate / "manifest.json", manifest)
         table = compare(config, ("model",), validation, output / "validation" / f"round_{round_index}",
                         args.workers, candidate)
-        ratios = compare_validation(table["model"], reference["fixed20"])
+        ratios = compare_validation(table["model"], reference[reference_name])
         versus_rules = compare_validation(table["model"], reference["rules"])
         feasible, score = tolerant_selection(ratios, args.pm_tolerance)
         collisions = sum(r["collisions"] + r["teleports"] for r in table["model"].values())
         row = {"round": round_index, "samples": int(len(data_obs)), "train_accuracy": fit_accuracy,
                "validation_accuracy": held_accuracy, "feasible": feasible and collisions == 0,
-               "versus_fixed20": ratios, "versus_rules": versus_rules, "collisions_teleports": collisions}
+               "versus_reference": ratios, "versus_rules": versus_rules, "collisions_teleports": collisions}
         rounds.append(row)
         atomic_json(output / "rounds.json", {"rounds": rounds})
         print(f"Tour {round_index} : {len(data_obs)} exemples, précision entraînement {fit_accuracy:.3f}, "
@@ -232,34 +274,38 @@ def train(args):
     chosen = rounds[best[1]]
     shutil.copy(output / f"round_{best[1]}.zip", output / "best.zip")
     manifest.update(actual_timesteps=0, best_timesteps=0, imitation_round=best[1], imitation_samples=chosen["samples"],
-                    best_validation_comparison=chosen["versus_fixed20"],
+                    best_validation_comparison=chosen["versus_reference"],
                     best_validation_versus_rules=chosen["versus_rules"],
                     selection=f"feasible (PM within +{args.pm_tolerance:.0%}, no traffic loss, no collision), "
                               "then lowest mean CO2/NOx/fuel ratio to FixedTime on validation demands",
-                    validation_reference=f"FixedTime {config['fixed_time']['green']} s")
+                    validation_reference=f"FixedTime {30 if corridor else 20} s")
     atomic_json(output / "manifest.json", manifest)
     print(f"Tour retenu : {best[1]} -> {output / 'best.zip'}", flush=True)
 
 
 def evaluate(args):
-    config = load_config(args.seconds)
+    config = load_config(args.seconds, args.scenario)
+    reference_name = reference_controller(config)
     model_dir = args.evaluate.resolve()
     manifest = json.loads((model_dir / "manifest.json").read_text(encoding="utf-8"))
     if set(args.seeds) & set(manifest["train_seeds"] + manifest["validation_seeds"]):
         sys.exit("Seeds de test distinctes de l’entraînement et de la validation requises")
-    demands = load_demands(DEMAND_DIR / args.pool, args.pool)
-    cases = [(seed, str(route)) for route in demands for seed in args.seeds]
+    if args.scenario in TEAM_SCENARIOS:
+        cases = corridor_cases(args.seeds)
+    else:
+        demands = load_demands(DEMAND_DIR / args.pool, args.pool)
+        cases = [(seed, str(route)) for route in demands for seed in args.seeds]
     output = ROOT / "runs/reports" / f"{model_dir.name}_{args.pool}"
     if output.exists():
         sys.exit(f"Rapport déjà présent : {output}")
-    table = compare(config, ("fixed20", "rules", "model"), cases, output, args.workers, model_dir)
-    ratios = summary(table, "fixed20")
+    table = compare(config, ("fixed20", "fixed30", "rules", "model"), cases, output, args.workers, model_dir)
+    ratios = summary(table, reference_name)
     ratios["model vs rules"] = compare_validation(table["model"], table["rules"])
-    per_case = {key: {c: table[c][key] for c in table} for key in table["fixed20"]}
+    per_case = {key: {c: table[c][key] for c in table} for key in table[reference_name]}
     atomic_json(output / "report.json", {"model": str(model_dir), "pool": args.pool, "seeds": args.seeds,
                                          "ratios": ratios, "cases": per_case})
-    print_summary(f"{len(cases)} cas ({args.pool}), par rapport aux feux fixes {config['fixed_time']['green']} s :", ratios)
-    model_co2 = [table["model"][k]["emissions_mg"][0] / table["fixed20"][k]["emissions_mg"][0] - 1 for k in per_case]
+    print_summary(f"{len(cases)} cas ({args.pool}), par rapport à {reference_name} :", ratios)
+    model_co2 = [table["model"][k]["emissions_mg"][0] / table[reference_name][k]["emissions_mg"][0] - 1 for k in per_case]
     print(f"  Cas où le modèle réduit le CO2 : {sum(v < 0 for v in model_co2)}/{len(model_co2)} ; "
           f"collisions+téléportations : {sum(r['collisions'] + r['teleports'] for r in table['model'].values())}")
     print(f"Rapport : {output / 'report.json'}")
@@ -270,9 +316,10 @@ def main():
     p.add_argument("--output", type=Path, default=ROOT / "runs/models/emission_imitation")
     p.add_argument("--evaluate", type=Path, help="Evaluate a saved model directory instead of training")
     p.add_argument("--pool", choices=["validation", "test"], default="test")
-    p.add_argument("--seeds", nargs="+", type=int, default=[10200, 10201], help="--evaluate: SUMO seeds")
-    p.add_argument("--train-seeds", nargs="+", type=int, default=[0, 1, 2])
-    p.add_argument("--validation-seeds", nargs="+", type=int, default=[1000, 1001])
+    p.add_argument("--scenario", choices=["3x3grid", "corridor"], default="3x3grid")
+    p.add_argument("--seeds", nargs="+", type=int, help="--evaluate: SUMO seeds")
+    p.add_argument("--train-seeds", nargs="+", type=int)
+    p.add_argument("--validation-seeds", nargs="+", type=int)
     p.add_argument("--seconds", type=int, default=600)
     p.add_argument("--rounds", type=int, default=3, help="DAgger rounds after the first behaviour cloning")
     p.add_argument("--epochs", type=int, default=30)
@@ -281,6 +328,10 @@ def main():
     p.add_argument("--workers", type=int, default=6)
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args()
+    corridor = args.scenario == "corridor"
+    args.seeds = args.seeds or (CORRIDOR_SEEDS["test"] if corridor else [10200, 10201])
+    args.train_seeds = args.train_seeds or (CORRIDOR_SEEDS["train"] if corridor else [0, 1, 2])
+    args.validation_seeds = args.validation_seeds or (CORRIDOR_SEEDS["validation"] if corridor else [1000, 1001])
     if set(args.train_seeds) & set(args.validation_seeds):
         p.error("Seeds d’entraînement et de validation distinctes requises")
     if args.rounds < 0 or args.epochs < 1 or args.seconds < 10:

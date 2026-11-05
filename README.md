@@ -120,7 +120,16 @@ to the fixed timer there. On 5 and 10 junctions the fixed timer gridlocks (200-2
 in 30 min on 5 junctions, 430-470 on the grid, against 7-14 with FlowMind), which also makes its waiting figures look better than they are.
 
 Emission controller (Manoubi): see [docs/ENTRAINEMENT_EMISSIONS_FR.md](docs/ENTRAINEMENT_EMISSIONS_FR.md);
-the active model `runs/models/emission_ppo/` is in Git (the only exception to `runs/`).
+the active models `runs/models/emission_ppo/` (3 × 3 grid) and `runs/models/emission_ppo_corridor/`
+(corridor and corridor demo) are in Git (the only exceptions to `runs/`).
+
+Emission agent in the FlowMind system (Manoubi, `flowmind/agents/emission.py`): on the corridor and
+the corridor demo, Flow drives normal traffic; when a junction's CO2 (30 s mean of its incoming lanes)
+goes above 19 g/s, the emission RL model takes that junction and Flow stops driving it; below 15 g/s,
+Flow drives it again. Emergency, incident, pedestrian and bus agents keep priority. Thresholds:
+`config.yaml`, section `emission_agent`. On 5 test seeds, against the FlowMind system with Flow
+alone: CO2 −5.5 % (corridor demo) and −7.2 % (corridor, 30 min), lower in 5 seeds out of 5
+(details: [docs/PLAN_ENTRAINEMENT_LONG_FR.md](docs/PLAN_ENTRAINEMENT_LONG_FR.md)).
 
 ## 5. Who does what
 

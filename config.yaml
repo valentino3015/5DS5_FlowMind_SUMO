@@ -46,6 +46,13 @@ coordinator:
 agents:
   emergency: team            # demo = Adem's demo rule (agents/demo_rules.py), team = agents/emergency.py
 
+emission_agent:              # Manoubi's emission RL model inside the FlowMind system (agents/emission.py)
+  enabled: true              # only on scenarios with an emission model (corridor, corridor_demo); elsewhere Flow alone
+  urgency: 0.1               # low urgency: emergency, incident, pedestrian and bus agents win when they claim
+  window_s: 30               # junction CO2 = its incoming lanes, mean over this window (s)
+  activate_mg_s: 19000       # CO2 above this: the emission agent takes the junction, Flow stops driving it
+  release_mg_s: 15000        # CO2 below this: the emission agent stops, Flow drives the junction again
+
 # --- one section per agent (placeholder values: each owner tunes their own) ---
 
 fixed_time:
@@ -148,6 +155,7 @@ overlay:                     # sumo-gui labels: color of the dot per agent in co
     pedestrian: [150, 0, 200, 255]
     bus: [0, 120, 255, 255]
     flow: [0, 170, 0, 255]
+    emission: [168, 85, 247, 255]
     max_pressure: [128, 128, 128, 255]
     fixed_time: [80, 80, 80, 255]
     operator: [0, 0, 0, 255]

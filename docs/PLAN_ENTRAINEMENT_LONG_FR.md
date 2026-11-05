@@ -450,3 +450,177 @@ suivante : entraînement PPO à partir de ce modèle, pour dépasser les règles
 python scripts/imitate_rules.py --output runs/models/emission_imitation
 python scripts/imitate_rules.py --evaluate runs/models/emission_imitation --pool test --seeds 10200 10201
 ```
+
+### Version 2 sur le code intégré (branche Adem, décision toutes les 5 s)
+
+Le modèle v1, appris avec une décision toutes les 3 s, ne fait plus que CO₂ −5,9 %
+sur le code intégré (`delta_time: 5`). Réentraînement avec la même méthode et
+5 tours DAgger :
+
+| Tour | Exemples | Précision (validation) | CO₂ par rapport aux feux fixes 20 s (validation) |
+|---|---:|---:|---:|
+| 0 | 4 800 | 0,81 | −3,6 % |
+| 3 | 19 200 | 0,94 | −6,1 % |
+| **4 (retenu)** | 24 000 | 0,97 | **−8,6 %** |
+| 5 | 28 800 | 0,98 | −8,1 % |
+
+Test final sur les 20 cas de test, sur le code intégré, par rapport aux feux fixes de 20 s :
+
+| Méthode | CO₂ | NOx | PM | Cas où le CO₂ baisse |
+|---|---:|---:|---:|---:|
+| Modèle v1 (actif avant) | −5,9 % | −5,8 % | +0,6 % | 20/20 |
+| **Modèle v2 (actif)** | **−6,6 %** | **−6,5 %** | +0,6 % | **20/20** |
+| Agent à règles | −7,1 % | −6,9 % | +0,6 % | — |
+
+Aucune collision. L’écart avec les règles passe de 1,3 à 0,6 point. Le modèle v1
+est sauvegardé localement dans `runs/models/emission_ppo_imitation_v1_20261029/`.
+
+## Essai court de fine-tuning PPO depuis le v2 (nuit du 29 au 30/10/2026)
+
+Commande : reprise de `runs/models/emission_ppo` (v2), récompense `pm_tolerant`,
+8 192 pas + 2 048 pas d’échauffement du critique (acteur gelé), lr 5e-5,
+clip 0,1, target_kl 0,01, n_steps 512, batch 128. Sortie : `runs/models/emission_ppo_ft_smoke/`.
+
+Validation (6 demandes, seeds 1000/1001), par rapport aux feux fixes de 20 s :
+
+| Pas PPO | CO₂ | NOx | PM | Collisions |
+|---|---|---|---|---|
+| 0 (v2, point de départ) | **−8,71 %** | −8,39 % | +0,41 % | 0 |
+| 4 096 | −7,83 % | −7,59 % | +0,56 % | 0 |
+| 6 144 | −7,69 % | −7,42 % | +0,26 % | 0 |
+| 8 192 | −7,63 % | −7,32 % | +0,52 % | 0 |
+| 10 240 | −7,96 % | −7,64 % | +0,59 % | 0 |
+
+**Conclusion :** le PPO n’améliore pas le v2 ; il le dégrade d’environ 0,8 point
+de CO₂ dès les premières mises à jour, puis stagne. Le meilleur point reste le
+départ (`best_timesteps = 0`), donc `best.zip` de cet essai est identique au v2.
+Le modèle actif `emission_ppo` n’a pas été remplacé. Lancer l’entraînement long
+avec ces réglages n’est pas justifié.
+
+Pistes pour la suite (à décider) : améliorer d’abord le professeur (agent à
+règles ajusté, −7,1 % sur test) puis réimiter ; ou PPO avec un terme
+d’imitation (pénalité KL vers le v2) pour éviter la dérive initiale ; ou
+récompense mieux alignée sur la validation (la récompense d’entraînement et
+le CO₂ de validation ont divergé).
+
+## Modèle pour le corridor de l’intégration (30/10/2026)
+
+Le modèle de la grille 3 × 3 ne peut pas piloter le corridor (autres carrefours,
+autres phases). Un second modèle, `runs/models/emission_ppo_corridor/`, est
+appris par imitation de l’agent à règles sur le corridor (protocole de l’équipe,
+référence : feux fixes de 30 s du dashboard). Il sert les deux trafics du
+corridor (« Corridor » 30 min et « Corridor demo » 10 min, même réseau). Le
+dashboard choisit le modèle selon le scénario.
+
+```
+python scripts/imitate_rules.py --scenario corridor --output runs/models/emission_imitation_corridor
+python scripts/imitate_rules.py --scenario corridor --evaluate runs/models/emission_imitation_corridor
+```
+
+Seeds SUMO : entraînement 0–7, validation 1000–1003, test 10200–10204 (chaque
+seed sur les deux trafics). Tour retenu : 3 (15 356 décisions, 96 % d’accord
+avec les règles). Validation (8 cas) : CO₂ −11,2 %, NOx −13,9 %, PM +1,95 %.
+
+Test (10 cas jamais vus), par rapport aux feux fixes de 30 s :
+
+| | CO₂ | NOx | PM | Arrivées | Téléportations |
+|---|---|---|---|---|---|
+| **Modèle corridor** | **−9,3 %** | **−12,1 %** | +3,6 % | +6,8 % | 95 |
+| Agent à règles | −10,1 % | −12,4 % | +2,4 % | +7,4 % | 307 |
+| Feux fixes 30 s | — | — | — | — | 1 171 |
+
+Baisse du CO₂ dans 10 cas sur 10 (de −4,2 % à −12,7 %), aucune collision.
+Limite : le PM dépasse la tolérance de +2 % (l’agent à règles aussi) ; c’est le
+prochain point à améliorer sur le corridor.
+
+## Agent émissions dans le système FlowMind complet (30/10/2026)
+
+Nouvel agent `flowmind/agents/emission.py` : il prend la place de Flow (trafic
+normal, priorité la plus basse) ; urgence, incident, piéton, bus et shield sont
+inchangés. Le modèle décide pour tout le réseau, une fois par pas, et chaque
+carrefour lit sa phase. Le système avec Flow reste la version par défaut
+(`agents.normal: flow`). Nouvelle option du dashboard « Full FlowMind system ·
+emission agent (RL) », ou `python scripts/run.py --controller orchestrated
+--scenario corridor --normal-agent emission`.
+
+Mesure : 5 seeds de test (10200–10204), protocole de l’équipe, moyennes.
+Rapport : `runs/reports/team_emission_agent_test.json`.
+
+| Corridor 30 min | CO₂ | NOx | PM | Attente moy. | Trajet bus | Attente piétons (moy./max) | Ambulance |
+|---|---|---|---|---|---|---|---|
+| Feux fixes 30 s | 182,0 kg | 68,9 g | 13,4 g | 34,3 s | 119 s | 25,8 / 245 s | — |
+| Système avec Flow | 174,7 kg | 63,4 g | 13,6 g | 20,2 s | 112 s | 6,2 / 72 s | 65,5 s |
+| **Système avec agent émissions** | **160,2 kg** | **58,6 g** | **13,2 g** | **19,2 s** | **90 s** | 7,9 / 58 s | **61,4 s** |
+
+Par rapport à Flow : CO₂ −8,2 % (5 seeds sur 5), NOx −7,5 %, PM −3,3 %.
+L’agent émissions pilote 91 % des décisions.
+
+| Corridor demo 10 min | CO₂ | NOx | PM | Arrivées | Attente moy. | Attente piétons moy. | Ambulance |
+|---|---|---|---|---|---|---|---|
+| Feux fixes 30 s | 70,0 kg | 26,8 g | 4,20 g | 281 | 44,3 s | 43,3 s | — |
+| Système avec Flow | 73,3 kg | 27,2 g | 4,34 g | 298 | 39,7 s | 11,7 s | 68,2 s |
+| **Système avec agent émissions** | **71,0 kg** | **26,5 g** | 4,44 g | **307** | **38,4 s** | 15,6 s | **64,7 s** |
+
+Par rapport à Flow : CO₂ −3,1 % (baisse dans 5 seeds sur 5, dont une à −0,1 %),
+NOx −2,6 %, PM +2,2 %. L’agent émissions pilote 70 % des décisions (la démo a
+beaucoup d’incidents et d’ambulances).
+
+Points à surveiller : sur la démo, PM +2,2 % et attente moyenne des piétons
++3,9 s par rapport à Flow. Piste : version combinée où Flow reprend la main
+seulement en cas de congestion.
+
+## Agent émissions dans le système de tous les agents, seuils fixes (05/11/2026)
+
+Base : `main` (3bf724b, intégration d’Adem du 4 novembre). L’agent
+`flowmind/agents/emission.py` fait partie du système « Full FlowMind system ·
+all agents », sans option séparée, sur les cartes qui ont un modèle (Corridor et
+Corridor demo, `runs/models/emission_ppo_corridor`). Ailleurs, Flow reste seul.
+
+- Flow pilote le trafic normal. Quand le CO₂ des voies d’entrée d’un carrefour,
+  en moyenne sur 30 s, dépasse **19 000 mg/s**, l’agent émissions prend ce
+  carrefour (il passe avant Flow, qui s’arrête dessus). Sous **15 000 mg/s**, il
+  s’arrête et Flow reprend.
+- Priorité : urgence, incident, piéton, bus, émissions, Flow. Le shield vérifie tout.
+- Réglages : `config.yaml`, section `emission_agent` (`enabled`, `activate_mg_s`,
+  `release_mg_s`, `window_s`). Le dashboard affiche la part d’activation de chaque agent.
+
+Choix des seuils. Mesure du CO₂ des carrefours avec Flow seul, seeds
+d’entraînement 0–7, 48 simulations (`runs/reports/emission_agent_thresholds.json`) :
+médiane 19 000 mg/s, 70e centile 25 000 mg/s. Six paires essayées sur les seeds
+de validation 1000–1003 (CO₂ par rapport à Flow seul) :
+
+| Activation / désactivation (mg/s) | Corridor 30 min | Corridor demo | PM demo | Part émissions (30 min) |
+|---|---|---|---|---|
+| 32 000 / 21 500 | −3,0 % | 0,0 % | +2,8 % | 11 % |
+| 25 000 / 19 000 | −4,2 % | −0,7 % | +4,5 % | 24 % |
+| 21 500 / 19 000 | −4,5 % | −0,6 % | +4,0 % | 32 % |
+| **19 000 / 15 000 (retenue)** | **−6,1 %** | **−1,4 %** | +3,3 % | 45 % |
+| 15 000 / 12 000 | −6,1 % | −0,3 % | +1,9 % | 65 % |
+| 12 000 / 9 000 | −6,4 % | −1,8 % | +4,5 % | 77 % (Flow presque éteint) |
+
+19 000 / 15 000 donne presque le meilleur gain en gardant un vrai partage avec Flow.
+
+Test final, 5 seeds de test (10200–10204), moyennes
+(`runs/reports/emission_agent_thresholds_test.json`) :
+
+| Corridor demo 10 min | CO₂ | NOx | PM | Arrivées | Attente moy. | Trajet bus | Piétons moy./max | Ambulance moy./max |
+|---|---|---|---|---|---|---|---|---|
+| Feux fixes 30 s | 70,0 kg | 26,8 g | 4,20 g | 281 | 44,3 s | 106 s | 43,3 / 97 s | 95,7 / 134 s |
+| Tous les agents, Flow seul | 73,3 kg | 27,2 g | 4,34 g | 298 | 39,7 s | 98 s | 11,7 / 74 s | 68,2 / 88 s |
+| **Tous les agents + émissions** | **69,1 kg** | **25,6 g** | 4,46 g | **310** | **33,9 s** | **93 s** | 16,2 / 75 s | **65,6** / 96 s |
+
+Par rapport à Flow seul : CO₂ −5,5 % (baisse dans 5 seeds sur 5), NOx −5,6 %,
+PM +2,7 %. Part d’activation : émissions 36 %, Flow 36 %, incident 16 %,
+urgence 10 %, bus 1,4 %, piéton 0,6 %.
+
+| Corridor 30 min | CO₂ | NOx | PM | Arrivées | Attente moy. | Trajet bus | Piétons moy./max | Ambulance moy./max |
+|---|---|---|---|---|---|---|---|---|
+| Feux fixes 30 s | 182,0 kg | 68,9 g | 13,4 g | 976 | 34,3 s | 119 s | 25,8 / 245 s | 84,0 / 88 s |
+| Tous les agents, Flow seul | 174,7 kg | 63,4 g | 13,6 g | 978 | 20,2 s | 112 s | 6,2 / 72 s | 65,5 / 77 s |
+| **Tous les agents + émissions** | **162,1 kg** | **58,8 g** | **13,2 g** | 975 | **18,0 s** | **93 s** | 7,0 / **60 s** | **61,4 / 63 s** |
+
+Par rapport à Flow seul : CO₂ −7,2 % (5 seeds sur 5), NOx −7,2 %, PM −2,9 %.
+Part d’activation : Flow 46 %, émissions 44 %, incident 5 %, urgence 3 %, bus 1,4 %.
+
+Points à surveiller (démo) : PM +2,7 % et attente moyenne des piétons +4,5 s
+(maximum inchangé).

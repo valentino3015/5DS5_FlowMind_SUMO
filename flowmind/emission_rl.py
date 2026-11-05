@@ -8,6 +8,19 @@ from flowmind.agents.rules import RuleBasedAgent
 METRICS = ("co2", "nox", "fuel", "pm")
 SAMPLE_KEYS = ("co2_mg_s", "nox_mg_s", "fuel_mg_s", "pmx_mg_s")
 MODEL_DIR = Path(__file__).resolve().parent.parent / "runs/models/emission_ppo"
+# The integration corridor has its own model, shared by its two traffics (same network).
+CORRIDOR_MODEL_DIR = MODEL_DIR.parent / "emission_ppo_corridor"
+SCENARIO_MODEL_DIRS = {"corridor": CORRIDOR_MODEL_DIR, "corridor_demo": CORRIDOR_MODEL_DIR}
+
+
+def model_directory(scenario, default=None):
+    """Active emission model of a scenario: the corridor model, else the grid model."""
+    return SCENARIO_MODEL_DIRS.get(scenario, default or MODEL_DIR)
+
+
+def serves(manifest, scenario):
+    """True when the model was trained for this scenario or for another traffic of its network."""
+    return scenario == manifest["scenario"] or scenario in manifest.get("compatible_scenarios", {})
 
 
 def training_safety(config):
@@ -126,7 +139,7 @@ class EmissionPolicy:
         from stable_baselines3 import PPO
         directory = Path(directory)
         self.manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
-        if self.manifest["scenario"] != scenario:
+        if not serves(self.manifest, scenario):
             raise ValueError("Le modèle d’émissions a été entraîné pour un autre scénario")
         self.model = PPO.load(directory / "best.zip", device="cpu")
         self.deterministic = self.manifest.get("deterministic_inference", True)

@@ -160,9 +160,9 @@ def test_training_refuses_test_demands_and_unpaired_demand_options(monkeypatch, 
     assert not out.exists()
 
 
-def test_ppo_hyperparameters_are_refused_when_resuming(monkeypatch, tmp_path, capsys):
-    assert run_main(monkeypatch, "--output", tmp_path / "m", "--resume", tmp_path / "parent", "--n-steps", 1024) == 2
-    assert "reprise" in capsys.readouterr().err
+def test_critic_warmup_needs_a_resumed_model(monkeypatch, tmp_path, capsys):
+    assert run_main(monkeypatch, "--output", tmp_path / "m", "--critic-warmup", 512) == 2
+    assert "--resume" in capsys.readouterr().err
 
 
 def test_generated_pools_cover_every_load_with_disjoint_seeds():

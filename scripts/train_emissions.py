@@ -192,6 +192,23 @@ def tolerant_selection(comparison, tolerance):
     return feasible, -float(np.mean([comparison[f"{k}_ratio"] for k in ("co2", "nox", "fuel")]))
 
 
+def set_actor_trainable(policy, trainable):
+    """Freeze or release the decision network; the critic always trains.
+
+    A policy obtained by imitation has an untrained critic: training the
+    critic first keeps the first PPO updates from rewriting the imitated
+    decisions with random advantages.
+    """
+    for module in (policy.mlp_extractor.policy_net, policy.action_net):
+        for parameter in module.parameters():
+            parameter.requires_grad_(trainable)
+
+
+def load_for_finetuning(path, env, overrides):
+    """Load a saved PPO with replaced hyperparameters (rollout buffer rebuilt)."""
+    return PPO.load(path, env=env, device="cpu", custom_objects=dict(overrides))
+
+
 def calibrate(config, seeds, demands=None, count=10):
     """FixedTime reference rates; with varied demands, on the first training files."""
     samples, layout = [], None
@@ -406,11 +423,16 @@ def main():
     p.add_argument("--gamma", type=float, help="Default 0.99, or 1 with worst_interval")
     p.add_argument("--gae-lambda", type=float, help="Default 0.95")
     p.add_argument("--ent-coef", type=float, help="Entropy bonus (default 0)")
+    p.add_argument("--clip-range", type=float, help="PPO clip range (default 0.2); with --resume, overrides the saved value")
+    p.add_argument("--target-kl", type=float, help="Stop an update when the policy moves further than this KL")
+    p.add_argument("--critic-warmup", type=int, default=0,
+                   help="--resume: steps training only the critic (actor frozen) before PPO")
     args = p.parse_args()
     ppo_args = {k: getattr(args, k) for k in ("n_steps", "batch_size", "n_epochs", "learning_rate",
-                                             "gamma", "gae_lambda", "ent_coef")}
-    if args.resume and (args.linear_lr or any(v is not None for v in ppo_args.values())):
-        p.error("Les hyperparamètres PPO ne s'appliquent qu'à un nouveau réseau, pas à une reprise")
+                                             "gamma", "gae_lambda", "ent_coef", "clip_range", "target_kl")}
+    # With --resume the given values replace the saved ones (fine-tuning).
+    if args.critic_warmup < 0 or (args.critic_warmup and not args.resume):
+        p.error("--critic-warmup concerne une reprise (--resume) et doit être positif")
     if (args.train_demands is None) != (args.validation_demands is None):
         p.error("--train-demands et --validation-demands vont ensemble")
     if args.per_demand_reward and args.train_demands is None:
@@ -512,15 +534,24 @@ def main():
              "ent_coef": args.ent_coef or 0.}
     if hyper["n_steps"] % hyper["batch_size"] or not 0 < hyper["gamma"] <= 1 or hyper["learning_rate"] <= 0:
         p.error("n_steps multiple de batch_size, 0 < gamma <= 1 et learning_rate > 0 requis")
-    model = PPO.load(args.resume/"best.zip", env=env,device="cpu") if args.resume else PPO(
-        "MlpPolicy",env,**hyper,seed=args.train_seeds[0],device="cpu",verbose=0)
-    if not args.resume:
-        manifest["ppo"] = {**hyper, "linear_lr": args.linear_lr}
-        if args.linear_lr:
-            # SB3 progress restarts with every validation block; decay on the
-            # whole requested budget instead.
-            base_lr, budget_steps = hyper["learning_rate"], args.timesteps
-            model.lr_schedule = lambda _: base_lr * max(0., 1. - model.num_timesteps / budget_steps)
+    overrides = {k: v for k, v in ppo_args.items() if v is not None}
+    if args.resume:
+        model = load_for_finetuning(args.resume/"best.zip", env, overrides)
+        if model.n_steps % model.batch_size:
+            p.error("n_steps multiple de batch_size requis")
+    else:
+        hyper.update({k: overrides[k] for k in ("clip_range", "target_kl") if k in overrides})
+        model = PPO("MlpPolicy",env,**hyper,seed=args.train_seeds[0],device="cpu",verbose=0)
+    manifest["ppo"] = {"n_steps": model.n_steps, "batch_size": model.batch_size, "n_epochs": model.n_epochs,
+                       "learning_rate": model.learning_rate, "gamma": model.gamma, "gae_lambda": model.gae_lambda,
+                       "ent_coef": model.ent_coef, "clip_range": model.clip_range(1.), "target_kl": model.target_kl,
+                       "linear_lr": args.linear_lr, "critic_warmup": args.critic_warmup,
+                       "fine_tuning": bool(args.resume)}
+    if args.linear_lr:
+        # SB3 progress restarts with every validation block; decay on the
+        # whole requested budget instead.
+        base_lr, budget_steps = float(model.learning_rate), args.timesteps
+        model.lr_schedule = lambda _: base_lr * min(1., max(0., 1. - (model.num_timesteps - start_steps) / budget_steps))
     if worst and args.resume:
         model.gamma = 1.
         model.rollout_buffer.gamma = 1.
@@ -556,6 +587,13 @@ def main():
             callback.num_timesteps = start_steps
             callback.assess()
             model.set_env(model.get_env(), force_reset=True)
+        if args.critic_warmup:
+            print(f"Préchauffage du critique : {args.critic_warmup} pas, décisions figées…", flush=True)
+            set_actor_trainable(model.policy, False)
+            model.learn(total_timesteps=args.critic_warmup, reset_num_timesteps=False, callback=callback)
+            set_actor_trainable(model.policy, True)
+            model.set_env(model.get_env(), force_reset=True)
+            start_steps = model.num_timesteps  # the warm-up is outside the training budget
         while model.num_timesteps-start_steps < args.timesteps:
             budget=min(args.validation_every,args.timesteps-(model.num_timesteps-start_steps))
             print(f"Apprentissage PPO : bloc de {budget} pas…",flush=True)

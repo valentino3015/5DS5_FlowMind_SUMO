@@ -1,0 +1,218 @@
+{
+  "schema": 1,
+  "simulation": {
+    "revision": "ballistic_v7",
+    "options": [
+      "--random",
+      "false",
+      "--threads",
+      "1",
+      "--step-length",
+      "1",
+      "--step-method.ballistic",
+      "true"
+    ],
+    "binary": "C:\\Program Files (x86)\\Eclipse\\Sumo\\bin\\sumo.exe",
+    "binary_sha256": "8cc770aca4257d2cb821d91c0d346256c72c2983708137bc94789c75d00254b4"
+  },
+  "scenario": "corridor",
+  "topology": [
+    {
+      "id": "J1",
+      "phases": 4,
+      "phase_lanes": [
+        [
+          "J2_J1_1",
+          "J2_J1_2",
+          "W_J1_1",
+          "W_J1_2"
+        ],
+        [
+          "J2_J1_1",
+          "J2_J1_2",
+          "W_J1_1",
+          "W_J1_2"
+        ],
+        [
+          "N1_J1_1",
+          "S1_J1_1"
+        ],
+        [
+          "N1_J1_1",
+          "S1_J1_1"
+        ]
+      ]
+    },
+    {
+      "id": "J2",
+      "phases": 4,
+      "phase_lanes": [
+        [
+          "J1_J2_1",
+          "J1_J2_2",
+          "J3_J2_1",
+          "J3_J2_2"
+        ],
+        [
+          "J1_J2_1",
+          "J1_J2_2",
+          "J3_J2_1",
+          "J3_J2_2"
+        ],
+        [
+          "N2_J2_1",
+          "S2_J2_1"
+        ],
+        [
+          "N2_J2_1",
+          "S2_J2_1"
+        ]
+      ]
+    },
+    {
+      "id": "J3",
+      "phases": 4,
+      "phase_lanes": [
+        [
+          "E_J3_1",
+          "E_J3_2",
+          "J2_J3_1",
+          "J2_J3_2"
+        ],
+        [
+          "E_J3_1",
+          "E_J3_2",
+          "J2_J3_1",
+          "J2_J3_2"
+        ],
+        [
+          "N3_J3_1",
+          "S3_J3_1"
+        ],
+        [
+          "N3_J3_1",
+          "S3_J3_1"
+        ]
+      ]
+    }
+  ],
+  "scales_mg_s": [
+    85232.42043884643,
+    31.74363611703974,
+    27615.674714553854,
+    6.833735863821382
+  ],
+  "weights": [
+    1,
+    1,
+    1,
+    2
+  ],
+  "safety": {
+    "max_red": 30,
+    "co2_weight": 1.0,
+    "nox_weight": 1.0,
+    "fuel_weight": 1.0,
+    "pm_weight": 1.0,
+    "switch_margin": 0.05,
+    "blocked_occupancy": 0.8,
+    "min_green": 10,
+    "max_green": 35
+  },
+  "train_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "validation_seeds": [
+    1000,
+    1001,
+    1002,
+    1003
+  ],
+  "seconds": 600,
+  "input_hash": "e49f74c334f89a5f",
+  "action_mode": "phase",
+  "reward_mode": "imitation",
+  "training_method": "imitation",
+  "deterministic_inference": true,
+  "qualification": "experimental",
+  "reward": "none: behaviour cloning of the rules agent (same safeguards), DAgger rounds",
+  "demands": {
+    "routes": {
+      "corridor": 1800,
+      "corridor_demo": 600
+    }
+  },
+  "parent_model": null,
+  "compatible_scenarios": {
+    "corridor": "e49f74c334f89a5f",
+    "corridor_demo": "ef7fefa615e1ea80"
+  },
+  "actual_timesteps": 0,
+  "best_timesteps": 0,
+  "imitation_round": 3,
+  "imitation_samples": 15356,
+  "best_validation_comparison": {
+    "co2_ratio": 0.8882186456931955,
+    "nox_ratio": 0.8608974653559405,
+    "fuel_ratio": 0.8882171681853892,
+    "pm_ratio": 1.0194821380359829,
+    "arrival_shortfall_ratio": 0.9214507435358932,
+    "departure_shortfall_ratio": 1.0009519899167367,
+    "departure_gap": 8,
+    "worst_ratio": 1.0194821380359829,
+    "all_emissions_lower": false
+  },
+  "best_validation_versus_rules": {
+    "co2_ratio": 0.9896658255156763,
+    "nox_ratio": 0.9853225593685155,
+    "fuel_ratio": 0.9896251138037178,
+    "pm_ratio": 1.0021016747071658,
+    "arrival_shortfall_ratio": 0.9983211855121488,
+    "departure_shortfall_ratio": 1.0,
+    "departure_gap": 0,
+    "worst_ratio": 1.0021016747071658,
+    "all_emissions_lower": false
+  },
+  "selection": "feasible (PM within +2%, no traffic loss, no collision), then lowest mean CO2/NOx/fuel ratio to FixedTime on validation demands",
+  "validation_reference": "FixedTime 30 s",
+  "test_comparison": {
+    "pool": "corridor + corridor_demo",
+    "seeds": [
+      10200,
+      10201,
+      10202,
+      10203,
+      10204
+    ],
+    "reference": "FixedTime 30 s (team)",
+    "versus_reference": {
+      "co2_ratio": 0.9071286001535028,
+      "nox_ratio": 0.8789518560336017,
+      "fuel_ratio": 0.9070930322689248,
+      "pm_ratio": 1.0361894946446761,
+      "arrival_shortfall_ratio": 0.9322254553315975,
+      "departure_shortfall_ratio": 1.0000993048659386,
+      "departure_gap": 1,
+      "worst_ratio": 1.0361894946446761,
+      "all_emissions_lower": false
+    },
+    "versus_rules": {
+      "co2_ratio": 1.0095404950463482,
+      "nox_ratio": 1.0042667046776066,
+      "fuel_ratio": 1.0094844069668698,
+      "pm_ratio": 1.0121543938341013,
+      "arrival_shortfall_ratio": 1.007871695292401,
+      "departure_shortfall_ratio": 1.0,
+      "departure_gap": 0,
+      "worst_ratio": 1.0121543938341013,
+      "all_emissions_lower": false
+    }
+  }
+}

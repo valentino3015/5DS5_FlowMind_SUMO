@@ -1,0 +1,124 @@
+{
+  "rounds": [
+    {
+      "round": 0,
+      "samples": 3839,
+      "train_accuracy": 0.8420595641226014,
+      "validation_accuracy": 0.8269932256383533,
+      "feasible": false,
+      "versus_reference": {
+        "co2_ratio": 0.9076686391231854,
+        "nox_ratio": 0.880861104325168,
+        "fuel_ratio": 0.9076495302467282,
+        "pm_ratio": 1.025203360514739,
+        "arrival_shortfall_ratio": 0.9215680809414273,
+        "departure_shortfall_ratio": 1.0009519899167367,
+        "departure_gap": 8,
+        "worst_ratio": 1.025203360514739,
+        "all_emissions_lower": false
+      },
+      "versus_rules": {
+        "co2_ratio": 1.0122476625296202,
+        "nox_ratio": 1.009125362981576,
+        "fuel_ratio": 1.0121866194636082,
+        "pm_ratio": 1.0080676625077065,
+        "arrival_shortfall_ratio": 0.9987436494160039,
+        "departure_shortfall_ratio": 1.0,
+        "departure_gap": 0,
+        "worst_ratio": 1.0122476625296202,
+        "all_emissions_lower": false
+      },
+      "collisions_teleports": 83
+    },
+    {
+      "round": 1,
+      "samples": 7678,
+      "train_accuracy": 0.8829122167231049,
+      "validation_accuracy": 0.8697238144867119,
+      "feasible": false,
+      "versus_reference": {
+        "co2_ratio": 0.9057648910896505,
+        "nox_ratio": 0.8767562835015883,
+        "fuel_ratio": 0.9057468445808429,
+        "pm_ratio": 1.0294869830344373,
+        "arrival_shortfall_ratio": 0.924060501220137,
+        "departure_shortfall_ratio": 1.0009519899167367,
+        "departure_gap": 8,
+        "worst_ratio": 1.0294869830344373,
+        "all_emissions_lower": false
+      },
+      "versus_rules": {
+        "co2_ratio": 1.0099657849948258,
+        "nox_ratio": 1.0043019426026145,
+        "fuel_ratio": 1.009906363994458,
+        "pm_ratio": 1.0120534088928688,
+        "arrival_shortfall_ratio": 1.0015234811099316,
+        "departure_shortfall_ratio": 1.0,
+        "departure_gap": 0,
+        "worst_ratio": 1.0120534088928688,
+        "all_emissions_lower": false
+      },
+      "collisions_teleports": 75
+    },
+    {
+      "round": 2,
+      "samples": 11516,
+      "train_accuracy": 0.9525008683570684,
+      "validation_accuracy": 0.9449365989230502,
+      "feasible": false,
+      "versus_reference": {
+        "co2_ratio": 0.9055895065490992,
+        "nox_ratio": 0.8774013369258395,
+        "fuel_ratio": 0.9055835796577083,
+        "pm_ratio": 1.0270378340591035,
+        "arrival_shortfall_ratio": 0.9236812063965747,
+        "departure_shortfall_ratio": 1.0009519899167367,
+        "departure_gap": 8,
+        "worst_ratio": 1.0270378340591035,
+        "all_emissions_lower": false
+      },
+      "versus_rules": {
+        "co2_ratio": 1.0095734244818846,
+        "nox_ratio": 1.0049228145374467,
+        "fuel_ratio": 1.009526894933284,
+        "pm_ratio": 1.0096599121753782,
+        "arrival_shortfall_ratio": 1.00093106368904,
+        "departure_shortfall_ratio": 1.0,
+        "departure_gap": 0,
+        "worst_ratio": 1.0096599121753782,
+        "all_emissions_lower": false
+      },
+      "collisions_teleports": 79
+    },
+    {
+      "round": 3,
+      "samples": 15356,
+      "train_accuracy": 0.9680255274811149,
+      "validation_accuracy": 0.9584853222164321,
+      "feasible": false,
+      "versus_reference": {
+        "co2_ratio": 0.8882186456931955,
+        "nox_ratio": 0.8608974653559405,
+        "fuel_ratio": 0.8882171681853892,
+        "pm_ratio": 1.0194821380359829,
+        "arrival_shortfall_ratio": 0.9214507435358932,
+        "departure_shortfall_ratio": 1.0009519899167367,
+        "departure_gap": 8,
+        "worst_ratio": 1.0194821380359829,
+        "all_emissions_lower": false
+      },
+      "versus_rules": {
+        "co2_ratio": 0.9896658255156763,
+        "nox_ratio": 0.9853225593685155,
+        "fuel_ratio": 0.9896251138037178,
+        "pm_ratio": 1.0021016747071658,
+        "arrival_shortfall_ratio": 0.9983211855121488,
+        "departure_shortfall_ratio": 1.0,
+        "departure_gap": 0,
+        "worst_ratio": 1.0021016747071658,
+        "all_emissions_lower": false
+      },
+      "collisions_teleports": 91
+    }
+  ]
+}

@@ -15,7 +15,7 @@ import webbrowser
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from flowmind.evaluation import CONTROLLERS, ROOT, SCENARIOS, TEAM_AGENTS, export_results, latest_comparisons, load_results, run_experiment
 from flowmind.runtime import RuntimeControl, RULE_LIMITS
-from flowmind.emission_rl import MODEL_DIR
+from flowmind.emission_rl import MODEL_DIR, model_directory, serves
 from chatbot.simulation_explainer import SimulationExplainer
 from chatbot.gemini_client import GeminiError, load_environment
 from chatbot.simulation_context import build_context
@@ -196,14 +196,18 @@ class Handler(BaseHTTPRequestHandler):
                 state = dict(job)
             live = latest_live(state.get("started_at", 0))
             model = ROOT / "runs/models/flow_ppo.zip"
-            emission_manifest = None
-            if (MODEL_DIR / "best.zip").is_file() and (MODEL_DIR / "manifest.json").is_file():
-                emission_manifest = json.loads((MODEL_DIR / "manifest.json").read_text(encoding="utf-8"))
+            emission_models = {}  # active emission model of each scenario
+            for scenario in SCENARIOS:
+                directory = model_directory(scenario, MODEL_DIR)
+                if (directory / "best.zip").is_file() and (directory / "manifest.json").is_file():
+                    manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+                    if serves(manifest, scenario):
+                        emission_models[scenario] = manifest
             self.send_json({"job": state, "live": live, "results": rows,
                             "comparisons": latest_comparisons(rows), "model_available": model.is_file(),
                             "control": runtime_control.snapshot() if runtime_control else None,
                             "rule_defaults": {k:v[2] for k,v in RULE_LIMITS.items()},
-                            "emission_model": emission_manifest})
+                            "emission_models": emission_models})
             return
         if path in ("/", "/simulation", "/history"):
             target = ROOT / "dashboard/index.html"
@@ -336,10 +340,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"error": str(exc)}, 400)
 
     def check_emission_model(self, scenario, seed=None, rules=None):
-        if not (MODEL_DIR/"best.zip").is_file() or not (MODEL_DIR/"manifest.json").is_file():
+        directory=model_directory(scenario, MODEL_DIR)
+        if not (directory/"best.zip").is_file() or not (directory/"manifest.json").is_file():
             raise ValueError("Modèle émissions absent : lancez scripts/train_emissions.py")
-        manifest=json.loads((MODEL_DIR/"manifest.json").read_text(encoding="utf-8"))
-        if manifest["scenario"]!=scenario:
+        manifest=json.loads((directory/"manifest.json").read_text(encoding="utf-8"))
+        if not serves(manifest, scenario):
             raise ValueError("Le modèle émissions n’est pas compatible avec ce scénario")
         if seed in manifest["train_seeds"] + manifest["validation_seeds"]:
             raise ValueError("Choisir une seed de test distincte de l’entraînement/validation")

@@ -31,6 +31,7 @@ if str(ROOT) not in sys.path:
 
 from flowmind.agents.baselines import FixedTime, GreenWave, MaxPressure, green_wave_offset
 from flowmind.agents.bus import BusAgent
+from flowmind.agents.emission import EmissionAgent, NetworkEmissionModel, network_model_for
 from flowmind.agents.demo_rules import DemoEmergency
 from flowmind.agents.emergency import EmergencyAgent
 from flowmind.agents.flow import FlowAgent
@@ -51,8 +52,11 @@ def load_config() -> dict:
         return yaml.safe_load(f)
 
 
-def make_orchestrator(config: dict, movements: dict) -> Orchestrator:
-    """One orchestrator (with its own agents) for one junction."""
+def make_orchestrator(config: dict, movements: dict, emission: NetworkEmissionModel | None = None) -> Orchestrator:
+    """One orchestrator (with its own agents) for one junction.
+
+    With `emission` (the model shared by every junction, see network_model_for), Manoubi's
+    emission agent joins just above Flow: it drives a junction while its CO2 is high."""
     emergency = EmergencyAgent if config.get("agents", {}).get("emergency") == "team" else DemoEmergency
     agents = [
         emergency(config["emergency"]),
@@ -62,7 +66,11 @@ def make_orchestrator(config: dict, movements: dict) -> Orchestrator:
         FlowAgent(config.get("flow", {})),
     ]
     o = config["orchestrator"]
-    return Orchestrator(agents, o["priority"], o["min_hold"],
+    priority = list(o["priority"])
+    if emission is not None:
+        agents.append(EmissionAgent(config.get("emission_agent", {}), emission))
+        priority.insert(priority.index("flow"), "emission")
+    return Orchestrator(agents, priority, o["min_hold"],
                         fallback=MaxPressure(config.get("max_pressure", {}), movements),
                         shadow=FixedTime(config.get("fixed_time", {})))  # what-if column only
 
@@ -166,6 +174,7 @@ def main():
     # Instantiate agents for each traffic light
     agents = {}
     orchestrators = {}
+    emission_network = network_model_for(config, active_scenario, args.seed) if args.controller == "orchestrated" else None
     for tls in env.tls_ids:
         if args.controller == "fixed_time":
             agents[tls] = FixedTime(config.get("fixed_time", {}))
@@ -186,7 +195,7 @@ def main():
                 flow_cfg.pop("model_path", None)
             agents[tls] = FlowAgent(flow_cfg)
         elif args.controller == "orchestrated":
-            orchestrators[tls] = make_orchestrator(config, env.get_phase_movements(tls))
+            orchestrators[tls] = make_orchestrator(config, env.get_phase_movements(tls), emission_network)
 
     for text in args.override:  # operator overrides (core idea 9)
         tls, phase, start, duration = parse_override(text)
@@ -217,6 +226,8 @@ def main():
             else:
                 events = {}
             decisions = []
+            if emission_network:
+                emission_network.update(states)
 
             for tls, st in states.items():
                 logger.log_state(st, events.get(tls, []))  # only written with --save-states

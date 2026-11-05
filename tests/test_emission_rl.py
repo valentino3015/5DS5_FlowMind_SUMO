@@ -234,3 +234,12 @@ def test_sampling_inference_requires_seed_and_repeats_learned_probabilities(tmp_
     (tmp_path/'manifest.json').write_text(json.dumps(manifest))
     legacy=EmissionPolicy('3x3grid',params,directory=tmp_path)
     assert legacy.deterministic and legacy.act_all(states())[0]['J']==0
+
+
+def test_corridor_model_serves_both_corridor_traffics():
+    from flowmind.emission_rl import CORRIDOR_MODEL_DIR, MODEL_DIR, model_directory, serves
+    assert model_directory("corridor_demo") == model_directory("corridor") == CORRIDOR_MODEL_DIR
+    assert model_directory("3x3grid") == MODEL_DIR
+    manifest = {"scenario": "corridor", "compatible_scenarios": {"corridor": "a", "corridor_demo": "b"}}
+    assert serves(manifest, "corridor_demo") and not serves(manifest, "3x3grid")
+    assert not serves({"scenario": "3x3grid"}, "corridor")

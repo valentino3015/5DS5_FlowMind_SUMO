@@ -8,10 +8,11 @@ __pycache__/
 
 # Simulation results and outputs (never on GitHub)
 runs/*
-# Exception: the active emission model, so the dashboard's PPO controller works after a clone
+# Exception: the active emission models (grid and corridor), so the dashboard's PPO controller works after a clone
 !runs/models/
 runs/models/*
 !runs/models/emission_ppo/
+!runs/models/emission_ppo_corridor/
 outputs/
 sandbox/outputs/
 
@@ -21,6 +22,7 @@ runs/**/*.rou.xml
 # Trained models
 *.zip
 !runs/models/emission_ppo/*.zip
+!runs/models/emission_ppo_corridor/*.zip
 
 # Generated PDF reports (rebuilt locally, not committed)
 output/

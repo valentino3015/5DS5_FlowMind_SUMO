@@ -10,7 +10,7 @@ import yaml
 from flowmind.agents.baselines import FixedTime, MaxPressure
 from flowmind.agents.flow import FlowAgent
 from flowmind.agents.rules import RuleBasedAgent
-from flowmind.emission_rl import EmissionPolicy, MODEL_DIR
+from flowmind.emission_rl import EmissionPolicy, model_directory as scenario_model_directory
 from flowmind.env import ROOT, SumoCorridorEnv, simulation_protocol
 from flowmind.kpis import atomic_json, compare_rows, compute_kpis, write_csv
 
@@ -29,7 +29,7 @@ SCENARIOS = {
 # like scripts/run.py; the emission protocol below stays for Manoubi's grid/Cologne studies.
 TEAM_SCENARIOS = ("corridor", "corridor_demo", "corridor5", "corridor5_demo", "grid10", "grid10_demo")
 # Agents of the orchestrated system, in the order shown by the dashboard (added by Adem).
-TEAM_AGENTS = ("emergency", "incident", "pedestrian", "bus", "flow", "max_pressure", "operator")
+TEAM_AGENTS = ("emergency", "incident", "pedestrian", "bus", "emission", "flow", "max_pressure", "operator")
 
 
 def team_live(states, events, decisions, shield_changes):
@@ -159,7 +159,7 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
     model_hash = "none"
     emission_policy = None
     emission_manifest = None
-    model_directory = Path(model_directory) if model_directory is not None else MODEL_DIR
+    model_directory = Path(model_directory) if model_directory is not None else scenario_model_directory(scenario)
     if controller == "emission_model" or runtime_control:
         if (model_directory / "best.zip").is_file():
             model_hash = digest_files([model_directory / "best.zip", model_directory / "manifest.json"])
@@ -169,7 +169,8 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
     if controller == "emission_model" and emission_manifest:
         if seed in emission_manifest["train_seeds"] + emission_manifest["validation_seeds"]:
             raise ValueError("Seed réservée à l’entraînement/validation : choisir une seed de test distincte")
-        if emission_manifest["input_hash"] != digest_files([ROOT/net,ROOT/route]):
+        expected = emission_manifest.get("compatible_scenarios", {}).get(scenario, emission_manifest["input_hash"])
+        if expected != digest_files([ROOT/net,ROOT/route]):
             raise ValueError("Le réseau ou le trafic a changé depuis l’entraînement du modèle")
     if controller == "flow_model":
         model_path = ROOT / flow_params["model_path"]
@@ -184,10 +185,11 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
                 "max_pressure": config.get("max_pressure"), "rules": config.get("rules", {}), "delta_time": config["sim"]["delta_time"],
                 "emission_rl": config.get("emission_rl", {}),
                 "team_protocol": team, "orchestrator": config.get("orchestrator") if controller == "orchestrated" else None,
+                "emission_agent": config.get("emission_agent") if controller == "orchestrated" else None,
                 "teleport_seconds": 60, "metric_schema": 2,
                 "source_hash": digest_files([ROOT / p for p in ("flowmind/contracts.py", "flowmind/emission_rl.py", "flowmind/env.py", "flowmind/evaluation.py", "flowmind/kpis.py", "flowmind/agents/baselines.py", "flowmind/agents/flow.py", "flowmind/agents/rules.py",
                                                                     "flowmind/control/orchestrator.py", "flowmind/control/coordinator.py", "flowmind/control/shield.py",
-                                                                    "flowmind/agents/emergency.py", "flowmind/agents/incident.py", "flowmind/agents/pedestrian.py", "flowmind/agents/bus.py")])}
+                                                                    "flowmind/agents/emergency.py", "flowmind/agents/incident.py", "flowmind/agents/pedestrian.py", "flowmind/agents/bus.py", "flowmind/agents/emission.py")])}
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "_" + controller + "_" + uuid.uuid4().hex[:6]
     directory = ROOT / "runs" / run_id
     directory.mkdir(parents=True)
@@ -221,6 +223,10 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
         states = env.reset()
         if controller == "emission_model":
             emission_policy = EmissionPolicy(scenario, config["rules"] | {k:config["signals"][k] for k in ("min_green","max_green")}, directory=model_directory, seed=seed)
+        emission_network = None
+        if controller == "orchestrated":  # Manoubi's emission agent joins when the scenario has a model
+            from flowmind.agents.emission import network_model_for
+            emission_network = network_model_for(config, scenario, seed)
         agents = {}
         for tls in env.tls_ids:
             if controller == "fixed_time":
@@ -235,7 +241,7 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
             elif controller == "orchestrated":
                 # Same system as scripts/run.py --controller orchestrated (added by Adem)
                 from scripts.run import make_orchestrator
-                agents[tls] = make_orchestrator(config, env.get_phase_movements(tls))
+                agents[tls] = make_orchestrator(config, env.get_phase_movements(tls), emission_network)
             else:
                 agents[tls] = FlowAgent(flow_params)
                 if controller == "flow_model" and agents[tls].model is None:
@@ -293,6 +299,8 @@ def run_experiment(controller="fixed_time", scenario="3x3grid", seconds=600,
                     actions, model_reasons = emission_policy.act_all(states)
                 elif method == "orchestrated":
                     now = next(iter(states.values())).time
+                    if emission_network:
+                        emission_network.update(states)
                     events = coordinator.update(now, env.emergency_approaches(), team_decisions, states)
                     team_decisions, actions = [], {}
                     for tls, st in states.items():
